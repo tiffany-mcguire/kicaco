@@ -4,7 +4,7 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import ChatDrawerContainer from '../components/ChatDrawerContainer';
 
@@ -15,6 +15,7 @@ const CalendarIcon = () => (
 );
 
 const AddByDateButton = (props: { label?: string }) => {
+  const navigate = useNavigate();
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
@@ -47,14 +48,15 @@ const AddByDateButton = (props: { label?: string }) => {
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.92)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
   };
 
-  // No action yet
-  const handleClick = () => {};
+  const handleClick = () => {
+    setTimeout(() => navigate('/add-event'), 150);
+  };
 
   return (
     <button
@@ -68,6 +70,9 @@ const AddByDateButton = (props: { label?: string }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
       {props.label ?? 'Add by Date'}
     </button>

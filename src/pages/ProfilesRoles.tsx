@@ -4,9 +4,29 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState } from 'react';
 import ChatDrawerContainer from '../components/ChatDrawerContainer';
+
+type ChildProfile = {
+  id: string;
+  name: string;
+  dob: string;
+  school: string;
+};
+
+type SharedUser = {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  permissions: {
+    canView: boolean;
+    canAdd: boolean;
+    canEdit: boolean;
+    canManage: boolean;
+  };
+};
 
 const ProfilesRolesIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 24 24">
@@ -48,7 +68,7 @@ const UpdateProfilesButton = (props: { label?: string }) => {
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.92)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -69,8 +89,146 @@ const UpdateProfilesButton = (props: { label?: string }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
       {props.label ?? 'Update Profiles'}
+    </button>
+  );
+};
+
+const BigActionButton = (props: { children: React.ReactNode; onClick?: () => void }) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
+
+  const getButtonStyle = () => {
+    let s = {
+      marginTop: '12px',
+      padding: '10px 0',
+      boxSizing: 'border-box' as const,
+      fontFamily: 'Nunito',
+      fontWeight: 600,
+      fontSize: '16px',
+      lineHeight: '22px',
+      background: '#fff',
+      color: '#217e8f',
+      outline: 'none',
+      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+      display: 'block',
+      width: '100%',
+      borderRadius: '8px',
+      border: '1px solid #c0e2e7',
+      boxShadow: '-2px 2px 0px rgba(0,0,0,0.15)',
+      borderColor: '#c0e2e7',
+    } as React.CSSProperties;
+    if (hovered || focused) {
+      s = {
+        ...s,
+        boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.15)',
+        borderColor: '#c0e2e7',
+        outline: 'none',
+      };
+    }
+    if (pressed) {
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
+    }
+    s.outline = 'none';
+    return s;
+  };
+
+  return (
+    <button
+      style={getButtonStyle()}
+      tabIndex={0}
+      type="button"
+      onClick={props.onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => { setPressed(false); setHovered(false); }}
+      onMouseOver={() => setHovered(true)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+    >
+      {props.children}
+    </button>
+  );
+};
+
+const MiniActionButton = (props: { label: string; color?: string; borderColor?: string; onClick?: () => void; extraClassName?: string }) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
+
+  // Determine if this is a 'Remove' button by color or borderColor
+  const isRemove = (props.color === '#b91142' || props.borderColor === '#e7c0c0');
+  // Softer pink for glow and border, lower opacity for shadow
+  const glowColor = isRemove ? 'rgba(251,182,206,0.45)' : '#c0e2e7aa';
+  const borderColor = isRemove ? 'rgba(251,182,206,0.55)' : (props.borderColor ?? '#c0e2e7');
+  const baseShadow = '-2px 2px 0px rgba(0,0,0,0.10)';
+  const liftShadow = isRemove ? '-2px 2px 8px 0px rgba(185,17,66,0.06)' : '-2px 2px 8px 0px rgba(33,126,143,0.06)';
+
+  const getButtonStyle = () => {
+    let s = {
+      minWidth: '80px',
+      height: '28px',
+      padding: '0px 12px',
+      border: `1.2px solid ${borderColor}`,
+      boxSizing: 'border-box' as const,
+      borderRadius: '6px',
+      fontFamily: 'Nunito',
+      fontWeight: 600,
+      fontSize: '13px',
+      lineHeight: '18px',
+      boxShadow: `${baseShadow}, ${liftShadow}`,
+      background: '#fff',
+      color: props.color ?? '#217e8f',
+      outline: 'none',
+      borderColor: borderColor,
+      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+      cursor: 'pointer',
+    } as React.CSSProperties;
+    if (hovered || focused) {
+      s = {
+        ...s,
+        boxShadow: `0 0 12px 3px ${glowColor}, ${baseShadow}, ${liftShadow}`,
+        borderColor: borderColor,
+        outline: 'none',
+      };
+    }
+    if (pressed) {
+      s = {
+        ...s,
+        transform: 'scale(0.95)',
+        boxShadow: `0 0 12px 3px ${glowColor}, ${baseShadow}, ${liftShadow}`,
+        borderColor: borderColor,
+      };
+    }
+    s.outline = 'none';
+    return s;
+  };
+
+  return (
+    <button
+      style={getButtonStyle()}
+      tabIndex={0}
+      type="button"
+      onClick={props.onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => { setPressed(false); setHovered(false); }}
+      onMouseOver={() => setHovered(true)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setPressed(false); }}
+      className={`transition focus:outline-none focus:ring-2 focus:ring-[#fbb6ce] focus:ring-offset-1 active:scale-95 ${props.extraClassName ?? ''}`}
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+    >
+      {props.label}
     </button>
   );
 };
@@ -78,6 +236,36 @@ const UpdateProfilesButton = (props: { label?: string }) => {
 export default function ProfilesRoles() {
   const [input, setInput] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [children, setChildren] = useState<ChildProfile[]>([
+    {
+      id: '1',
+      name: 'Jordan Reyes',
+      dob: '08/25/2013',
+      school: 'Pine Hill Elementary'
+    }
+  ]);
+
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([
+    {
+      id: '1',
+      name: 'Casey Morgan',
+      role: 'Co-parent',
+      email: 'casey.morgan@example.com',
+      permissions: {
+        canView: true,
+        canAdd: true,
+        canEdit: true,
+        canManage: true
+      }
+    }
+  ]);
+
+  const handleAddChild = () => {
+    setTimeout(() => navigate('/edit-child'), 150);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
@@ -122,11 +310,125 @@ export default function ProfilesRoles() {
           </div>
         </section>
       </div>
-      <ChatDrawerContainer>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+
+      {/* Main Content Area */}
+      <div className="relative flex-1">
+        {/* Main Content */}
+        <div className="absolute inset-0 overflow-y-auto">
+          <div className="px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
+
+            {/* Section 1: Manage Your Household */}
+            <div>
+              <h2 className="text-xl font-semibold text-[#1a6e7e]">Manage Your Household</h2>
+              <p className="text-sm text-gray-700 mt-1">
+                Set up your household by adding child profiles and inviting others to share access and responsibilities.
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 my-6"></div>
+
+            {/* Section 2: Your Children */}
+            <div>
+              <h3 className="text-lg font-semibold text-[#1a6e7e]">Your Children</h3>
+              {children.length === 0 ? (
+                <>
+                  <p className="text-sm text-gray-700 mt-1">
+                    You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
+                  </p>
+                  <BigActionButton onClick={handleAddChild}>
+                    + Add Child Profile
+                  </BigActionButton>
+                </>
+              ) : (
+                <>
+                  {children.map(child => (
+                    <div key={child.id} className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-center justify-between">
+                      <div>
+                        <p className="text-[#1a6e7e] font-semibold text-base">{child.name}</p>
+                        <p className="text-xs text-gray-500 mt-1">DOB: {child.dob}</p>
+                        <p className="text-xs text-gray-500">School: {child.school}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <MiniActionButton label="Edit" onClick={() => console.log('Edit', child.id)} />
+                        <MiniActionButton label="Remove" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove', child.id)} />
+                      </div>
+                    </div>
+                  ))}
+                  <BigActionButton onClick={handleAddChild}>+ Add Another Child</BigActionButton>
+                </>
+              )}
+            </div>
+
+            {/* Section 3: Shared Access & Permissions */}
+            <div>
+              <h3 className="text-lg font-semibold text-[#1a6e7e]">Shared Access & Permissions</h3>
+              {sharedUsers.length === 0 ? (
+                <>
+                  <p className="text-sm text-gray-700 mt-1">
+                    No shared users have been added. Invite a co-parent, grandparent, or sitter to collaborate on your child's schedule.
+                  </p>
+                </>
+              ) : (
+                sharedUsers.map(user => (
+                  <div key={user.id} className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[#1a6e7e] font-semibold text-base">{user.name} <span className="text-sm text-gray-500 font-normal">({user.role})</span></p>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <div className="text-sm text-gray-700 mt-3">
+                        <span className="text-[#1a6e7e] font-semibold">Permissions:</span>
+                        <div className="md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
+                          <span className="flex items-center gap-1">
+                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>
+                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>View</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canAdd ? '✓' : '✗'}</span>
+                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>Add</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canEdit ? '✓' : '✗'}</span>
+                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>Edit</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canManage ? '✓' : '✗'}</span>
+                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>Manage</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 ml-4 self-start">
+                      <MiniActionButton label="Edit Permissions" onClick={() => console.log('Edit permissions', user.id)} extraClassName="whitespace-nowrap" />
+                      <MiniActionButton label="Remove Access" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove access', user.id)} />
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Always show invite field */}
+              <div className="mt-6">
+                <p className="text-sm text-[#1a6e7e] font-semibold mb-1">Invite by email</p>
+                <input
+                  type="email"
+                  placeholder="e.g. someone@example.com"
+                  className="w-full px-4 py-2 border border-[#c0e2e7] rounded-lg shadow-sm text-sm focus:outline-none focus:ring-0 focus:shadow-[0_0_8px_2px_#c0e2e7]"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                />
+                <BigActionButton onClick={() => console.log('Send invite to', input)}>Send Invite</BigActionButton>
+              </div>
+            </div>
+
+          </div>
         </div>
-      </ChatDrawerContainer>
+
+        {/* Chat Drawer - Positioned absolutely at the top */}
+        <ChatDrawerContainer className="absolute left-0 right-0 top-0 z-30">
+          <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
+            {/* No default chat bubbles on this page */}
+          </div>
+        </ChatDrawerContainer>
+      </div>
 
       {/* Footer input bar */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.15)] z-30">

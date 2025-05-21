@@ -54,7 +54,7 @@ const IconButton: React.FC<IconButtonProps> = ({ IconComponent, style, ...props 
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.92)' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -72,6 +72,7 @@ const IconButton: React.FC<IconButtonProps> = ({ IconComponent, style, ...props 
       onFocus={e => { setFocused(true); props.onFocus?.(e); }}
       onBlur={e => { setFocused(false); setPressed(false); props.onBlur?.(e); }}
       tabIndex={0}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
     >
       {IconComponent ? <IconComponent style={styles.Icon} /> : null}
     </button>

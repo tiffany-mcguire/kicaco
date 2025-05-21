@@ -48,7 +48,7 @@ const UpdateDefaultsButton = (props: { label?: string }) => {
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.92)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -69,6 +69,9 @@ const UpdateDefaultsButton = (props: { label?: string }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
       {props.label ?? 'Update Defaults'}
     </button>

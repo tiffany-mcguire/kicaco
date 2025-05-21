@@ -32,7 +32,24 @@ const AddKeeperButton = (props: { label?: string }) => {
   const [focused, setFocused] = useState(false);
 
   const getButtonStyle = () => {
-    let s = { ...styles.Button, borderColor: '#c0e2e7' };
+    let s = {
+      width: '140px',
+      height: '30px',
+      padding: '0px 8px',
+      border: '1px solid #c0e2e7',
+      boxSizing: 'border-box' as const,
+      borderRadius: '6px',
+      fontFamily: 'Nunito',
+      fontWeight: 600,
+      fontSize: '14px',
+      lineHeight: '20px',
+      boxShadow: '-2px 2px 0px rgba(0,0,0,0.25)',
+      background: '#fff',
+      color: '#217e8f',
+      outline: 'none',
+      borderColor: '#c0e2e7',
+      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+    } as React.CSSProperties;
     if (hovered || focused) {
       s = {
         ...s,
@@ -42,7 +59,7 @@ const AddKeeperButton = (props: { label?: string }) => {
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.92)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -64,8 +81,11 @@ const AddKeeperButton = (props: { label?: string }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
-      {props.label ?? defaultProps.label}
+      {props.label ?? 'Add Keeper'}
     </button>
   );
 };
