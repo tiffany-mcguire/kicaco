@@ -267,18 +267,15 @@ export default function ProfilesRoles() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="profiles-roles-page flex flex-col h-screen bg-white">
       {/* Header */}
-      <header className="flex items-center justify-between bg-[#217e8f] bg-opacity-85 h-16 px-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
-        {/* Left Buttons */}
-        <div className="flex gap-2">
+      <header className="profiles-roles-header flex items-center justify-between bg-[#217e8f] bg-opacity-85 h-16 px-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+        <div className="profiles-roles-header-left flex gap-2">
           <HamburgerMenu currentPath={location.pathname} />
           <CalendarMenu currentPath={location.pathname} />
         </div>
-        {/* Middle Space */}
-        <div className="flex-1"></div>
-        {/* Right Buttons */}
-        <div className="flex gap-2">
+        <div className="profiles-roles-header-middle flex-1"></div>
+        <div className="profiles-roles-header-right flex gap-2">
           <IconButton IconComponent={() => (
             <svg width="24" height="24" fill="#c0e2e7" viewBox="0 0 24 24">
               <path d="M0 0h24v24H0z" fill="none"/>
@@ -289,12 +286,11 @@ export default function ProfilesRoles() {
         </div>
       </header>
 
-      {/* Profiles & Roles Subheader */}
-      <div className="w-full bg-white z-10">
+      {/* Subheader */}
+      <div className="profiles-roles-subheader w-full bg-white z-10">
         <section className="mb-2 px-4 pt-4">
-          <div className="flex items-start justify-between w-full">
-            {/* Subheader left side */}
-            <div style={{width:'180px'}}>
+          <div className="profiles-roles-subheader-row flex items-start justify-between w-full">
+            <div className="profiles-roles-subheader-left" style={{width:'180px'}}>
               <div className="h-0.5 rounded w-full mb-0" style={{ backgroundColor: '#2e8b57', opacity: 0.25 }}></div>
               <div className="flex items-center space-x-2 pl-1">
                 <ProfilesRolesIcon />
@@ -302,9 +298,7 @@ export default function ProfilesRoles() {
               </div>
               <div className="h-0.5 rounded w-full mt-0" style={{ backgroundColor: '#2e8b57', opacity: 0.25 }}></div>
             </div>
-            {/* Update Profiles Button right side */}
-            <div className="flex items-center" style={{height: '30px', marginTop: '0px'}}>
-              {/* Update Profiles Button */}
+            <div className="profiles-roles-subheader-right flex items-center" style={{height: '30px', marginTop: '0px'}}>
               <UpdateProfilesButton />
             </div>
           </div>
@@ -312,106 +306,108 @@ export default function ProfilesRoles() {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative flex-1">
-        {/* Main Content */}
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
+      <div className="profiles-roles-content relative flex-1">
+        <div className="profiles-roles-content-scroll absolute inset-0 overflow-y-auto">
+          <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
 
             {/* Section 1: Manage Your Household */}
-            <div>
+            <div className="profiles-roles-section-manage-household">
               <h2 className="text-xl font-semibold text-[#1a6e7e]">Manage Your Household</h2>
               <p className="text-sm text-gray-700 mt-1">
                 Set up your household by adding child profiles and inviting others to share access and responsibilities.
               </p>
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-gray-200 my-6"></div>
+            <div className="profiles-roles-divider border-t border-gray-200 my-6"></div>
 
             {/* Section 2: Your Children */}
-            <div>
+            <div className="profiles-roles-section-children">
               <h3 className="text-lg font-semibold text-[#1a6e7e]">Your Children</h3>
-              {children.length === 0 ? (
-                <>
-                  <p className="text-sm text-gray-700 mt-1">
-                    You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
-                  </p>
-                  <BigActionButton onClick={handleAddChild}>
-                    + Add Child Profile
-                  </BigActionButton>
-                </>
-              ) : (
-                <>
-                  {children.map(child => (
-                    <div key={child.id} className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-center justify-between">
-                      <div>
-                        <p className="text-[#1a6e7e] font-semibold text-base">{child.name}</p>
-                        <p className="text-xs text-gray-500 mt-1">DOB: {child.dob}</p>
-                        <p className="text-xs text-gray-500">School: {child.school}</p>
+              <div className="profiles-roles-children-list">
+                {children.length === 0 ? (
+                  <>
+                    <p className="text-sm text-gray-700 mt-1">
+                      You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
+                    </p>
+                    <BigActionButton onClick={handleAddChild}>
+                      + Add Child Profile
+                    </BigActionButton>
+                  </>
+                ) : (
+                  <>
+                    {children.map(child => (
+                      <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-center justify-between">
+                        <div className="profiles-roles-child-info">
+                          <p className="text-[#1a6e7e] font-semibold text-base">{child.name}</p>
+                          <p className="text-xs text-gray-500 mt-1">DOB: {child.dob}</p>
+                          <p className="text-xs text-gray-500">School: {child.school}</p>
+                        </div>
+                        <div className="profiles-roles-child-actions flex flex-col gap-2 ml-4">
+                          <MiniActionButton label="Edit" onClick={() => console.log('Edit', child.id)} />
+                          <MiniActionButton label="Remove" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove', child.id)} />
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-2 ml-4">
-                        <MiniActionButton label="Edit" onClick={() => console.log('Edit', child.id)} />
-                        <MiniActionButton label="Remove" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove', child.id)} />
-                      </div>
-                    </div>
-                  ))}
-                  <BigActionButton onClick={handleAddChild}>+ Add Another Child</BigActionButton>
-                </>
-              )}
+                    ))}
+                    <BigActionButton onClick={handleAddChild}>+ Add Another Child</BigActionButton>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Section 3: Shared Access & Permissions */}
-            <div>
+            <div className="profiles-roles-section-shared-users">
               <h3 className="text-lg font-semibold text-[#1a6e7e]">Shared Access & Permissions</h3>
-              {sharedUsers.length === 0 ? (
-                <>
-                  <p className="text-sm text-gray-700 mt-1">
-                    No shared users have been added. Invite a co-parent, grandparent, or sitter to collaborate on your child's schedule.
-                  </p>
-                </>
-              ) : (
-                sharedUsers.map(user => (
-                  <div key={user.id} className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-start justify-between">
-                    <div className="min-w-0">
-                      <p className="text-[#1a6e7e] font-semibold text-base">{user.name} <span className="text-sm text-gray-500 font-normal">({user.role})</span></p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                      <div className="text-sm text-gray-700 mt-3">
-                        <span className="text-[#1a6e7e] font-semibold">Permissions:</span>
-                        <div className="md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>View</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canAdd ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>Add</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canEdit ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>Edit</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canManage ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>Manage</span>
-                          </span>
+              <div className="profiles-roles-shared-users-list">
+                {sharedUsers.length === 0 ? (
+                  <>
+                    <p className="text-sm text-gray-700 mt-1">
+                      No shared users have been added. Invite a co-parent, grandparent, or sitter to collaborate on your child's schedule.
+                    </p>
+                  </>
+                ) : (
+                  sharedUsers.map(user => (
+                    <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-start justify-between">
+                      <div className="profiles-roles-shared-user-info min-w-0">
+                        <p className="text-[#1a6e7e] font-semibold text-base">{user.name} <span className="text-sm text-gray-500 font-normal">({user.role})</span></p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <div className="text-sm text-gray-700 mt-3">
+                          <span className="text-[#1a6e7e] font-semibold">Permissions:</span>
+                          <div className="profiles-roles-shared-user-permissions md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
+                            <span className="flex items-center gap-1">
+                              <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>
+                              <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>View</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canAdd ? '✓' : '✗'}</span>
+                              <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>Add</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canEdit ? '✓' : '✗'}</span>
+                              <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>Edit</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canManage ? '✓' : '✗'}</span>
+                              <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>Manage</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="profiles-roles-shared-user-actions flex flex-col gap-2 ml-4 self-start">
+                        <MiniActionButton label="Edit Permissions" onClick={() => console.log('Edit permissions', user.id)} extraClassName="whitespace-nowrap" />
+                        <MiniActionButton label="Remove Access" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove access', user.id)} />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-2 ml-4 self-start">
-                      <MiniActionButton label="Edit Permissions" onClick={() => console.log('Edit permissions', user.id)} extraClassName="whitespace-nowrap" />
-                      <MiniActionButton label="Remove Access" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove access', user.id)} />
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
 
               {/* Always show invite field */}
-              <div className="mt-6">
+              <div className="profiles-roles-invite mt-6">
                 <p className="text-sm text-[#1a6e7e] font-semibold mb-1">Invite by email</p>
                 <input
                   type="email"
                   placeholder="e.g. someone@example.com"
-                  className="w-full px-4 py-2 border border-[#c0e2e7] rounded-lg shadow-sm text-sm focus:outline-none focus:ring-0 focus:shadow-[0_0_8px_2px_#c0e2e7]"
+                  className="profiles-roles-invite-input w-full px-4 py-2 border border-[#c0e2e7] rounded-lg shadow-sm text-sm focus:outline-none focus:ring-0 focus:shadow-[0_0_8px_2px_#c0e2e7]"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                 />

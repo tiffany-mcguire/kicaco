@@ -73,7 +73,7 @@ export default function ChatDrawerContainer({ children, initialClosed = false, c
   return (
     <motion.div
       ref={containerRef}
-      className={`w-full flex flex-col items-center${className ? ` ${className}` : ''}`}
+      className={`chat-drawer-container w-full flex flex-col items-center${className ? ` ${className}` : ''}`}
       style={{
         y,
         height: maxHeight,
@@ -94,17 +94,17 @@ export default function ChatDrawerContainer({ children, initialClosed = false, c
     >
       {/* Handle Bar with subtle top border and dynamic text */}
       <div
-        className="w-full flex flex-col items-center cursor-grab select-none bg-white border-t border-b border-gray-200"
+        className="chat-drawer-handle w-full flex flex-col items-center cursor-grab select-none bg-white border-t border-b border-gray-200"
         style={{ height: MINIMIZED_HEIGHT, borderRadius: '0 0 12px 12px' }}
         role="button"
         aria-label={handleText}
         tabIndex={0}
       >
-        <div className="mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
+        <div className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={handleText}
-            className="text-sm text-gray-400 font-medium text-center"
+            className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center"
             style={{ lineHeight: 1, minHeight: 18 }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -117,7 +117,7 @@ export default function ChatDrawerContainer({ children, initialClosed = false, c
         </AnimatePresence>
       </div>
       {/* Chat content */}
-      <div className="flex-1 w-full px-4 pt-2 pb-4 overflow-y-auto">
+      <div className="chat-drawer-content flex-1 w-full px-4 pt-2 pb-4 overflow-y-auto">
         {children}
       </div>
     </motion.div>
