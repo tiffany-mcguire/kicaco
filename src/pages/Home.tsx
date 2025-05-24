@@ -7,6 +7,11 @@ import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { extractJsonFromMessage } from '../utils/parseAssistantResponse';
+import { useKicacoStore } from '../store/kicacoStore';
+import EventConfirmationCard from '../components/EventConfirmationCard';
+import { runAssistantFunction } from '../utils/runAssistantFunction';
+import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -24,6 +29,89 @@ export default function Home() {
   const [subheaderBottom, setSubheaderBottom] = useState(0);
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    eventInProgress,
+    setEventInProgress,
+    addEvent,
+    setLatestEvent,
+    threadId,
+    setThreadId,
+    addMessage,
+    messages,
+  } = useKicacoStore();
+  const chatDrawerRef = useRef<any>(null);
+
+  // Initialize threadId if not set
+  useEffect(() => {
+    if (!threadId) {
+      createOpenAIThread().then(setThreadId);
+    }
+  }, [threadId, setThreadId]);
+
+  // Animated message reveal state
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  // Animated intro bubble reveal state
+  const [visibleIntroCount, setVisibleIntroCount] = useState(0);
+
+  const handleSend = async () => {
+    if (!input.trim() || !threadId) {
+      console.log('No input or threadId:', { input, threadId });
+      return;
+    }
+
+    const userText = input.trim();
+    setInput('');
+
+    // Add user message
+    const userMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user' as const,
+      content: userText
+    };
+    console.log('Adding user message:', userMessage);
+    addMessage(userMessage);
+    console.log('Current messages after adding user:', messages);
+
+    // Get and add assistant reply
+    const assistantReply = await sendMessageToAssistant(threadId, userText);
+    const assistantMessage = {
+      id: crypto.randomUUID(),
+      sender: 'assistant' as const,
+      content: assistantReply
+    };
+    console.log('Adding assistant message:', assistantMessage);
+    addMessage(assistantMessage);
+    console.log('Current messages after adding assistant:', messages);
+
+    const parsed = extractJsonFromMessage(assistantReply);
+    if (parsed) {
+      setEventInProgress(parsed);
+    }
+  };
+
+  // Log messages and visibleCount changes
+  useEffect(() => {
+    console.log('Messages updated:', messages);
+    console.log('Visible count:', visibleCount);
+  }, [messages, visibleCount]);
+
+  // Update visibleCount when messages change
+  useEffect(() => {
+    if (messages.length > visibleCount) {
+      console.log('Updating visibleCount from', visibleCount, 'to', messages.length);
+      setVisibleCount(messages.length);
+    }
+  }, [messages.length, visibleCount]);
+
+  useEffect(() => {
+    if (visibleIntroCount < intro.length) {
+      const timeout = setTimeout(() => {
+        setVisibleIntroCount((prev) => prev + 1);
+      }, 700); // 700ms delay between intro bubbles
+      return () => clearTimeout(timeout);
+    }
+  }, [visibleIntroCount, intro.length]);
 
   // Update drawerTop when drawer height changes
   const handleDrawerHeightChange = (height: number) => {
@@ -86,10 +174,10 @@ export default function Home() {
           </p>
         </section>
       </div>
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
+      <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
         <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
           <AnimatePresence>
-            {intro.map((msg, i) => (
+            {intro.slice(0, visibleIntroCount).map((msg, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
@@ -102,12 +190,53 @@ export default function Home() {
               </motion.div>
             ))}
           </AnimatePresence>
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              side={msg.sender === 'user' ? 'right' : 'left'}
+            >
+              {msg.content}
+            </ChatBubble>
+          ))}
         </div>
       </GlobalChatDrawer>
+      {eventInProgress && (
+        <EventConfirmationCard
+          onConfirm={async () => {
+            if (!eventInProgress || !threadId) return;
+
+            const response = await runAssistantFunction({
+              assistantId: import.meta.env.VITE_ASSISTANT_ID,
+              threadId,
+              functionName: 'addEventToCalendar',
+              parameters: eventInProgress
+            });
+
+            if (response) {
+              const event = eventInProgress as any;
+              addEvent(event);
+              setLatestEvent(event);
+              setEventInProgress(null);
+
+              addMessage({
+                id: crypto.randomUUID(),
+                sender: 'assistant',
+                content: `Got it! "${event.eventName}" is now on your calendar.`
+              });
+            } else {
+              console.error('Function call failed');
+            }
+          }}
+          onCancel={() => {
+            setEventInProgress(null);
+          }}
+        />
+      )}
       <GlobalFooter
         ref={footerRef}
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        onSend={handleSend}
       />
     </div>
   );

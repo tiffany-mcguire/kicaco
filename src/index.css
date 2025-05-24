@@ -52,6 +52,12 @@
   background-color: rgba(156, 163, 175, 0.7);
 } 
 
+/* DCC Styling */
+
 .subheader-z-index {
   z-index: 2;
+}
+
+.footer-chat {
+  color: #000;
 }

@@ -5,6 +5,7 @@ import { ClipboardIcon2, UploadIcon, CameraIconMD, MicIcon } from './icons';
 interface GlobalFooterProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSend?: () => void;
   placeholder?: string;
   leftButtons?: ReactNode;
   rightButtons?: ReactNode;
@@ -12,7 +13,7 @@ interface GlobalFooterProps {
 }
 
 const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
-  ({ value, onChange, placeholder = 'Type a message…', leftButtons, rightButtons, className = '' }, ref) => (
+  ({ value, onChange, onSend, placeholder = 'Type a message…', leftButtons, rightButtons, className = '' }, ref) => (
     <footer
       ref={ref}
       className={`global-footer fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.15)] z-50 h-16 flex items-center justify-between px-4 ${className}`}
@@ -28,7 +29,13 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
           type="text"
           value={value}
           onChange={onChange}
-          className="w-full rounded-full border border-[#c0e2e7] px-4 py-2 focus:outline-none text-base bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow duration-200 focus:shadow-[0_0_8px_2px_#c0e2e7,0_2px_8px_rgba(0,0,0,0.08)]"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && onSend) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          className="footer-chat w-full rounded-full border border-[#c0e2e7] px-4 py-2 focus:outline-none text-base bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow duration-200 focus:shadow-[0_0_8px_2px_#c0e2e7,0_2px_8px_rgba(0,0,0,0.08)]"
           placeholder={placeholder}
         />
       </div>
