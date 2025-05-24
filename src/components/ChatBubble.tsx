@@ -6,7 +6,7 @@ export default function ChatBubble({ children, side = 'left' }: { children: Reac
   const bubbleColor = isLeft ? '#e5e5ea' : '#c0e2e7';
 
   return (
-    <div className={clsx('chat-bubble w-full flex mb-2', isLeft ? 'justify-start' : 'justify-end')}>
+    <div className={clsx('chat-bubble w-full flex mb-px', isLeft ? 'justify-start' : 'justify-end')}>
       <div className="relative max-w-[75%] px-3 py-2">
         <div
           className={clsx(
