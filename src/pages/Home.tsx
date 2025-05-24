@@ -3,12 +3,10 @@ import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBubble from '../components/ChatBubble';
 import IconButton from '../components/IconButton';
-import React, { useState } from 'react';
-import HamburgerMenu from '../components/HamburgerMenu';
-import CalendarMenu from '../components/CalendarMenu';
-import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
-import ChatDrawerContainer from '../components/ChatDrawerContainer.tsx';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import GlobalHeader from '../components/GlobalHeader';
+import GlobalFooter from '../components/GlobalFooter';
+import GlobalChatDrawer from '../components/GlobalChatDrawer';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -18,42 +16,56 @@ const intro = [
 
 export default function Home() {
   const [input, setInput] = useState("");
-  const location = useLocation();
+  const headerRef = useRef<HTMLDivElement>(null);
+  const subheaderRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const [drawerHeight, setDrawerHeight] = useState(44); // initial: minimized height + gap
+  const [drawerTop, setDrawerTop] = useState(window.innerHeight); // initial: bottom of viewport
+  const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Update drawerTop when drawer height changes
+  const handleDrawerHeightChange = (height: number) => {
+    setDrawerHeight(height);
+    setDrawerTop(window.innerHeight - height);
+  };
+
+  // Update subheaderBottom on mount and resize
+  useLayoutEffect(() => {
+    function updateSubheaderBottom() {
+      if (subheaderRef.current) {
+        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
+      }
+    }
+    updateSubheaderBottom();
+    window.addEventListener('resize', updateSubheaderBottom);
+    return () => window.removeEventListener('resize', updateSubheaderBottom);
+  }, []);
+
+  // Lock/unlock scroll based on drawer position
+  useEffect(() => {
+    // If drawer is fully open (docked at top), lock scroll
+    if (drawerHeight > 44 + 8) {
+      setScrollOverflow('auto');
+    } else {
+      setScrollOverflow('hidden');
+    }
+  }, [drawerHeight]);
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <header className="flex items-center justify-between bg-[#217e8f] bg-opacity-85 h-16 px-4 shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
-        {/* Left Buttons */}
-        <div className="flex gap-2">
-          <HamburgerMenu currentPath={location.pathname} />
-          <CalendarMenu currentPath={location.pathname} />
-        </div>
-        {/* Middle Space */}
-        <div className="flex-1"></div>
-        {/* Right Buttons */}
-        <div className="flex gap-2">
-          <IconButton IconComponent={() => (
-            <svg width="24" height="24" fill="#c0e2e7" viewBox="0 0 24 24">
-              <path d="M0 0h24v24H0z" fill="none"/>
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-            </svg>
-          )} aria-label="Search" />
-          <ThreeDotMenu currentPath={location.pathname} />
-        </div>
-      </header>
-
-      {/* Static Top Area: Upcoming Events & Keepers */}
-      <div className="w-full bg-white z-10">
-        {/* Upcoming Events */}
+      <GlobalHeader ref={headerRef} />
+      {/* Subheader (for double header effect) */}
+      <div ref={subheaderRef} className="w-full bg-white z-10 profiles-roles-subheader">
         <section className="mb-2 px-4 pt-4">
           <div style={{width:'180px'}}>
-            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0"></div>
+            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
             <div className="flex items-center space-x-2 pl-1">
               <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
               <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
             </div>
-            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0"></div>
+            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
           </div>
           <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
             Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
@@ -74,8 +86,7 @@ export default function Home() {
           </p>
         </section>
       </div>
-      {/* Chat Drawer Handle and Chat Area */}
-      <ChatDrawerContainer>
+      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
         <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
           <AnimatePresence>
             {intro.map((msg, i) => (
@@ -92,34 +103,12 @@ export default function Home() {
             ))}
           </AnimatePresence>
         </div>
-      </ChatDrawerContainer>
-      {/* Footer input bar */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.15)] z-30">
-        <div className="w-full h-16 px-4 flex items-center justify-between">
-          {/* Left icon group */}
-          <div className="flex gap-2">
-            <IconButton IconComponent={props => <ClipboardIcon2 {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Paste" />
-            <IconButton IconComponent={props => <UploadIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Upload" />
-          </div>
-
-          {/* Center input */}
-          <div className="flex-1 mx-4">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              className="w-full rounded-full border border-[#c0e2e7] px-4 py-2 focus:outline-none text-base bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow duration-200 focus:shadow-[0_0_8px_2px_#c0e2e7,0_2px_8px_rgba(0,0,0,0.08)]"
-              placeholder="Type a message…"
-            />
-          </div>
-
-          {/* Right icon group */}
-          <div className="flex gap-2">
-            <IconButton IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Camera" />
-            <IconButton IconComponent={props => <MicIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Mic" />
-          </div>
-        </div>
-      </footer>
+      </GlobalChatDrawer>
+      <GlobalFooter
+        ref={footerRef}
+        value={input}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+      />
     </div>
   );
 } 
