@@ -349,6 +349,7 @@ export default function ProfilesRoles() {
         frameColor="#2e8b57"
       />
       <div
+        ref={scrollRef}
         className="profiles-roles-content-scroll bg-white"
         style={{
           position: 'absolute',
