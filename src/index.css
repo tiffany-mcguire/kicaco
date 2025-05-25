@@ -76,10 +76,17 @@
 .wave-char {
   display: inline-block;
   animation: waveFade 1.4s infinite ease-in-out;
-  opacity: 0.5;
+  opacity: 0.65; /* Slightly darker baseline */
+  color: #4b5563; /* Deeper gray tone throughout */
 }
 
 @keyframes waveFade {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(-3px); opacity: 1; }
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
 }

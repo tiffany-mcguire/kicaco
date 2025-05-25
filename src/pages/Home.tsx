@@ -193,6 +193,18 @@ export default function Home() {
     }
   }, [drawerHeight]);
 
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    const scrollContainer = scrollRef.current;
+    if (scrollContainer) {
+      requestAnimationFrame(() => {
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      });
+    }
+  }, [messages]);
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
@@ -227,7 +239,7 @@ export default function Home() {
         </section>
       </div>
       <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
+        <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
           {messages.map((msg) => (
             <ChatBubble
               key={msg.id}
