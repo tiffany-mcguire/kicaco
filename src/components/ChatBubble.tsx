@@ -1,9 +1,33 @@
 import React from 'react';
 import clsx from 'clsx';
 
+const ThinkingWave = () => {
+  const text = "Kicaco is thinking...";
+  return (
+    <span className="thinking-wave">
+      {text.split("").map((char, i) => (
+        <span
+          key={i}
+          className="wave-char"
+          style={{ animationDelay: `${i * 0.05}s`, whiteSpace: char === ' ' ? 'pre' : undefined }}
+        >
+          {char === ' ' ? '\u00A0' : char}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 export default function ChatBubble({ children, side = 'left' }: { children: React.ReactNode; side?: 'left' | 'right' }) {
   const isLeft = side === 'left';
   const bubbleColor = isLeft ? '#e5e5ea' : '#c0e2e7';
+
+  const renderContent = () => {
+    if (typeof children === 'string' && children === 'Kicaco is thinking') {
+      return <ThinkingWave />;
+    }
+    return children;
+  };
 
   return (
     <div className={clsx('chat-bubble w-full flex mb-px', isLeft ? 'justify-start' : 'justify-end')}>
@@ -17,7 +41,7 @@ export default function ChatBubble({ children, side = 'left' }: { children: Reac
           )}
           style={{ borderRadius: 17 }}
         >
-          {children}
+          {renderContent()}
 
           {/* Tail shaped like a thick comma */}
           <svg

@@ -12,6 +12,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import EventConfirmationCard from '../components/EventConfirmationCard';
 import { runAssistantFunction } from '../utils/runAssistantFunction';
 import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
+import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -21,6 +22,9 @@ const intro = [
 
 export default function Home() {
   const [input, setInput] = useState("");
+  const [collectedFields, setCollectedFields] = useState<Record<string, string>>({});
+  const [hasIntroPlayed, setHasIntroPlayed] = useState(false);
+  const introStartedRef = useRef(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
@@ -38,6 +42,7 @@ export default function Home() {
     setThreadId,
     addMessage,
     messages,
+    removeMessageById,
   } = useKicacoStore();
   const chatDrawerRef = useRef<any>(null);
 
@@ -51,8 +56,29 @@ export default function Home() {
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
 
-  // Animated intro bubble reveal state
-  const [visibleIntroCount, setVisibleIntroCount] = useState(0);
+  // Staggered intro messages
+  useEffect(() => {
+    if (hasIntroPlayed || introStartedRef.current) return;
+    introStartedRef.current = true;
+
+    const introMessages = [
+      "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
+      "Type it, say it, snap a photo, upload a flyer, or paste in a note – whatever makes your day easier, I'll turn it into a real event. No forms, no fuss.",
+      "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them."
+    ];
+
+    introMessages.forEach((text, i) => {
+      setTimeout(() => {
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'assistant',
+          content: text
+        });
+      }, i * 800); // Stagger every 800ms
+    });
+
+    setHasIntroPlayed(true);
+  }, [hasIntroPlayed, addMessage]);
 
   const handleSend = async () => {
     if (!input.trim() || !threadId) {
@@ -73,21 +99,56 @@ export default function Home() {
     addMessage(userMessage);
     console.log('Current messages after adding user:', messages);
 
-    // Get and add assistant reply
-    const assistantReply = await sendMessageToAssistant(threadId, userText);
+    // Add thinking message
+    const thinkingMessage = {
+      id: 'thinking',
+      sender: 'assistant' as const,
+      content: 'Kicaco is thinking',
+    };
+    addMessage(thinkingMessage);
+
+    // Process message with kicacoFlow
+    console.time("Total Message Lifecycle");
+    console.time("API Response Time");
+    
+    // Extract known fields from user message
+    const parsed = extractKnownFields(userText);
+    setCollectedFields(prev => {
+      const newFields = { ...prev };
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (value) newFields[key] = value;
+      });
+      return newFields;
+    });
+
+    // Track field progress in the background
+    getNextFieldToPrompt(collectedFields);
+
+    // Always send to assistant with original user text
+    const assistantResponse = await sendMessageToAssistant(threadId, userText);
+
+    console.timeEnd("API Response Time");
+    console.time("Message Render Time");
+    console.log("API response:", assistantResponse);
+
+    // Remove thinking message before adding the real response
+    removeMessageById('thinking');
+
     const assistantMessage = {
       id: crypto.randomUUID(),
       sender: 'assistant' as const,
-      content: assistantReply
+      content: assistantResponse
     };
     console.log('Adding assistant message:', assistantMessage);
     addMessage(assistantMessage);
     console.log('Current messages after adding assistant:', messages);
+    console.timeEnd("Message Render Time");
 
-    const parsed = extractJsonFromMessage(assistantReply);
-    if (parsed) {
-      setEventInProgress(parsed);
+    const parsedJson = extractJsonFromMessage(assistantResponse);
+    if (parsedJson) {
+      setEventInProgress(parsedJson);
     }
+    console.timeEnd("Total Message Lifecycle");
   };
 
   // Log messages and visibleCount changes
@@ -103,15 +164,6 @@ export default function Home() {
       setVisibleCount(messages.length);
     }
   }, [messages.length, visibleCount]);
-
-  useEffect(() => {
-    if (visibleIntroCount < intro.length) {
-      const timeout = setTimeout(() => {
-        setVisibleIntroCount((prev) => prev + 1);
-      }, 700); // 700ms delay between intro bubbles
-      return () => clearTimeout(timeout);
-    }
-  }, [visibleIntroCount, intro.length]);
 
   // Update drawerTop when drawer height changes
   const handleDrawerHeightChange = (height: number) => {
@@ -176,20 +228,6 @@ export default function Home() {
       </div>
       <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
         <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          <AnimatePresence>
-            {intro.slice(0, visibleIntroCount).map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1.2 + i * 0.2, delay: i * 0.2, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <ChatBubble side="left">
-                  {msg}
-                </ChatBubble>
-              </motion.div>
-            ))}
-          </AnimatePresence>
           {messages.map((msg) => (
             <ChatBubble
               key={msg.id}

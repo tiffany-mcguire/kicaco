@@ -32,6 +32,7 @@ type KicacoState = {
   messages: ChatMessage[];
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  removeMessageById: (id: string) => void;
 };
 
 export const useKicacoStore = create<KicacoState>((set) => ({
@@ -58,4 +59,8 @@ export const useKicacoStore = create<KicacoState>((set) => ({
     });
   },
   clearMessages: () => set({ messages: [] }),
+  removeMessageById: (id) => 
+    set((state) => ({
+      messages: state.messages.filter(msg => msg.id !== id)
+    })),
 })); 
