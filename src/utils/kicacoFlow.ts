@@ -1,4 +1,5 @@
 import { format, addDays, addWeeks, parse, isDate } from 'date-fns';
+import { ConversationModeController } from './conversationMode';
 
 export interface ParsedFields {
   childName?: string;
@@ -7,6 +8,7 @@ export interface ParsedFields {
   time?: string;
   location?: string;
   isKeeper?: boolean;
+  timeVague?: boolean;
 }
 
 interface Conversation {
@@ -60,16 +62,34 @@ const TIME_PATTERNS = {
   'midnight': '12:00 AM'
 };
 
+// Vague time patterns that need clarification
+const VAGUE_TIME_PATTERNS = ['morning', 'afternoon', 'evening', 'night'];
+
 export function extractKnownFields(
   message: string,
-  collectedFields: Partial<ParsedFields> = {}
+  collectedFields: Partial<ParsedFields> = {},
+  lastRequestedField?: keyof ParsedFields
 ): Partial<ParsedFields> {
   const fields: Partial<ParsedFields> = {};
 
+  const bare = message.trim();
+
+  // If the last prompt was for a specific field and this looks like a short answer, use it
+  if (
+    lastRequestedField &&
+    bare.length > 0 &&
+    bare.length < 40 &&
+    bare.split(/\s+/).length <= 5
+  ) {
+    console.log(`📝 Using short answer "${bare}" as ${lastRequestedField}`);
+    const fieldUpdate: Partial<ParsedFields> = {};
+    fieldUpdate[lastRequestedField] = bare;
+    return fieldUpdate;
+  }
+
   // 1) If the entire message is a single capitalized word, treat as childName
-  const bareName = message.trim();
-  if (/^[A-Z][a-z]+$/.test(bareName)) {
-    return { childName: bareName };
+  if (/^[A-Z][a-z]+$/.test(bare)) {
+    return { childName: bare };
   }
 
   // 2) Look for "for <Name>" or "with <Name>"
@@ -101,6 +121,13 @@ export function extractKnownFields(
   for (const [pattern, time] of Object.entries(TIME_PATTERNS)) {
     if (lowerMessage.includes(pattern)) {
       fields.time = time;
+      // Set timeVague flag for vague time patterns
+      if (VAGUE_TIME_PATTERNS.includes(pattern)) {
+        fields.timeVague = true;
+      } else {
+        // Clear timeVague for explicit times
+        fields.timeVague = false;
+      }
       break;
     }
   }
@@ -109,7 +136,10 @@ export function extractKnownFields(
   if (!fields.time) {
     const timePattern = /\b\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/i;
     const timeMatch = message.match(timePattern);
-    if (timeMatch) fields.time = timeMatch[0];
+    if (timeMatch) {
+      fields.time = timeMatch[0];
+      fields.timeVague = false; // Explicit time provided
+    }
   }
 
   // Extract location patterns
@@ -122,7 +152,22 @@ export function extractKnownFields(
   const isGeneric = GENERIC_EVENT_NAMES.some(generic => 
     firstSentence.toLowerCase().includes(generic)
   );
-  if (!collectedFields.eventName && !isGeneric && firstSentence.length >= MIN_EVENT_NAME_LENGTH) {
+
+  // Improved event name extraction
+  // Try to match key event verbs followed by a noun phrase
+  const eventPattern = /\b(?:have|attend|go to|set|schedule|add|plan|join|host)\s+(?:a|an|the)?\s*([a-z0-9 .'-]+?)(?:\s+(?:to|on|at|for|tomorrow|tonight|this|next|in|with|by|from|about|and|,|\.|!|\?|$))/i;
+  const eventMatch = message.toLowerCase().match(eventPattern);
+
+  let candidateEventName = null;
+  if (eventMatch && eventMatch[1]) {
+    candidateEventName = eventMatch[1].trim();
+    // Title-case each word
+    candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  if (!collectedFields.eventName && !isGeneric && candidateEventName && candidateEventName.length >= MIN_EVENT_NAME_LENGTH) {
+    fields.eventName = candidateEventName;
+  } else if (!collectedFields.eventName && !isGeneric && firstSentence.length >= MIN_EVENT_NAME_LENGTH) {
     fields.eventName = firstSentence;
   }
 
@@ -130,43 +175,50 @@ export function extractKnownFields(
   return fields;
 }
 
-export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string[] = []): string | null {
+export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string[] = [], conversationController?: ConversationModeController): string | null {
   console.log('🔍 Determining next field to prompt for:', { parsed, knownChildren });
+
+  let nextField: string | null = null;
 
   // Step 1: Always check for child name first
   if (!parsed.childName) {
     if (knownChildren.length === 1) {
       console.log('👶 Single child known, will confirm:', knownChildren[0]);
-      return 'confirmChild';
+      nextField = 'confirmChild';
     } else if (knownChildren.length > 1) {
       console.log('👶 Multiple children known, will ask for child name');
-      return 'childName';
+      nextField = 'childName';
     } else {
       console.log('👶 No children known, will ask for child name');
-      return 'childName';
+      nextField = 'childName';
     }
   }
 
   // Step 2: Check for date
-  if (!parsed.date) {
+  if (!nextField && !parsed.date) {
     console.log('📅 Date missing, will prompt for date');
-    return 'date';
+    nextField = 'date';
   }
 
   // Step 3: Check for time (before location)
-  if (!parsed.time) {
-    console.log('⏰ Time missing, will prompt for time');
-    return 'time';
+  if (!nextField && (!parsed.time || parsed.timeVague)) {
+    console.log('⏰ Time missing or vague, will prompt for time');
+    nextField = 'time';
   }
 
   // Step 4: Check for location (after time)
-  if (!parsed.location) {
+  if (!nextField && !parsed.location) {
     console.log('📍 Location missing, will prompt for location');
-    return 'location';
+    nextField = 'location';
+  }
+
+  // Update the last requested field if we have a controller
+  if (conversationController && nextField) {
+    conversationController.setLastRequestedField(nextField as keyof ParsedFields);
   }
 
   console.log('✅ All required fields collected');
-  return null;
+  return nextField;
 }
 
 export function shouldCreateKeeper(message: string): boolean {

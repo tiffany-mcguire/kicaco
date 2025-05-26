@@ -17,6 +17,7 @@ export class ConversationModeController {
   private currentIntroIndex: number = 0;
   private pendingIntroMessage: NodeJS.Timeout | null = null;
   private collectedFields: ParsedFields = {};
+  private lastRequestedField: keyof ParsedFields | undefined;
 
   constructor() {
     console.log('🎭 Initializing conversation mode controller');
@@ -105,17 +106,20 @@ export class ConversationModeController {
       }
     }
     
-    this.collectedFields = {
-      ...this.collectedFields,
-      ...(fields.childName && { childName: fields.childName }),
-      ...(fields.eventName && { eventName: fields.eventName }),
-      ...(fields.date && { date: fields.date }),
-      ...(fields.time && { time: fields.time }),
-      ...(fields.location && { location: fields.location }),
-      ...(fields.isKeeper !== undefined && { isKeeper: fields.isKeeper })
+    // Always merge with existing fields to preserve state
+    const updatedFields = {
+      ...this.collectedFields,  // Start with all existing fields
+      ...fields,  // Overlay new fields
+      // Special handling for timeVague flag
+      timeVague: fields.timeVague !== undefined ? fields.timeVague : this.collectedFields.timeVague,
+      // Preserve isKeeper status unless explicitly changed
+      isKeeper: fields.isKeeper !== undefined ? fields.isKeeper : this.collectedFields.isKeeper
     };
     
-    console.log('📝 Updated collected fields:', this.collectedFields);
+    // Update state with merged fields
+    this.collectedFields = updatedFields;
+    
+    console.log('💾 Merged fields:', updatedFields);
     
     // Log context preservation
     if (fields.childName && existingEventName) {
@@ -124,6 +128,15 @@ export class ConversationModeController {
         childName: fields.childName
       });
     }
+  }
+
+  setLastRequestedField(field: keyof ParsedFields | undefined): void {
+    this.lastRequestedField = field;
+    console.log(`🎯 Set last requested field to: ${field || 'none'}`);
+  }
+
+  getLastRequestedField(): keyof ParsedFields | undefined {
+    return this.lastRequestedField;
   }
 
   getCollectedFields(): ParsedFields {
