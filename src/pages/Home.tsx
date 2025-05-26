@@ -13,6 +13,7 @@ import EventConfirmationCard from '../components/EventConfirmationCard';
 import { runAssistantFunction } from '../utils/runAssistantFunction';
 import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
 import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
+import { ParsedFields } from '../utils/kicacoFlow';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -20,11 +21,27 @@ const intro = [
   "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them.",
 ];
 
+// Test case for immediate mode transition
+const TEST_CASE = {
+  userMessage: "I have a soccer game on Friday",
+  expectedResponse: "What time is the game?"
+};
+
 export default function Home() {
   const [input, setInput] = useState("");
-  const [collectedFields, setCollectedFields] = useState<Record<string, string>>({});
   const [hasIntroPlayed, setHasIntroPlayed] = useState(false);
   const introStartedRef = useRef(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [collectedFields, setCollectedFields] = useState<ParsedFields>({});
+  const { 
+    messages, 
+    addMessage, 
+    removeMessageById, 
+    setLatestEvent,
+    eventInProgress,
+    setEventInProgress,
+    addEvent
+  } = useKicacoStore();
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
@@ -33,25 +50,7 @@ export default function Home() {
   const [subheaderBottom, setSubheaderBottom] = useState(0);
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const {
-    eventInProgress,
-    setEventInProgress,
-    addEvent,
-    setLatestEvent,
-    threadId,
-    setThreadId,
-    addMessage,
-    messages,
-    removeMessageById,
-  } = useKicacoStore();
   const chatDrawerRef = useRef<any>(null);
-
-  // Initialize threadId if not set
-  useEffect(() => {
-    if (!threadId) {
-      createOpenAIThread().then(setThreadId);
-    }
-  }, [threadId, setThreadId]);
 
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
@@ -80,6 +79,71 @@ export default function Home() {
     setHasIntroPlayed(true);
   }, [hasIntroPlayed, addMessage]);
 
+  // Test case handler
+  const runTestCase = async () => {
+    if (!threadId) return;
+    
+    console.log('🧪 Running test case:', TEST_CASE.userMessage);
+    
+    // Add user message
+    const userMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user' as const,
+      content: TEST_CASE.userMessage
+    };
+    addMessage(userMessage);
+
+    // Add thinking message
+    const thinkingMessage = {
+      id: 'thinking',
+      sender: 'assistant' as const,
+      content: 'Kicaco is thinking',
+    };
+    addMessage(thinkingMessage);
+
+    try {
+      const assistantResponse = await sendMessageToAssistant(threadId, TEST_CASE.userMessage);
+      
+      // Remove thinking message
+      removeMessageById('thinking');
+
+      // Add assistant response
+      const assistantMessage = {
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: assistantResponse
+      };
+      addMessage(assistantMessage);
+
+      // Verify response matches expected
+      console.log('🧪 Test case result:', {
+        expected: TEST_CASE.expectedResponse,
+        actual: assistantResponse,
+        matches: assistantResponse.includes(TEST_CASE.expectedResponse)
+      });
+    } catch (error) {
+      console.error('🧪 Test case failed:', error);
+      removeMessageById('thinking');
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: 'Test case failed. Please try again.'
+      });
+    }
+  };
+
+  // Initialize thread and run test case
+  useEffect(() => {
+    const initThread = async () => {
+      const id = await createOpenAIThread();
+      setThreadId(id);
+      
+      // Run test case after a short delay to ensure thread is ready
+      setTimeout(runTestCase, 1000);
+    };
+    initThread();
+  }, []);
+
   const handleSend = async () => {
     if (!input.trim() || !threadId) {
       console.log('No input or threadId:', { input, threadId });
@@ -97,7 +161,6 @@ export default function Home() {
     };
     console.log('Adding user message:', userMessage);
     addMessage(userMessage);
-    console.log('Current messages after adding user:', messages);
 
     // Add thinking message
     const thinkingMessage = {
@@ -111,43 +174,39 @@ export default function Home() {
     console.time("Total Message Lifecycle");
     console.time("API Response Time");
     
-    // Extract known fields from user message
-    const parsed = extractKnownFields(userText);
-    setCollectedFields(prev => {
-      const newFields = { ...prev };
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (value) newFields[key] = value;
+    try {
+      const assistantResponse = await sendMessageToAssistant(threadId, userText);
+      
+      // Check if response is an event signup
+      if (assistantResponse.startsWith('__EVENT_SIGNUP__')) {
+        const eventJson = assistantResponse.replace('__EVENT_SIGNUP__', '');
+        const eventObj = JSON.parse(decodeURIComponent(eventJson));
+        setLatestEvent(eventObj);
+        addEvent(eventObj);
+        setEventInProgress(null);
+      }
+
+      // Remove thinking message before adding the real response
+      removeMessageById('thinking');
+
+      const assistantMessage = {
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: assistantResponse
+      };
+      console.log('Adding assistant message:', assistantMessage);
+      addMessage(assistantMessage);
+    } catch (error) {
+      console.error('Error in message handling:', error);
+      removeMessageById('thinking');
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: 'Sorry, I encountered an error. Please try again.'
       });
-      return newFields;
-    });
-
-    // Track field progress in the background
-    getNextFieldToPrompt(collectedFields);
-
-    // Always send to assistant with original user text
-    const assistantResponse = await sendMessageToAssistant(threadId, userText);
+    }
 
     console.timeEnd("API Response Time");
-    console.time("Message Render Time");
-    console.log("API response:", assistantResponse);
-
-    // Remove thinking message before adding the real response
-    removeMessageById('thinking');
-
-    const assistantMessage = {
-      id: crypto.randomUUID(),
-      sender: 'assistant' as const,
-      content: assistantResponse
-    };
-    console.log('Adding assistant message:', assistantMessage);
-    addMessage(assistantMessage);
-    console.log('Current messages after adding assistant:', messages);
-    console.timeEnd("Message Render Time");
-
-    const parsedJson = extractJsonFromMessage(assistantResponse);
-    if (parsedJson) {
-      setEventInProgress(parsedJson);
-    }
     console.timeEnd("Total Message Lifecycle");
   };
 
