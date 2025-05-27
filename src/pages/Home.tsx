@@ -16,6 +16,8 @@ import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../uti
 import { ParsedFields } from '../utils/kicacoFlow';
 import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
+import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
+import { parse, format } from 'date-fns';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -28,21 +30,6 @@ const TEST_CASE = {
   userMessage: "I have a soccer game on Friday",
   expectedResponse: "What time is the game?"
 };
-
-// Event image mapping and helper
-const EVENT_IMAGES = {
-  soccer: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=facearea&w=80&h=80',
-  default: 'https://images.unsplash.com/photo-1465101178521-c1a9136a3b99?auto=format&fit=facearea&w=80&h=80',
-  // …other categories…
-};
-
-function getEventImage(eventName: string) {
-  if (!eventName) return EVENT_IMAGES.default;
-  const name = eventName.toLowerCase();
-  if (name.includes('soccer')) return EVENT_IMAGES.soccer;
-  // …more mappings…
-  return EVENT_IMAGES.default;
-}
 
 // Date/time formatting helpers
 function formatDateMMDDYYYY(date: Date) {
@@ -199,6 +186,8 @@ export default function Home() {
   }, []);
 
   const [pendingEvent, setPendingEvent] = useState<any>(null);
+  const [eventCreationMessage, setEventCreationMessage] = useState<string>("");
+  const [currentEventFields, setCurrentEventFields] = useState<any>({});
 
   const handleSend = async () => {
     if (!input.trim() || !threadId) {
@@ -208,6 +197,22 @@ export default function Home() {
 
     const userText = input.trim();
     setInput('');
+
+    // Track the original event-creation message (the one that started the event flow)
+    const eventKeywords = [
+      'have', 'attend', 'go to', 'set', 'schedule', 'add', 'plan', 'join', 'host',
+      'tomorrow', 'tonight', 'next week', 'next friday', 'this friday',
+      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
+    ];
+    let isNewEvent = false;
+    if (
+      eventKeywords.some(kw => userText.toLowerCase().includes(kw)) &&
+      (!eventCreationMessage || eventCreationMessage.length === 0)
+    ) {
+      setEventCreationMessage(userText);
+      isNewEvent = true;
+    }
 
     // Add user message
     const userMessage = {
@@ -226,6 +231,34 @@ export default function Home() {
     };
     addMessage(thinkingMessage);
 
+    // Update current event fields
+    let updatedFields = { ...currentEventFields };
+    const extractedFields = extractKnownFields(userText, currentEventFields);
+    console.log('Extracted fields:', extractedFields);
+    // Only update the date if a new date is provided in this message
+    const dateKeywords = [
+      'tomorrow', 'tonight', 'next week', 'next friday', 'this friday',
+      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
+    ];
+    if (dateKeywords.some(kw => userText.toLowerCase().includes(kw)) && extractedFields.date) {
+      updatedFields.date = extractedFields.date;
+    }
+    if (extractedFields.childName && extractedFields.childName.trim()) {
+      updatedFields.childName = extractedFields.childName;
+    }
+    if (extractedFields.eventName && extractedFields.eventName.trim()) {
+      updatedFields.eventName = extractedFields.eventName;
+    }
+    if (extractedFields.time && extractedFields.time.trim() && !extractedFields.timeVague) {
+      updatedFields.time = extractedFields.time;
+    }
+    if (extractedFields.location && extractedFields.location.trim()) {
+      updatedFields.location = extractedFields.location;
+    }
+    console.log('Updated event fields:', updatedFields);
+    setCurrentEventFields(updatedFields);
+
     // Process message with kicacoFlow
     console.time("Total Message Lifecycle");
     console.time("API Response Time");
@@ -243,27 +276,62 @@ export default function Home() {
           if (parsed.event) eventObj = parsed.event;
         } else {
           // Try plain JSON
-          const parsed = JSON.parse(assistantResponse);
-          if (parsed.event) eventObj = parsed.event;
+          try {
+            const parsed = JSON.parse(assistantResponse);
+            if (parsed.event) eventObj = parsed.event;
+          } catch {
+            // Try to extract JSON from anywhere in the message
+            const firstBrace = assistantResponse.indexOf('{');
+            if (firstBrace !== -1) {
+              const jsonSubstring = assistantResponse.slice(firstBrace);
+              try {
+                const parsed = JSON.parse(jsonSubstring);
+                if (parsed.event) eventObj = parsed.event;
+              } catch {}
+            }
+          }
         }
       } catch {
         // Not JSON — just chat
       }
       if (eventObj) {
+        // Overwrite eventObj fields with locally tracked currentEventFields
+        eventObj = { ...eventObj, ...updatedFields };
         addEvent(eventObj);        // Add event to store immediately
+        console.log('Event added to store:', eventObj);
+        setTimeout(() => {
+          console.log('Current events array:', useKicacoStore.getState().events);
+        }, 100);
         setPendingEvent(eventObj); // Show confirmation modal
       }
-
       // Remove thinking message before adding the real response
       removeMessageById('thinking');
 
-      const assistantMessage = {
-        id: crypto.randomUUID(),
-        sender: 'assistant' as const,
-        content: assistantResponse
-      };
-      console.log('Adding assistant message:', assistantMessage);
-      addMessage(assistantMessage);
+      // Generate the confirmation message from the locally resolved event object
+      if (eventObj) {
+        const formattedDate = eventObj.date ? format(parse(eventObj.date, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy') : '';
+        const confirmationMsg = `Okay! I've saved ${eventObj.childName}'s ${eventObj.eventName} for ${formattedDate} at ${eventObj.time} in ${eventObj.location}. Want to change anything?\n{"event": ${JSON.stringify(eventObj)}}`;
+        const assistantMessage = {
+          id: crypto.randomUUID(),
+          sender: 'assistant' as const,
+          content: confirmationMsg
+        };
+        addMessage(assistantMessage);
+        // Auto-scroll after confirmation message
+        setTimeout(() => {
+          const scrollContainer = scrollRef.current;
+          if (scrollContainer) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+          }
+        }, 100);
+      } else {
+        const assistantMessage = {
+          id: crypto.randomUUID(),
+          sender: 'assistant' as const,
+          content: assistantResponse
+        };
+        addMessage(assistantMessage);
+      }
     } catch (error) {
       console.error('Error in message handling:', error);
       removeMessageById('thinking');
@@ -354,11 +422,11 @@ export default function Home() {
         </section>
         {/* Upcoming Events Cards */}
         {events.length > 0 && (
-          <div className="flex flex-col items-center w-full pt-2 pb-2">
+          <div className="flex flex-col w-full pt-2 pb-2 px-0">
             {events.map((event, idx) => (
               <EventCard
                 key={event.eventName + event.date + idx}
-                image={getEventImage(event.eventName)}
+                image={getKicacoEventPhoto(event.eventName)}
                 name={event.eventName}
                 date={event.date}
                 time={event.time}

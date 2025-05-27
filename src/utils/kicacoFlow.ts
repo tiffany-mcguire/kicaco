@@ -5,7 +5,7 @@ export interface ParsedFields {
   childName?: string;
   eventName?: string;
   date?: string;
-  time?: string;
+  time?: string | undefined;
   location?: string;
   isKeeper?: boolean;
   timeVague?: boolean;
@@ -83,7 +83,7 @@ export function extractKnownFields(
   ) {
     console.log(`📝 Using short answer "${bare}" as ${lastRequestedField}`);
     const fieldUpdate: Partial<ParsedFields> = {};
-    fieldUpdate[lastRequestedField] = bare;
+    fieldUpdate[lastRequestedField] = bare as any;
     return fieldUpdate;
   }
 
@@ -101,15 +101,18 @@ export function extractKnownFields(
   // Extract date patterns
   // First check for relative dates
   const lowerMessage = message.toLowerCase();
+  let foundRelativeDate = false;
   for (const [pattern, getDate] of Object.entries(RELATIVE_DATE_PATTERNS)) {
     if (lowerMessage.includes(pattern)) {
       const date = getDate();
-      fields.date = format(date, 'MMMM d, yyyy');
+      console.log('Resolved relative date:', date, 'ISO:', format(date, 'yyyy-MM-dd'));
+      fields.date = format(date, 'yyyy-MM-dd'); // Store as ISO
+      foundRelativeDate = true;
       break;
     }
   }
 
-  // Then check for explicit dates
+  // Then check for explicit dates (only if not already set by relative date)
   if (!fields.date) {
     const datePattern = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b/i;
     const dateMatch = message.match(datePattern);
@@ -118,14 +121,15 @@ export function extractKnownFields(
 
   // Extract time patterns
   // First check for relative times
-  for (const [pattern, time] of Object.entries(TIME_PATTERNS)) {
+  for (const [pattern, defaultTime] of Object.entries(TIME_PATTERNS)) {
     if (lowerMessage.includes(pattern)) {
-      fields.time = time;
-      // Set timeVague flag for vague time patterns
       if (VAGUE_TIME_PATTERNS.includes(pattern)) {
+        // For vague times, only set the flag
         fields.timeVague = true;
+        // Do not set fields.time for vague patterns
       } else {
-        // Clear timeVague for explicit times
+        // For non-vague times, set both the time and clear the flag
+        fields.time = defaultTime;
         fields.timeVague = false;
       }
       break;
@@ -133,7 +137,7 @@ export function extractKnownFields(
   }
 
   // Then check for explicit times
-  if (!fields.time) {
+  if (typeof fields.time === 'undefined' || !fields.time) {
     const timePattern = /\b\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm)\b/i;
     const timeMatch = message.match(timePattern);
     if (timeMatch) {
@@ -143,9 +147,12 @@ export function extractKnownFields(
   }
 
   // Extract location patterns
-  const locationPattern = /\b(?:at|in|on)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/i;
-  const locationMatch = message.match(locationPattern);
-  if (locationMatch) fields.location = locationMatch[1];
+  // Only set location if time is present and not vague
+  if (fields.time && !fields.timeVague) {
+    const locationPattern = /\b(?:at|in|on)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/i;
+    const locationMatch = message.match(locationPattern);
+    if (locationMatch) fields.location = locationMatch[1];
+  }
 
   // 4) Only set eventName if none collected yet
   const firstSentence = message.split(/[.!?]/)[0].trim();
@@ -155,7 +162,7 @@ export function extractKnownFields(
 
   // Improved event name extraction
   // Try to match key event verbs followed by a noun phrase
-  const eventPattern = /\b(?:have|attend|go to|set|schedule|add|plan|join|host)\s+(?:a|an|the)?\s*([a-z0-9 .'-]+?)(?:\s+(?:to|on|at|for|tomorrow|tonight|this|next|in|with|by|from|about|and|,|\.|!|\?|$))/i;
+  const eventPattern = /\b(?:have|attend|go to|set|schedule|add|plan|join|host|to attend|to go to|to join|to host)\s+(?:a|an|the)?\s*([a-z0-9 .'-]+?)(?:\s+(?:to|on|at|for|tomorrow|tonight|this|next|in|with|by|from|about|and|,|\.|!|\?|$))/i;
   const eventMatch = message.toLowerCase().match(eventPattern);
 
   let candidateEventName = null;
@@ -163,6 +170,25 @@ export function extractKnownFields(
     candidateEventName = eventMatch[1].trim();
     // Title-case each word
     candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // Fallback: If no match, try to extract a noun phrase after 'a' or 'an' or 'the'
+  if (!candidateEventName) {
+    const fallbackPattern = /\b(?:a|an|the)\s+([a-z0-9 .'-]+?)(?=\s+(?:to|on|at|for|tomorrow|tonight|this|next|in|with|by|from|about|and|,|\.|!|\?|$))/i;
+    const fallbackMatch = message.toLowerCase().match(fallbackPattern);
+    if (fallbackMatch && fallbackMatch[1]) {
+      candidateEventName = fallbackMatch[1].trim();
+      candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
+    }
+  }
+  // Last resort: grab the longest noun phrase after 'a'/'an'/'the' if still not found
+  if (!candidateEventName) {
+    const lastResortPattern = /\b(?:a|an|the)\s+([a-z0-9 .'-]+)/i;
+    const lastResortMatch = message.toLowerCase().match(lastResortPattern);
+    if (lastResortMatch && lastResortMatch[1]) {
+      candidateEventName = lastResortMatch[1].trim();
+      candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
+    }
   }
 
   if (!collectedFields.eventName && !isGeneric && candidateEventName && candidateEventName.length >= MIN_EVENT_NAME_LENGTH) {
@@ -208,8 +234,20 @@ export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string
 
   // Step 4: Check for time (before location)
   if (!nextField && (!parsed.time || parsed.timeVague)) {
-    console.log('⏰ Time missing or vague, will prompt for time');
+    console.log('⏰ Time check:', { 
+      hasTime: !!parsed.time, 
+      timeValue: parsed.time,
+      isVague: parsed.timeVague,
+      willPrompt: true 
+    });
     nextField = 'time';
+  } else {
+    console.log('⏰ Time check:', { 
+      hasTime: !!parsed.time, 
+      timeValue: parsed.time,
+      isVague: parsed.timeVague,
+      willPrompt: false 
+    });
   }
 
   // Step 5: Check for location (after time)

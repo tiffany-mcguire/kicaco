@@ -13,7 +13,7 @@ import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import EventCard from '../components/EventCard';
-import { getImageForCategory } from '../utils/getImageForCategory';
+import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 // Add CalendarIcon definition
 const CalendarIcon = () => (
@@ -189,7 +189,7 @@ export default function UpcomingEvents() {
             {events.map((event, idx) => (
               <EventCard
                 key={event.eventName + event.date + idx}
-                image={getImageForCategory(event.eventName)}
+                image={getKicacoEventPhoto(event.eventName)}
                 name={event.eventName}
                 date={event.date}
                 time={event.time}
