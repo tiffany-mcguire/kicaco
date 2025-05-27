@@ -99,6 +99,11 @@ function generateFieldPrompt(field: string, knownChildren: string[] = [], eventN
   }
 
   const prompts = {
+    eventName: [
+      "What is the name of the event?",
+      "Could you tell me what this event is called?",
+      "What's the event called?"
+    ],
     date: [
       "When is this happening?",
       "What date should I save this for?",
@@ -142,10 +147,50 @@ function generateConfirmationMessage(fields: ParsedFields): string {
   return `Okay! I've saved ${parts.join(' ')}. Want to change anything?`;
 }
 
+const SYSTEM_PROMPT = `IMPORTANT: When a user describes an event or reminder, always ask for the following required details, one at a time, unless the user has turned off that prompt in chat defaults:
+- Child's name
+- Event name or description
+- Date
+- Time
+- Location
+
+When the user uses relative dates (like "tomorrow", "tonight", "next Friday"), always resolve them using the current date from the system's perspective. Do not ask the user to clarify what day "tomorrow" is—just use the system's current date to calculate it.
+
+If the user provides a vague time (like "morning", "afternoon", "evening", "night", "later", etc.), always ask the user to clarify the exact time (e.g., "What time exactly?") before saving the event. Do NOT assume a default time for vague time expressions.
+
+As soon as the user provides the location (and all required fields are present), output the summary and the event JSON TOGETHER, in the SAME message. The summary should come first, followed by the event JSON on a new line. Do not wait for another user message before outputting the event JSON. Do not ask for any optional or follow-up details until after the event JSON is output and confirmed.
+
+As soon as all required event details (child's name, event name, date, time, location) are collected, immediately output a summary and the event JSON for confirmation and saving. Only after this, you may ask about optional details or extras.
+
+If the user says they don't need to include a detail, accept that and move on. Do not ask open-ended or follow-up questions (like 'anything else?') until all required fields have been collected or skipped. Only ask for optional or open-ended info after all required fields are handled. Respect the user's chat defaults for which fields are required.
+
+When all required event details are collected and the user confirms, output ONLY a valid JSON object like {"event": { ... }} on a single line, with no extra text, code block, or explanation. Do not include any summary or commentary in the same message as the JSON.
+
+**Formatting instructions:**
+- When outputting the summary and event JSON, the summary must be on its own line, and the JSON must be on the next line, with nothing else on that line.
+- Do NOT include the JSON as part of a sentence.
+- Do NOT put the JSON in a code block.
+- The JSON must be the only thing on that line, directly after the summary.
+
+Example:
+Okay! I've saved Olivia's 5th Grade Concert on November 30, 2023, at 7:00 PM in Mill Creek Elementary. Want to change anything?
+{"event": {"childName": "Olivia", "eventName": "5th Grade Concert", "date": "2023-11-30", "time": "7:00 PM", "location": "Mill Creek Elementary"}}
+
+You are Kicaco — a friendly, clever, quietly funny assistant built to help parents and caregivers stay on top of their child's life without losing their minds.
+
+You understand natural language and casual conversation, not forms or rigid commands. People can talk to you like they would a trusted friend who's surprisingly good at remembering permission slips, rescheduled soccer games, birthday cupcakes, and that weird spirit day no one saw coming.
+
+You turn what they say into organized reminders, events, and to-dos. If you need more info, you ask — gently, and only when it matters.
+
+Your tone is warm, thoughtful, and always on their team. You're not bubbly, and you're definitely not robotic. But you're light on your feet. You know when to throw in a well-timed "yikes" or a dry little wink. You're the kind of helpful that feels like a relief — smart, approachable, and low-friction.
+
+You're here to make sure nothing gets missed, nothing gets dropped, and that the people relying on you feel just a little more capable every time they talk to you.`;
+
+// Patch createOpenAIThread to send the system prompt as the first user message
 export async function createOpenAIThread(): Promise<string> {
   // Clear memory when starting a new thread
   conversationController.transitionToMode(ConversationMode.INTRO);
-  
+
   // If we already have a thread, return it
   if (currentThreadId) {
     console.log(`🧵 Reusing existing thread: ${currentThreadId}`);
@@ -156,7 +201,13 @@ export async function createOpenAIThread(): Promise<string> {
   const thread = await openai.beta.threads.create();
   const t1 = performance.now();
   console.log(`🧵 New thread created in ${Math.round(t1 - t0)}ms: ${thread.id}`);
-  
+
+  // Send the system prompt as the first user message (do NOT display this in the chat UI)
+  await openai.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: SYSTEM_PROMPT
+  });
+
   // Store the new thread ID
   currentThreadId = thread.id;
   return thread.id;
@@ -237,218 +288,82 @@ async function pollRunStatus(threadId: string, runId: string, maxWaitTime: numbe
 }
 
 export async function sendMessageToAssistant(threadId: string, userMessage: string): Promise<string> {
-  const t0 = performance.now();
-  console.log('📤 Starting assistant message flow...');
+  if (!threadId) {
+    throw new Error('Thread ID is required');
+  }
 
-  if (verbose) console.log('Using assistant ID:', import.meta.env.VITE_ASSISTANT_ID);
-  
-  // Handle mode-specific logic
-  const currentMode = conversationController.getCurrentMode();
-  
-  // Get prior context from collected fields
-  const prevFields = conversationController.getCollectedFields();
-  console.log('🔍 Prior collected fields:', prevFields);
-  
-  // Extract fields from current message
-  const parsedFields = extractKnownFields(userMessage);
-  console.log('🔍 Fields from current message:', parsedFields);
-  
-  // Merge fields from current message with prior context
-  const mergedFields = {
-    ...prevFields,
-    ...parsedFields,
-    // Preserve event context unless explicitly cleared
-    eventName: parsedFields.eventName || prevFields.eventName,
-    isKeeper: parsedFields.isKeeper !== undefined ? parsedFields.isKeeper : prevFields.isKeeper
-  };
-  console.log('🔍 Merged fields:', mergedFields);
-  
-  const eventName = mergedFields.eventName || '';
-  const isKeeper = mergedFields.isKeeper || shouldCreateKeeper(userMessage);
-  
-  // Get list of known children
-  let knownChildren: string[] = [];
-  if (window.demoMode) {
-    knownChildren = [];
-    window.childProfiles = [];
-    window.confirmedChild = null;
-    sessionMemory = [];
-    console.log('[Demo] Demo mode: childProfiles, confirmedChild, and sessionMemory reset.');
-  } else {
-    if (window.childProfiles && Array.isArray(window.childProfiles)) {
-      knownChildren = window.childProfiles.map((c: any) => c.name).filter(Boolean);
-    }
-  }
-  
-  if (currentMode === ConversationMode.INTRO) {
-    if (conversationController.shouldTransitionToFlow(userMessage, mergedFields)) {
-      console.log('🎯 Detected event/keeper content, transitioning to FLOW mode');
-      conversationController.transitionToMode(ConversationMode.FLOW);
-      conversationController.cancelPendingIntroMessage();
-      
-      // Update fields before getting next prompt
-      conversationController.updateCollectedFields(mergedFields);
-      
-      const nextField = getNextFieldToPrompt(mergedFields, knownChildren);
-      if (nextField) {
-        const fieldPrompt = generateFieldPrompt(nextField, knownChildren, eventName, isKeeper);
-        return fieldPrompt;
+  try {
+    // Add user message to thread
+    await openai.beta.threads.messages.create(threadId, {
+      role: 'user',
+      content: userMessage
+    });
+
+    // Create a run
+    const run = await openai.beta.threads.runs.create(threadId, {
+      assistant_id: import.meta.env.VITE_ASSISTANT_ID
+    });
+
+    // Poll for run completion with timeout
+    const MAX_WAIT_TIME = 30000; // 30 seconds
+    let waited = 0;
+    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+    while (runStatus.status !== 'completed' && waited < MAX_WAIT_TIME) {
+      if (runStatus.status === 'failed') {
+        throw new Error('Run failed');
       }
-    } else {
-      const introMessage = conversationController.getIntroMessage();
-      if (introMessage) {
-        conversationController.incrementIntroMessages();
-        return introMessage;
-      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      waited += 1000;
+      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
     }
-  }
-  
-  let promptMessage = userMessage;
-  
-  if (currentMode === ConversationMode.FLOW) {
-    // Check if this is a child name confirmation
-    const isChildConfirmation = parsedFields.childName && !prevFields.childName && 
-      !parsedFields.eventName && !parsedFields.date && !parsedFields.time && !parsedFields.location;
-    
-    if (isChildConfirmation) {
-      console.log('👶 Child name confirmation detected:', parsedFields.childName);
-      
-      // Check for prior event context
-      const hasEventContext = prevFields.eventName || prevFields.date || prevFields.time || 
-                            prevFields.location || prevFields.isKeeper;
-      
-      console.log('🔍 Event context check:', {
-        hasEventContext,
-        priorFields: prevFields,
-        mergedFields
-      });
-      
-      // Update fields while preserving context
-      conversationController.updateCollectedFields(mergedFields);
-      
-      if (hasEventContext) {
-        console.log('✅ Preserved event context, moving to next field');
-        const nextField = getNextFieldToPrompt(mergedFields, knownChildren);
-        if (nextField) {
-          const fieldPrompt = generateFieldPrompt(nextField, knownChildren, prevFields.eventName || '', isKeeper);
-          console.log(`📝 Next prompt after child confirmation: ${fieldPrompt}`);
-          return fieldPrompt;
+    if (waited >= MAX_WAIT_TIME) {
+      console.error('Assistant took too long to respond.');
+      return 'Sorry, I took too long to respond. Please try again or rephrase your message.';
+    }
+
+    // Get messages
+    const messages = await openai.beta.threads.messages.list(threadId);
+    const assistantMessages = messages.data
+      .filter(m => m.role === 'assistant')
+      .sort((a, b) => b.created_at - a.created_at);
+
+    if (assistantMessages.length === 0) {
+      console.error('No assistant messages found after run completion.');
+      return 'Sorry, I could not generate a response. Please try again.';
+    }
+
+    const reply = assistantMessages[0];
+    // Normalize the content
+    let normalizedContent = '';
+    if (typeof reply.content === 'string') {
+      normalizedContent = reply.content;
+    } else if (Array.isArray(reply.content)) {
+      normalizedContent = reply.content.map(part => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part === 'object') {
+          const text = (part as any).text;
+          const value = (part as any).value;
+          if (text && typeof text === 'object' && typeof text.value === 'string') return text.value;
+          if (typeof text === 'string') return text;
+          if (typeof value === 'string') return value;
+          return '';
         }
-      } else {
-        console.log('⚠️ No event context found, triggering fallback');
-        return `What are you planning for ${parsedFields.childName}?`;
-      }
+        return '';
+      }).join('');
+    } else if (reply.content && typeof reply.content === 'object') {
+      const text = (reply.content as any).text;
+      const value = (reply.content as any).value;
+      if (text && typeof text === 'object' && typeof text.value === 'string') normalizedContent = text.value;
+      else if (typeof text === 'string') normalizedContent = text;
+      else if (typeof value === 'string') normalizedContent = value;
+      else normalizedContent = JSON.stringify(reply.content);
     }
-    
-    // Regular field collection flow
-    conversationController.updateCollectedFields(mergedFields);
-    const nextField = getNextFieldToPrompt(mergedFields, knownChildren);
-    
-    if (nextField) {
-      const fieldPrompt = generateFieldPrompt(nextField, knownChildren, eventName, isKeeper);
-      promptMessage = `${userMessage}\n\n${fieldPrompt}`;
-      console.log(`📝 Adding field prompt for ${nextField}: ${fieldPrompt}`);
-    } else {
-      conversationController.transitionToMode(ConversationMode.CONFIRMATION);
-      promptMessage = generateConfirmationMessage(mergedFields);
-      console.log('📝 All fields collected, generating confirmation message');
-    }
-  } else if (currentMode === ConversationMode.CONFIRMATION) {
-    // Do NOT prompt for relationship in CONFIRMATION mode
-    console.log('[Relationship] Skipping relationship prompt in CONFIRMATION mode.');
-    // Check if user wants to edit
-    if (userMessage.toLowerCase().includes('yes') || 
-        userMessage.toLowerCase().includes('change') || 
-        userMessage.includes('edit')) {
-      conversationController.transitionToMode(ConversationMode.FLOW);
-      const nextField = getNextFieldToPrompt(conversationController.getCollectedFields(), knownChildren);
-      if (nextField) {
-        promptMessage = generateFieldPrompt(nextField, knownChildren, eventName, isKeeper);
-      }
-    } else {
-      // User confirmed, transition to signup
-      conversationController.transitionToMode(ConversationMode.SIGNUP);
-      const eventObj = conversationController.getCollectedFields();
-      promptMessage = `__EVENT_SIGNUP__${encodeURIComponent(JSON.stringify(eventObj))}`;
-    }
-  } else if (currentMode === ConversationMode.SIGNUP) {
-    // Only in SIGNUP mode, prompt for relationship if needed
-    // (Add your relationship prompt logic here if required)
-    console.log('[Relationship] Allowed to prompt for relationship in SIGNUP mode.');
-    // ...
+
+    return normalizedContent;
+  } catch (error) {
+    console.error('Error in sendMessageToAssistant:', error);
+    return 'Sorry, something went wrong. Please try again.';
   }
-  
-  // Send the message to the thread
-  const messageStart = performance.now();
-  await openai.beta.threads.messages.create(threadId, {
-    role: 'user',
-    content: promptMessage,
-  });
-  const messageEnd = performance.now();
-  console.log(`📝 User message created in ${Math.round(messageEnd - messageStart)}ms`);
-
-  let retryCount = 0;
-  let runStatus: string = 'in_progress';
-
-  while (retryCount <= MAX_RETRIES) {
-    try {
-      // Start a run for the assistant
-      const runStart = performance.now();
-      const run = await openai.beta.threads.runs.create(threadId, {
-        assistant_id: import.meta.env.VITE_ASSISTANT_ID,
-      });
-      const runEnd = performance.now();
-      console.log(`🏃 Run created in ${Math.round(runEnd - runStart)}ms`);
-
-      const pollStart = performance.now();
-      runStatus = await pollRunStatus(threadId, run.id, 10000);
-      const pollEnd = performance.now();
-      console.log(`⏱️ Run completed in ${Math.round(pollEnd - pollStart)}ms`);
-      
-      break; // If we get here, the run completed successfully
-    } catch (error) {
-      if (retryCount === MAX_RETRIES) {
-        console.error('All retry attempts failed:', error);
-        throw error; // Re-throw the last error if we're out of retries
-      }
-      retryCount++;
-      console.log(`Retry attempt ${retryCount} of ${MAX_RETRIES}`);
-      await new Promise(res => setTimeout(res, 1000)); // Wait 1s before retry
-    }
-  }
-
-  if (runStatus === 'failed' || runStatus === 'cancelled') {
-    console.error('Assistant run failed or was cancelled:', runStatus);
-    return 'Sorry, I encountered an error processing your request.';
-  }
-
-  // Retrieve messages only after run completes
-  const retrieveStart = performance.now();
-  const messages = await openai.beta.threads.messages.list(threadId);
-  const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
-  const retrieveEnd = performance.now();
-  console.log(`📥 Messages retrieved in ${Math.round(retrieveEnd - retrieveStart)}ms`);
-  
-  if (!assistantMessage) {
-    console.error('No assistant message found in thread');
-    return 'No reply from assistant.';
-  }
-
-  if (!Array.isArray(assistantMessage.content)) {
-    console.error('Assistant message content is not in expected format');
-    return 'No reply from assistant.';
-  }
-
-  const textBlock = assistantMessage.content.find(block => block.type === 'text');
-  if (!textBlock || !('text' in textBlock) || !textBlock.text.value) {
-    console.error('No valid text content found in assistant message');
-    return 'No reply from assistant.';
-  }
-
-  const t1 = performance.now();
-  console.log(`🧪 Total end-to-end latency: ${Math.round(t1 - t0)}ms`);
-
-  return textBlock.text.value;
 }
 
 // Add a test to verify demo mode child prompt

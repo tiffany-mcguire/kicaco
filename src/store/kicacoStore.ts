@@ -16,6 +16,16 @@ type ChatMessage = {
   content: string;
 };
 
+type Keeper = {
+  childName: string;
+  keeperName: string;
+  date: string;
+  time?: string;
+  location?: string;
+  isAllDay?: boolean;
+  noTimeYet?: boolean;
+};
+
 type KicacoState = {
   threadId: string | null;
   setThreadId: (id: string) => void;
@@ -33,6 +43,9 @@ type KicacoState = {
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
   removeMessageById: (id: string) => void;
+
+  keepers: Keeper[];
+  addKeeper: (keeper: Partial<Keeper>) => void;
 };
 
 export const useKicacoStore = create<KicacoState>((set) => ({
@@ -63,4 +76,8 @@ export const useKicacoStore = create<KicacoState>((set) => ({
     set((state) => ({
       messages: state.messages.filter(msg => msg.id !== id)
     })),
+
+  keepers: [],
+  addKeeper: (keeper) =>
+    set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] })),
 })); 

@@ -14,6 +14,8 @@ import { runAssistantFunction } from '../utils/runAssistantFunction';
 import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
 import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
 import { ParsedFields } from '../utils/kicacoFlow';
+import { Link } from 'react-router-dom';
+import EventCard from '../components/EventCard';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -26,6 +28,41 @@ const TEST_CASE = {
   userMessage: "I have a soccer game on Friday",
   expectedResponse: "What time is the game?"
 };
+
+// Event image mapping and helper
+const EVENT_IMAGES = {
+  soccer: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=facearea&w=80&h=80',
+  default: 'https://images.unsplash.com/photo-1465101178521-c1a9136a3b99?auto=format&fit=facearea&w=80&h=80',
+  // …other categories…
+};
+
+function getEventImage(eventName: string) {
+  if (!eventName) return EVENT_IMAGES.default;
+  const name = eventName.toLowerCase();
+  if (name.includes('soccer')) return EVENT_IMAGES.soccer;
+  // …more mappings…
+  return EVENT_IMAGES.default;
+}
+
+// Date/time formatting helpers
+function formatDateMMDDYYYY(date: Date) {
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const y = date.getFullYear();
+  return `${m}/${d}/${y}`;
+}
+
+function formatTimeAMPM(date: Date) {
+  let h = date.getHours();
+  const m = date.getMinutes().toString().padStart(2, '0');
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m} ${suffix}`;
+}
+
+function toTitleCase(str: string) {
+  return str.replace(/\b\w+/g, txt => txt[0].toUpperCase() + txt.slice(1).toLowerCase());
+}
 
 export default function Home() {
   const [input, setInput] = useState("");
@@ -54,6 +91,23 @@ export default function Home() {
 
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
+
+  // --- NEW: Track if blurb has been shown/should be hidden forever ---
+  const [blurbGone, setBlurbGone] = useState(() => {
+    return localStorage.getItem('kicaco_blurb_gone') === 'true';
+  });
+  const events = useKicacoStore(state => state.events);
+  const keepers = useKicacoStore(state => state.keepers);
+  // In the future, also check keepers.length > 0
+
+  useEffect(() => {
+    console.log('Events:', events);
+    console.log('Keepers:', keepers);
+    if ((events.length > 0 || keepers.length > 0) && !blurbGone) {
+      setBlurbGone(true);
+      localStorage.setItem('kicaco_blurb_gone', 'true');
+    }
+  }, [events, keepers, blurbGone]);
 
   // Staggered intro messages
   useEffect(() => {
@@ -144,6 +198,8 @@ export default function Home() {
     initThread();
   }, []);
 
+  const [pendingEvent, setPendingEvent] = useState<any>(null);
+
   const handleSend = async () => {
     if (!input.trim() || !threadId) {
       console.log('No input or threadId:', { input, threadId });
@@ -177,13 +233,25 @@ export default function Home() {
     try {
       const assistantResponse = await sendMessageToAssistant(threadId, userText);
       
-      // Check if response is an event signup
-      if (assistantResponse.startsWith('__EVENT_SIGNUP__')) {
-        const eventJson = assistantResponse.replace('__EVENT_SIGNUP__', '');
-        const eventObj = JSON.parse(decodeURIComponent(eventJson));
-        setLatestEvent(eventObj);
-        addEvent(eventObj);
-        setEventInProgress(null);
+      // Robust event extraction from code block or plain JSON
+      let eventObj = null;
+      try {
+        // Try to extract JSON from code block
+        const codeBlockMatch = assistantResponse.match(/```json\s*([\s\S]*?)\s*```/i);
+        if (codeBlockMatch) {
+          const parsed = JSON.parse(codeBlockMatch[1]);
+          if (parsed.event) eventObj = parsed.event;
+        } else {
+          // Try plain JSON
+          const parsed = JSON.parse(assistantResponse);
+          if (parsed.event) eventObj = parsed.event;
+        }
+      } catch {
+        // Not JSON — just chat
+      }
+      if (eventObj) {
+        addEvent(eventObj);        // Add event to store immediately
+        setPendingEvent(eventObj); // Show confirmation modal
       }
 
       // Remove thinking message before adding the real response
@@ -278,10 +346,27 @@ export default function Home() {
             </div>
             <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
           </div>
-          <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
-            Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
-          </p>
+          {!blurbGone && (
+            <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+              Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
+            </p>
+          )}
         </section>
+        {/* Upcoming Events Cards */}
+        {events.length > 0 && (
+          <div className="flex flex-col items-center w-full pt-2 pb-2">
+            {events.map((event, idx) => (
+              <EventCard
+                key={event.eventName + event.date + idx}
+                image={getEventImage(event.eventName)}
+                name={event.eventName}
+                date={event.date}
+                time={event.time}
+                location={event.location}
+              />
+            ))}
+          </div>
+        )}
         {/* Keepers */}
         <section className="mb-2 px-4">
           <div className="mt-2" style={{width:'180px'}}>
@@ -296,6 +381,24 @@ export default function Home() {
             Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
           </p>
         </section>
+        {/* Keepers Cards */}
+        {keepers.length > 0 && (
+          <div className="flex flex-col items-center w-full pt-2 pb-2">
+            {keepers.map((keeper, idx) => (
+              <div key={keeper.keeperName + keeper.date + idx} className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-pink-200 flex items-center p-3 mb-4 transition hover:shadow-2xl">
+                <div className="w-14 h-14 flex-shrink-0 rounded-full overflow-hidden border border-pink-200 mr-4 bg-pink-100 flex items-center justify-center">
+                  <span role="img" aria-label="keeper" style={{fontSize: 32}}>📒</span>
+                </div>
+                <div className="flex-1 flex flex-col justify-center min-w-0">
+                  <h3 className="text-base font-bold text-pink-900 truncate mb-0.5">{keeper.keeperName}</h3>
+                  {keeper.date && <div className="text-sm text-pink-600 mb-0.5 truncate">Date: {keeper.date}</div>}
+                  {keeper.time && <div className="text-sm text-pink-600 mb-0.5 truncate">Time: {keeper.time}</div>}
+                  {keeper.location && <div className="text-sm text-pink-600 truncate">Location: {keeper.location}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
         <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
@@ -309,36 +412,20 @@ export default function Home() {
           ))}
         </div>
       </GlobalChatDrawer>
-      {eventInProgress && (
+      {pendingEvent && (
         <EventConfirmationCard
-          onConfirm={async () => {
-            if (!eventInProgress || !threadId) return;
-
-            const response = await runAssistantFunction({
-              assistantId: import.meta.env.VITE_ASSISTANT_ID,
-              threadId,
-              functionName: 'addEventToCalendar',
-              parameters: eventInProgress
+          {...pendingEvent}
+          onConfirm={() => {
+            addEvent(pendingEvent);
+            setLatestEvent(pendingEvent);
+            setPendingEvent(null);
+            addMessage({
+              id: crypto.randomUUID(),
+              sender: 'assistant',
+              content: `Got it! "${pendingEvent.eventName || pendingEvent.name}" is now on your calendar.`
             });
-
-            if (response) {
-              const event = eventInProgress as any;
-              addEvent(event);
-              setLatestEvent(event);
-              setEventInProgress(null);
-
-              addMessage({
-                id: crypto.randomUUID(),
-                sender: 'assistant',
-                content: `Got it! "${event.eventName}" is now on your calendar.`
-              });
-            } else {
-              console.error('Function call failed');
-            }
           }}
-          onCancel={() => {
-            setEventInProgress(null);
-          }}
+          onCancel={() => setPendingEvent(null)}
         />
       )}
       <GlobalFooter

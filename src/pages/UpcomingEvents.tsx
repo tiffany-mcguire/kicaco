@@ -11,6 +11,9 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
+import { useKicacoStore } from '../store/kicacoStore';
+import EventCard from '../components/EventCard';
+import { getImageForCategory } from '../utils/getImageForCategory';
 
 // Add CalendarIcon definition
 const CalendarIcon = () => (
@@ -98,6 +101,20 @@ export default function UpcomingEvents() {
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // --- NEW: Track if blurb has been shown/should be hidden forever ---
+  const [blurbGone, setBlurbGone] = useState(() => {
+    // Persist blurb state in localStorage
+    return localStorage.getItem('kicaco_blurb_gone') === 'true';
+  });
+  const { events } = useKicacoStore();
+
+  useEffect(() => {
+    if (events.length > 0 && !blurbGone) {
+      setBlurbGone(true);
+      localStorage.setItem('kicaco_blurb_gone', 'true');
+    }
+  }, [events, blurbGone]);
+
   const handleDrawerHeightChange = (height: number) => {
     setDrawerHeight(height);
     setDrawerTop(window.innerHeight - height);
@@ -152,6 +169,35 @@ export default function UpcomingEvents() {
         }}
       >
         {/* Main content goes here */}
+        {!blurbGone && events.length === 0 && (
+          <section className="mb-2 px-4 pt-4">
+            <div style={{width:'180px'}}>
+              <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
+              <div className="flex items-center space-x-2 pl-1">
+                <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+                <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
+              </div>
+              <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
+            </div>
+            <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+              Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
+            </p>
+          </section>
+        )}
+        {events.length > 0 && (
+          <div className="flex flex-col items-center w-full pt-6">
+            {events.map((event, idx) => (
+              <EventCard
+                key={event.eventName + event.date + idx}
+                image={getImageForCategory(event.eventName)}
+                name={event.eventName}
+                date={event.date}
+                time={event.time}
+                location={event.location}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
         <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">

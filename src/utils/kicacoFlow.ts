@@ -194,19 +194,25 @@ export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string
     }
   }
 
-  // Step 2: Check for date
+  // Step 2: Check for event name
+  if (!nextField && !parsed.eventName) {
+    console.log('📝 Event name missing, will prompt for event name');
+    nextField = 'eventName';
+  }
+
+  // Step 3: Check for date
   if (!nextField && !parsed.date) {
     console.log('📅 Date missing, will prompt for date');
     nextField = 'date';
   }
 
-  // Step 3: Check for time (before location)
+  // Step 4: Check for time (before location)
   if (!nextField && (!parsed.time || parsed.timeVague)) {
     console.log('⏰ Time missing or vague, will prompt for time');
     nextField = 'time';
   }
 
-  // Step 4: Check for location (after time)
+  // Step 5: Check for location (after time)
   if (!nextField && !parsed.location) {
     console.log('📍 Location missing, will prompt for location');
     nextField = 'location';

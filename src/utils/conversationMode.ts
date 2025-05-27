@@ -89,45 +89,19 @@ export class ConversationModeController {
   }
 
   updateCollectedFields(fields: ParsedFields): void {
-    // Preserve existing event context when updating fields
-    const existingEventName = this.collectedFields.eventName;
-    const existingIsKeeper = this.collectedFields.isKeeper;
-    
-    // Check for child name confirmation and handle time/location order
-    if (fields.childName && !this.collectedFields.childName) {
-      console.log('👶 Child name confirmation detected:', fields.childName);
-      // Check for prior event context
-      const hasEventContext = this.collectedFields.eventName || this.collectedFields.date || 
-                            this.collectedFields.time || this.collectedFields.location || 
-                            this.collectedFields.isKeeper;
-      
-      if (hasEventContext) {
-        console.log('✅ Preserved event context, deferring to field order helper');
+    // Merge logic: only overwrite with non-empty string or defined boolean
+    const updatedFields: ParsedFields = { ...this.collectedFields };
+    for (const key in fields) {
+      const value = fields[key as keyof ParsedFields];
+      if (
+        value !== undefined &&
+        (typeof value === 'boolean' || (typeof value === 'string' && value.trim() !== ''))
+      ) {
+        (updatedFields as any)[key] = value;
       }
     }
-    
-    // Always merge with existing fields to preserve state
-    const updatedFields = {
-      ...this.collectedFields,  // Start with all existing fields
-      ...fields,  // Overlay new fields
-      // Special handling for timeVague flag
-      timeVague: fields.timeVague !== undefined ? fields.timeVague : this.collectedFields.timeVague,
-      // Preserve isKeeper status unless explicitly changed
-      isKeeper: fields.isKeeper !== undefined ? fields.isKeeper : this.collectedFields.isKeeper
-    };
-    
-    // Update state with merged fields
     this.collectedFields = updatedFields;
-    
     console.log('💾 Merged fields:', updatedFields);
-    
-    // Log context preservation
-    if (fields.childName && existingEventName) {
-      console.log('🔍 Preserved event context after child confirmation:', {
-        eventName: existingEventName,
-        childName: fields.childName
-      });
-    }
   }
 
   setLastRequestedField(field: keyof ParsedFields | undefined): void {
