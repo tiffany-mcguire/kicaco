@@ -32,6 +32,10 @@
   .chat-bubble {
     font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
   }
+
+  .font-nunito {
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif !important;
+  }
 }
 
 /* Custom scrollbar styles */
@@ -60,6 +64,7 @@
 
 .footer-chat {
   color: #000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
 }
 
 .typing-bubble {

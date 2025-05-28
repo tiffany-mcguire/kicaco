@@ -190,6 +190,15 @@ export function extractKnownFields(
       candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
     }
   }
+  // Extra fallback: grab a phrase ending with a known event type (e.g., 'concert', 'game', etc.)
+  if (!candidateEventName) {
+    const eventTypePattern = /\b([a-z0-9 .'-]+(?:concert|game|recital|party|meeting|appointment|practice|competition|show|performance|ceremony|parade|play|event))\b/i;
+    const eventTypeMatch = message.match(eventTypePattern);
+    if (eventTypeMatch && eventTypeMatch[1]) {
+      candidateEventName = eventTypeMatch[1].trim();
+      candidateEventName = candidateEventName.replace(/\b\w/g, c => c.toUpperCase());
+    }
+  }
 
   if (!collectedFields.eventName && !isGeneric && candidateEventName && candidateEventName.length >= MIN_EVENT_NAME_LENGTH) {
     fields.eventName = candidateEventName;
@@ -250,8 +259,13 @@ export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string
     });
   }
 
-  // Step 5: Check for location (after time)
-  if (!nextField && !parsed.location) {
+  // Step 5: Check for location (after time, and only if time is not vague)
+  if (
+    !nextField &&
+    !parsed.location &&
+    parsed.time &&
+    !parsed.timeVague // Only prompt for location if time is present and not vague
+  ) {
     console.log('📍 Location missing, will prompt for location');
     nextField = 'location';
   }

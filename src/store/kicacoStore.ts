@@ -14,6 +14,8 @@ type ChatMessage = {
   id: string;
   sender: 'user' | 'assistant';
   content: string;
+  type?: string;
+  event?: any;
 };
 
 type Keeper = {

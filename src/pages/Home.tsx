@@ -51,6 +51,30 @@ function toTitleCase(str: string) {
   return str.replace(/\b\w+/g, txt => txt[0].toUpperCase() + txt.slice(1).toLowerCase());
 }
 
+// Add formatTime helper from EventCard
+function formatTime(time?: string) {
+  if (!time) return '';
+  let normalized = time.trim().toLowerCase();
+  normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+  if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+    normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+  }
+  const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+  for (const pattern of patterns) {
+    try {
+      const dateObj = parse(normalized, pattern, new Date());
+      if (!isNaN(dateObj.getTime())) {
+        return format(dateObj, 'hh:mm a').toUpperCase();
+      }
+    } catch {}
+  }
+  const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+  if (!isNaN(dateObj.getTime())) {
+    return format(dateObj, 'hh:mm a').toUpperCase();
+  }
+  return time;
+}
+
 export default function Home() {
   const [input, setInput] = useState("");
   const [hasIntroPlayed, setHasIntroPlayed] = useState(false);
@@ -188,10 +212,76 @@ export default function Home() {
   const [pendingEvent, setPendingEvent] = useState<any>(null);
   const [eventCreationMessage, setEventCreationMessage] = useState<string>("");
   const [currentEventFields, setCurrentEventFields] = useState<any>({});
+  const [showSignup, setShowSignup] = useState(false);
+  const [signupStep, setSignupStep] = useState<number | null>(null);
+  const [signupData, setSignupData] = useState<{ name?: string; email?: string; password?: string }>({});
+
+  // Track the most recent event's childName for use in signup flow
+  const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
 
   const handleSend = async () => {
     if (!input.trim() || !threadId) {
       console.log('No input or threadId:', { input, threadId });
+      return;
+    }
+
+    // Signup flow logic
+    if (showSignup && signupStep !== null) {
+      if (signupStep === 0) {
+        setSignupData(prev => ({ ...prev, name: input.trim() }));
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'user',
+          content: input.trim()
+        });
+        setInput('');
+        setSignupStep(1);
+        setTimeout(() => {
+          addMessage({
+            id: crypto.randomUUID(),
+            sender: 'assistant',
+            content: 'Great! What email would you like to use?'
+          });
+        }, 400);
+        return;
+      }
+      if (signupStep === 1) {
+        setSignupData(prev => ({ ...prev, email: input.trim() }));
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'user',
+          content: input.trim()
+        });
+        setInput('');
+        setSignupStep(2);
+        setTimeout(() => {
+          addMessage({
+            id: crypto.randomUUID(),
+            sender: 'assistant',
+            content: 'Great! Last step - create a password:'
+          });
+        }, 400);
+        return;
+      }
+      if (signupStep === 2) {
+        setSignupData(prev => ({ ...prev, password: input.trim() }));
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'user',
+          content: '******' // Conceal password in chat
+        });
+        setInput('');
+        setSignupStep(3);
+        setTimeout(() => {
+          addMessage({
+            id: crypto.randomUUID(),
+            sender: 'assistant',
+            content: `Is this calendar just for ${latestChildName}'s schedule or would you like to add another child profile?`
+          });
+        }, 400);
+        return;
+      }
+      // After this, you can handle more steps or finish the signup
       return;
     }
 
@@ -235,28 +325,8 @@ export default function Home() {
     let updatedFields = { ...currentEventFields };
     const extractedFields = extractKnownFields(userText, currentEventFields);
     console.log('Extracted fields:', extractedFields);
-    // Only update the date if a new date is provided in this message
-    const dateKeywords = [
-      'tomorrow', 'tonight', 'next week', 'next friday', 'this friday',
-      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
-    ];
-    if (dateKeywords.some(kw => userText.toLowerCase().includes(kw)) && extractedFields.date) {
-      updatedFields.date = extractedFields.date;
-    }
-    if (extractedFields.childName && extractedFields.childName.trim()) {
-      updatedFields.childName = extractedFields.childName;
-    }
-    if (extractedFields.eventName && extractedFields.eventName.trim()) {
-      updatedFields.eventName = extractedFields.eventName;
-    }
-    if (extractedFields.time && extractedFields.time.trim() && !extractedFields.timeVague) {
-      updatedFields.time = extractedFields.time;
-    }
-    if (extractedFields.location && extractedFields.location.trim()) {
-      updatedFields.location = extractedFields.location;
-    }
-    console.log('Updated event fields:', updatedFields);
+    // Merge all extracted fields into updatedFields
+    Object.assign(updatedFields, extractedFields);
     setCurrentEventFields(updatedFields);
 
     // Process message with kicacoFlow
@@ -310,11 +380,14 @@ export default function Home() {
       // Generate the confirmation message from the locally resolved event object
       if (eventObj) {
         const formattedDate = eventObj.date ? format(parse(eventObj.date, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy') : '';
-        const confirmationMsg = `Okay! I've saved ${eventObj.childName}'s ${eventObj.eventName} for ${formattedDate} at ${eventObj.time} in ${eventObj.location}. Want to change anything?\n{"event": ${JSON.stringify(eventObj)}}`;
+        const formattedTime = formatTime(eventObj.time);
+        const confirmationMsg = `Okay! I've saved ${eventObj.childName}'s ${eventObj.eventName} for ${formattedDate} at ${formattedTime} in ${eventObj.location}.`;
         const assistantMessage = {
           id: crypto.randomUUID(),
           sender: 'assistant' as const,
-          content: confirmationMsg
+          type: 'event_confirmation',
+          content: confirmationMsg,
+          event: eventObj
         };
         addMessage(assistantMessage);
         // Auto-scroll after confirmation message
@@ -424,14 +497,15 @@ export default function Home() {
         {events.length > 0 && (
           <div className="flex flex-col w-full pt-2 pb-2 px-0">
             {events.map((event, idx) => (
-              <EventCard
-                key={event.eventName + event.date + idx}
-                image={getKicacoEventPhoto(event.eventName)}
-                name={event.eventName}
-                date={event.date}
-                time={event.time}
-                location={event.location}
-              />
+              <div key={event.eventName + event.date + idx} style={{ marginLeft: '16px' }}>
+                <EventCard
+                  image={getKicacoEventPhoto(event.eventName)}
+                  name={event.eventName}
+                  date={event.date}
+                  time={event.time}
+                  location={event.location}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -470,14 +544,52 @@ export default function Home() {
       </div>
       <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
         <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
-          {messages.map((msg) => (
-            <ChatBubble
-              key={msg.id}
-              side={msg.sender === 'user' ? 'right' : 'left'}
-            >
-              {msg.content}
-            </ChatBubble>
-          ))}
+          {messages.map((msg, idx) => {
+            if (msg.type === 'event_confirmation' && msg.event) {
+              return (
+                <ChatBubble key={msg.id} side="left">
+                  <div>
+                    <EventCard
+                      image={getKicacoEventPhoto(msg.event.eventName)}
+                      name={msg.event.eventName}
+                      date={msg.event.date}
+                      time={msg.event.time}
+                      location={msg.event.location}
+                    />
+                    <div className="mt-2 text-left w-full text-sm text-gray-900">{
+                      msg.content.replace(/Want to change anything\??/, '').trim()
+                    }</div>
+                    <div className="mt-3 text-sm text-gray-900">
+                      Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                    </div>
+                    <button
+                      className="mt-3 bg-[#217e8f] text-white rounded-xl px-6 py-2 font-semibold text-base font-nunito shadow-lg hover:shadow-xl transition duration-150"
+                      onClick={() => {
+                        setShowSignup(true);
+                        setSignupStep(0);
+                        setSignupData({});
+                        addMessage({
+                          id: crypto.randomUUID(),
+                          sender: 'assistant',
+                          content: "Let's get you set up! What's your name?"
+                        });
+                      }}
+                    >
+                      Create an account
+                    </button>
+                  </div>
+                </ChatBubble>
+              );
+            }
+            return (
+              <ChatBubble
+                key={msg.id}
+                side={msg.sender === 'user' ? 'right' : 'left'}
+              >
+                {msg.content}
+              </ChatBubble>
+            );
+          })}
         </div>
       </GlobalChatDrawer>
       {pendingEvent && (
