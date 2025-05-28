@@ -58,9 +58,9 @@ const EventCard: React.FC<EventCardProps> = ({
   location,
 }) => {
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 flex items-center p-3 mb-4 transition hover:shadow-2xl font-nunito">
+    <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-gray-200 flex items-center p-2 mb-3 transition hover:shadow-lg font-nunito">
       {/* Image */}
-      <div className="w-14 h-14 flex-shrink-0 rounded-full overflow-hidden border border-gray-200 mr-4 bg-gray-100">
+      <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden border border-gray-200 mr-3 bg-gray-100">
         <img
           src={image}
           alt={name}
@@ -69,10 +69,10 @@ const EventCard: React.FC<EventCardProps> = ({
       </div>
       {/* Content */}
       <div className="flex-1 flex flex-col justify-center min-w-0">
-        <h3 className="text-base font-bold text-gray-900 truncate mb-0.5">{name}</h3>
-        {date && <div className="text-sm text-gray-600 mb-0.5 truncate">Date: {formatDate(date)}</div>}
-        {time && <div className="text-sm text-gray-600 mb-0.5 truncate">Time: {formatTime(time)}</div>}
-        {location && <div className="text-sm text-gray-600 truncate">Location: {location}</div>}
+        <h3 className="text-sm font-bold text-gray-900 truncate mb-0.5">{name}</h3>
+        {date && <div className="text-xs text-gray-600 mb-0.5 truncate">Date: {formatDate(date)}</div>}
+        {time && <div className="text-xs text-gray-600 mb-0.5 truncate">Time: {formatTime(time)}</div>}
+        {location && <div className="text-xs text-gray-600 truncate">Location: {location}</div>}
       </div>
     </div>
   );

@@ -18,7 +18,15 @@ const ThinkingWave = () => {
   );
 };
 
-export default function ChatBubble({ children, side = 'left' }: { children: React.ReactNode; side?: 'left' | 'right' }) {
+export default function ChatBubble({ 
+  children, 
+  side = 'left',
+  className = ''
+}: { 
+  children: React.ReactNode; 
+  side?: 'left' | 'right';
+  className?: string;
+}) {
   const isLeft = side === 'left';
   const bubbleColor = isLeft ? '#e5e5ea' : '#c0e2e7';
 
@@ -30,8 +38,8 @@ export default function ChatBubble({ children, side = 'left' }: { children: Reac
   };
 
   return (
-    <div className={clsx('chat-bubble w-full flex mb-px', isLeft ? 'justify-start' : 'justify-end')}>
-      <div className="relative max-w-[75%] px-3 py-2">
+    <div className={clsx('chat-bubble w-full flex mb-px', isLeft ? 'justify-start' : 'justify-end', className)}>
+      <div className={clsx('relative px-3 py-2', className.includes('max-w-3xl') ? 'w-full' : 'max-w-[75%]')}>
         <div
           className={clsx(
             'relative px-4 py-3 text-sm text-gray-900 border shadow-sm',

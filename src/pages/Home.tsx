@@ -18,6 +18,8 @@ import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { parse, format } from 'date-fns';
+import PasswordModal from '../components/PasswordModal';
+import PostSignupOptions from '../components/PostSignupOptions';
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -215,6 +217,8 @@ export default function Home() {
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState<number | null>(null);
   const [signupData, setSignupData] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPostSignupOptions, setShowPostSignupOptions] = useState(false);
 
   // Track the most recent event's childName for use in signup flow
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
@@ -253,24 +257,10 @@ export default function Home() {
           content: input.trim()
         });
         setInput('');
-        setSignupStep(2);
-        setTimeout(() => {
-          addMessage({
-            id: crypto.randomUUID(),
-            sender: 'assistant',
-            content: 'Great! Last step - create a password:'
-          });
-        }, 400);
+        setShowPasswordModal(true);
         return;
       }
       if (signupStep === 2) {
-        setSignupData(prev => ({ ...prev, password: input.trim() }));
-        addMessage({
-          id: crypto.randomUUID(),
-          sender: 'user',
-          content: '******' // Conceal password in chat
-        });
-        setInput('');
         setSignupStep(3);
         setTimeout(() => {
           addMessage({
@@ -495,9 +485,9 @@ export default function Home() {
         </section>
         {/* Upcoming Events Cards */}
         {events.length > 0 && (
-          <div className="flex flex-col w-full pt-2 pb-2 px-0">
+          <div className="flex flex-col w-full pt-2 pb-2 px-4">
             {events.map((event, idx) => (
-              <div key={event.eventName + event.date + idx} style={{ marginLeft: '16px' }}>
+              <div key={event.eventName + event.date + idx}>
                 <EventCard
                   image={getKicacoEventPhoto(event.eventName)}
                   name={event.eventName}
@@ -547,7 +537,7 @@ export default function Home() {
           {messages.map((msg, idx) => {
             if (msg.type === 'event_confirmation' && msg.event) {
               return (
-                <ChatBubble key={msg.id} side="left">
+                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
                   <div>
                     <EventCard
                       image={getKicacoEventPhoto(msg.event.eventName)}
@@ -559,11 +549,11 @@ export default function Home() {
                     <div className="mt-2 text-left w-full text-sm text-gray-900">{
                       msg.content.replace(/Want to change anything\??/, '').trim()
                     }</div>
-                    <div className="mt-3 text-sm text-gray-900">
+                    <div className="mt-3 text-xs text-gray-500 font-inter">
                       Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
                     </div>
                     <button
-                      className="mt-3 bg-[#217e8f] text-white rounded-xl px-6 py-2 font-semibold text-base font-nunito shadow-lg hover:shadow-xl transition duration-150"
+                      className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
                       onClick={() => {
                         setShowSignup(true);
                         setSignupStep(0);
@@ -578,6 +568,13 @@ export default function Home() {
                       Create an account
                     </button>
                   </div>
+                </ChatBubble>
+              );
+            }
+            if (msg.type === 'post_signup_options') {
+              return (
+                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                  <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
                 </ChatBubble>
               );
             }
@@ -608,6 +605,29 @@ export default function Home() {
           onCancel={() => setPendingEvent(null)}
         />
       )}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={(password) => {
+          setSignupData(prev => ({ ...prev, password }));
+          setShowPasswordModal(false);
+          setSignupStep(2);
+          addMessage({
+            id: crypto.randomUUID(),
+            sender: 'assistant',
+            content: "All set! You're signed in. 🎉 Ready to start organizing?"
+          });
+          // Add post-signup options message
+          setTimeout(() => {
+            addMessage({
+              id: crypto.randomUUID(),
+              sender: 'assistant',
+              type: 'post_signup_options',
+              content: ''
+            });
+          }, 400);
+        }}
+      />
       <GlobalFooter
         ref={footerRef}
         value={input}
