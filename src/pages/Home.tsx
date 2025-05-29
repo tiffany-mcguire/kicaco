@@ -473,7 +473,11 @@ export default function Home() {
           </div>
         )}
       </div>
-      <GlobalChatDrawer ref={chatDrawerRef} onHeightChange={handleDrawerHeightChange} initialPosition="top">
+      <GlobalChatDrawer 
+        ref={chatDrawerRef} 
+        onHeightChange={handleDrawerHeightChange} 
+        initialHeight={200} // Set initial height to match second subheader position
+      >
         <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
           {messages.map((msg, idx) => {
             if (msg.type === 'event_confirmation' && msg.event) {

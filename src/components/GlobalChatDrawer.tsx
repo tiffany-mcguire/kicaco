@@ -8,6 +8,7 @@ const STORAGE_KEY = 'globalChatDrawerY';
 interface GlobalChatDrawerProps extends PropsWithChildren {
   initialClosed?: boolean;
   initialPosition?: 'top' | 'bottom';
+  initialHeight?: number; // New prop for custom initial height
   className?: string;
   onHeightChange?: (height: number) => void;
 }
@@ -17,7 +18,7 @@ export interface GlobalChatDrawerHandle {
 }
 
 const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProps>(
-  ({ children, initialClosed = true, initialPosition = 'bottom', className, onHeightChange }, ref) => {
+  ({ children, initialClosed = true, initialPosition = 'bottom', initialHeight, className, onHeightChange }, ref) => {
     const [maxHeight, setMaxHeight] = useState(400); // fallback default
     const [footerHeight, setFooterHeight] = useState(0);
     const [headerHeight, setHeaderHeight] = useState(0);
@@ -39,11 +40,22 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
           const footerRect = (footer as HTMLElement).getBoundingClientRect();
           const subheaderRect = (subheader as HTMLElement).getBoundingClientRect();
           setFooterHeight(footerRect.height);
-          // Add 8px gap below subheader
-          const topConstraint = subheaderRect.bottom + 8;
-          setHeaderHeight(topConstraint);
-          // Available height is from subheader bottom + 8px to footer top
-          const available = Math.floor(footerRect.top - topConstraint);
+
+          // Find the first section (Upcoming Events)
+          const firstSection = subheader.querySelector('section:first-child');
+          let maxExtension = subheaderRect.top + 8; // fallback
+          if (firstSection) {
+            // Find the header row (flex container with icon and title)
+            const headerRow = firstSection.querySelector('div.flex.items-center');
+            if (headerRow) {
+              const headerRowRect = headerRow.getBoundingClientRect();
+              maxExtension = headerRowRect.bottom + 8; // 8px padding below header
+            }
+          }
+          setHeaderHeight(maxExtension);
+
+          // Available height is from max extension point to footer top
+          const available = Math.floor(footerRect.top - maxExtension);
           setMaxHeight(available > 0 ? available : 400);
         } else if (retryCount < 20) { // retry for up to 1 second
           retryCount++;
@@ -80,15 +92,43 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
     // Clamp drag between fully open (just under header) and minimized (just above footer)
     const dragConstraints = { top: 0, bottom: Math.max(0, maxHeight - MINIMIZED_HEIGHT) };
 
-    // Set initial position to minimized (bottom) or top on mount, ignoring localStorage
+    // Set initial position to just under Keepers section on mount
     useLayoutEffect(() => {
-      let initialY = dragConstraints.bottom;
-      if (initialPosition === 'top') {
-        initialY = dragConstraints.top;
+      let hasSetInitial = false;
+      function setInitialPosition() {
+        if (hasSetInitial) return;
+        const subheader = document.querySelector('.profiles-roles-subheader');
+        const sections = subheader?.querySelectorAll('section');
+        const secondSection = sections?.[1];
+        if (secondSection && subheader) {
+          const keepersBottom = secondSection.getBoundingClientRect().bottom + 12; // 12px padding
+          // Calculate max extension (header row of first section + 8px)
+          let maxExtension = subheader.getBoundingClientRect().top + 8; // fallback
+          const firstSection = subheader.querySelector('section:first-child');
+          if (firstSection) {
+            const headerRow = firstSection.querySelector('div.flex.items-center');
+            if (headerRow) {
+              maxExtension = headerRow.getBoundingClientRect().bottom + 8;
+            }
+          }
+          // The initial Y is the distance between the max extension and the keepers bottom
+          const initialY = keepersBottom - maxExtension;
+          y.set(initialY);
+          hasSetInitial = true;
+          return;
+        }
+        // Fallback to default position
+        let initialY = dragConstraints.bottom;
+        if (initialPosition === 'top') {
+          initialY = dragConstraints.top;
+        } else if (initialHeight !== undefined) {
+          initialY = Math.max(0, maxHeight - initialHeight);
+        }
+        y.set(initialY);
+        hasSetInitial = true;
       }
-      y.set(initialY);
-      // eslint-disable-next-line
-    }, [dragConstraints.bottom, initialPosition]);
+      setInitialPosition();
+    }, [dragConstraints.bottom, initialPosition, initialHeight, maxHeight]);
 
     // Expose setToTop method to parent via ref
     useImperativeHandle(ref, () => ({
