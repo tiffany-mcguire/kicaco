@@ -100,13 +100,13 @@ export default function UpcomingEvents() {
   const [subheaderBottom, setSubheaderBottom] = useState(0);
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { events, messages } = useKicacoStore();
 
   // --- NEW: Track if blurb has been shown/should be hidden forever ---
   const [blurbGone, setBlurbGone] = useState(() => {
     // Persist blurb state in localStorage
     return localStorage.getItem('kicaco_blurb_gone') === 'true';
   });
-  const { events } = useKicacoStore();
 
   useEffect(() => {
     if (events.length > 0 && !blurbGone) {
@@ -201,7 +201,53 @@ export default function UpcomingEvents() {
       </div>
       <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
         <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+          {messages.map((msg, idx) => {
+            if (msg.type === 'event_confirmation' && msg.event) {
+              return (
+                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                  <div>
+                    <EventCard
+                      image={getKicacoEventPhoto(msg.event.eventName)}
+                      name={msg.event.eventName}
+                      date={msg.event.date}
+                      time={msg.event.time}
+                      location={msg.event.location}
+                    />
+                    <div className="mt-2 text-left w-full text-sm text-gray-900">{
+                      msg.content.replace(/Want to change anything\?\?/, '').trim()
+                    }</div>
+                    <div className="mt-3 text-xs text-gray-500 font-inter">
+                      Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                    </div>
+                    <button
+                      className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+                      onClick={() => {
+                        // No signup logic here, just a placeholder
+                      }}
+                    >
+                      Create an account
+                    </button>
+                  </div>
+                </ChatBubble>
+              );
+            }
+            if (msg.type === 'post_signup_options') {
+              return (
+                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                  {/* You may want to import and use PostSignupOptions here if needed */}
+                  <span>Post-signup options go here.</span>
+                </ChatBubble>
+              );
+            }
+            return (
+              <ChatBubble
+                key={msg.id}
+                side={msg.sender === 'user' ? 'right' : 'left'}
+              >
+                {msg.content}
+              </ChatBubble>
+            );
+          })}
         </div>
       </GlobalChatDrawer>
       <GlobalFooter
