@@ -185,7 +185,7 @@ export default function UpcomingEvents() {
           </section>
         )}
         {events.length > 0 && (
-          <div className="flex flex-col items-center w-full pt-6">
+          <div className="flex flex-col w-full pt-2 pb-2 px-4">
             {events.map((event, idx) => (
               <EventCard
                 key={event.eventName + event.date + idx}

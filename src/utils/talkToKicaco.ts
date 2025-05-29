@@ -147,12 +147,12 @@ function generateConfirmationMessage(fields: ParsedFields): string {
   return `Okay! I've saved ${parts.join(' ')}. Want to change anything?`;
 }
 
-const SYSTEM_PROMPT = `IMPORTANT: When a user describes an event or reminder, always ask for the following required details, one at a time, unless the user has turned off that prompt in chat defaults:
-- Child's name
-- Event name or description
-- Date
-- Time
-- Location
+const SYSTEM_PROMPT = `IMPORTANT: When a user describes an event or reminder, always ask for the following required details in this exact order:
+1. Child's name
+2. Time (immediately after child's name)
+3. Event name or description
+4. Date
+5. Location
 
 When the user uses relative dates (like "tomorrow", "tonight", "next Friday"), always resolve them using the current date from the system's perspective. Do not ask the user to clarify what day "tomorrow" is—just use the system's current date to calculate it.
 

@@ -229,43 +229,31 @@ export function getNextFieldToPrompt(parsed: ParsedFields, knownChildren: string
     }
   }
 
-  // Step 2: Check for event name
-  if (!nextField && !parsed.eventName) {
-    console.log('📝 Event name missing, will prompt for event name');
-    nextField = 'eventName';
-  }
-
-  // Step 3: Check for date
-  if (!nextField && !parsed.date) {
-    console.log('📅 Date missing, will prompt for date');
-    nextField = 'date';
-  }
-
-  // Step 4: Check for time (before location)
-  if (!nextField && (!parsed.time || parsed.timeVague)) {
-    console.log('⏰ Time check:', { 
+  // Step 2: If we have child name but no time, ask for time next
+  if (!nextField && parsed.childName && (!parsed.time || parsed.timeVague)) {
+    console.log('⏰ Time check after child name:', { 
       hasTime: !!parsed.time, 
       timeValue: parsed.time,
       isVague: parsed.timeVague,
       willPrompt: true 
     });
     nextField = 'time';
-  } else {
-    console.log('⏰ Time check:', { 
-      hasTime: !!parsed.time, 
-      timeValue: parsed.time,
-      isVague: parsed.timeVague,
-      willPrompt: false 
-    });
   }
 
-  // Step 5: Check for location (after time, and only if time is not vague)
-  if (
-    !nextField &&
-    !parsed.location &&
-    parsed.time &&
-    !parsed.timeVague // Only prompt for location if time is present and not vague
-  ) {
+  // Step 3: Check for event name
+  if (!nextField && !parsed.eventName) {
+    console.log('📝 Event name missing, will prompt for event name');
+    nextField = 'eventName';
+  }
+
+  // Step 4: Check for date
+  if (!nextField && !parsed.date) {
+    console.log('📅 Date missing, will prompt for date');
+    nextField = 'date';
+  }
+
+  // Step 5: Check for location (after time)
+  if (!nextField && !parsed.location) {
     console.log('📍 Location missing, will prompt for location');
     nextField = 'location';
   }

@@ -27,12 +27,6 @@ const intro = [
   "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them.",
 ];
 
-// Test case for immediate mode transition
-const TEST_CASE = {
-  userMessage: "I have a soccer game on Friday",
-  expectedResponse: "What time is the game?"
-};
-
 // Date/time formatting helpers
 function formatDateMMDDYYYY(date: Date) {
   const m = date.getMonth() + 1;
@@ -79,7 +73,9 @@ function formatTime(time?: string) {
 
 export default function Home() {
   const [input, setInput] = useState("");
-  const [hasIntroPlayed, setHasIntroPlayed] = useState(false);
+  const [hasIntroPlayed, setHasIntroPlayed] = useState(() => {
+    return localStorage.getItem('kicaco_intro_played') === 'true';
+  });
   const introStartedRef = useRef(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [collectedFields, setCollectedFields] = useState<ParsedFields>({});
@@ -144,69 +140,14 @@ export default function Home() {
     });
 
     setHasIntroPlayed(true);
+    localStorage.setItem('kicaco_intro_played', 'true');
   }, [hasIntroPlayed, addMessage]);
-
-  // Test case handler
-  const runTestCase = async () => {
-    if (!threadId) return;
-    
-    console.log('🧪 Running test case:', TEST_CASE.userMessage);
-    
-    // Add user message
-    const userMessage = {
-      id: crypto.randomUUID(),
-      sender: 'user' as const,
-      content: TEST_CASE.userMessage
-    };
-    addMessage(userMessage);
-
-    // Add thinking message
-    const thinkingMessage = {
-      id: 'thinking',
-      sender: 'assistant' as const,
-      content: 'Kicaco is thinking',
-    };
-    addMessage(thinkingMessage);
-
-    try {
-      const assistantResponse = await sendMessageToAssistant(threadId, TEST_CASE.userMessage);
-      
-      // Remove thinking message
-      removeMessageById('thinking');
-
-      // Add assistant response
-      const assistantMessage = {
-        id: crypto.randomUUID(),
-        sender: 'assistant' as const,
-        content: assistantResponse
-      };
-      addMessage(assistantMessage);
-
-      // Verify response matches expected
-      console.log('🧪 Test case result:', {
-        expected: TEST_CASE.expectedResponse,
-        actual: assistantResponse,
-        matches: assistantResponse.includes(TEST_CASE.expectedResponse)
-      });
-    } catch (error) {
-      console.error('🧪 Test case failed:', error);
-      removeMessageById('thinking');
-      addMessage({
-        id: crypto.randomUUID(),
-        sender: 'assistant' as const,
-        content: 'Test case failed. Please try again.'
-      });
-    }
-  };
 
   // Initialize thread and run test case
   useEffect(() => {
     const initThread = async () => {
       const id = await createOpenAIThread();
       setThreadId(id);
-      
-      // Run test case after a short delay to ensure thread is ready
-      setTimeout(runTestCase, 1000);
     };
     initThread();
   }, []);
@@ -612,11 +553,6 @@ export default function Home() {
           setSignupData(prev => ({ ...prev, password }));
           setShowPasswordModal(false);
           setSignupStep(2);
-          addMessage({
-            id: crypto.randomUUID(),
-            sender: 'assistant',
-            content: "All set! You're signed in. 🎉 Ready to start organizing?"
-          });
           // Add post-signup options message
           setTimeout(() => {
             addMessage({
