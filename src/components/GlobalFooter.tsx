@@ -10,10 +10,11 @@ interface GlobalFooterProps {
   leftButtons?: ReactNode;
   rightButtons?: ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
 const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
-  ({ value, onChange, onSend, placeholder = 'Type a message…', leftButtons, rightButtons, className = '' }, ref) => (
+  ({ value, onChange, onSend, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false }, ref) => (
     <footer
       ref={ref}
       className={`global-footer fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.15)] z-50 h-16 flex items-center justify-between px-4 ${className}`}
@@ -30,19 +31,20 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
           value={value}
           onChange={onChange}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && onSend) {
+            if (e.key === 'Enter' && !e.shiftKey && onSend && !disabled) {
               e.preventDefault();
               onSend();
             }
           }}
           className="footer-chat w-full rounded-full border border-[#c0e2e7] px-4 py-2 focus:outline-none text-sm bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow duration-200 focus:shadow-[0_0_8px_2px_#c0e2e7,0_2px_8px_rgba(0,0,0,0.08)]"
           placeholder={placeholder}
+          disabled={disabled}
         />
       </div>
       <div className="flex gap-2">
         {rightButtons ?? <>
-          <IconButton IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Camera" />
-          <IconButton IconComponent={props => <MicIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Mic" />
+          <IconButton IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Camera" disabled={disabled} />
+          <IconButton IconComponent={props => <MicIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Mic" disabled={disabled} />
         </>}
       </div>
     </footer>

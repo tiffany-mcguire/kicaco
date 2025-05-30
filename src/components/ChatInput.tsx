@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useKicacoStore } from '../store/kicacoStore';
-import { extractJsonFromMessage } from '../utils/parseAssistantResponse';
+import { extractJsonFromMessage, validateParsedResponse } from '../utils/parseAssistantResponse';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 const ChatInput: React.FC = () => {
   const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const {
     threadId,
     addMessage,
@@ -12,28 +13,59 @@ const ChatInput: React.FC = () => {
   } = useKicacoStore();
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
 
-    const userText = input.trim();
-    setInput('');
+    try {
+      setIsSending(true);
+      const userText = input.trim();
+      setInput('');
 
-    addMessage({
-      id: crypto.randomUUID(),
-      sender: 'user',
-      content: userText
-    });
+      // Add user message
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'user',
+        content: userText
+      });
 
-    const assistantReply = await sendMessageToAssistant(threadId, userText);
+      // Validate thread
+      if (!threadId) {
+        throw new Error('No active conversation thread. Please refresh the page.');
+      }
 
-    addMessage({
-      id: crypto.randomUUID(),
-      sender: 'assistant',
-      content: assistantReply
-    });
+      // Send message and get response
+      const assistantReply = await sendMessageToAssistant(threadId, userText);
+      
+      if (!assistantReply) {
+        throw new Error('No response received from assistant.');
+      }
 
-    const parsed = extractJsonFromMessage(assistantReply);
-    if (parsed) {
-      setEventInProgress(parsed);
+      // Parse and validate response
+      const parsedResponse = extractJsonFromMessage(assistantReply);
+      if (!validateParsedResponse(parsedResponse)) {
+        throw new Error(parsedResponse.error || 'Invalid response format');
+      }
+
+      // Add assistant message
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: parsedResponse.type === 'json' ? JSON.stringify(parsedResponse.content, null, 2) : parsedResponse.content
+      });
+
+      // Handle JSON response
+      if (parsedResponse.type === 'json') {
+        setEventInProgress(parsedResponse.content);
+      }
+    } catch (error) {
+      console.error('Error in chat:', error);
+      // Add error message to chat
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: `I'm having trouble processing your message. ${error instanceof Error ? error.message : 'Please try again.'}`
+      });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -47,14 +79,18 @@ const ChatInput: React.FC = () => {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') handleSend();
+          if (e.key === 'Enter' && !isSending) handleSend();
         }}
+        disabled={isSending}
       />
       <button
         onClick={handleSend}
-        className="ml-3 px-4 py-2 bg-fuchsia-700 text-white rounded-xl hover:bg-fuchsia-800 transition"
+        disabled={isSending}
+        className={`ml-3 px-4 py-2 bg-fuchsia-700 text-white rounded-xl transition ${
+          isSending ? 'opacity-50 cursor-not-allowed' : 'hover:bg-fuchsia-800'
+        }`}
       >
-        Send
+        {isSending ? 'Sending...' : 'Send'}
       </button>
     </div>
   );

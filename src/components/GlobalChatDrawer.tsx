@@ -28,13 +28,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
     const [isFullyClosed, setIsFullyClosed] = useState(true);
     const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer
     const MIN_HEIGHT = 48; // px, just the handle
-    const [debugInfo, setDebugInfo] = useState({
-      footerTop: 0,
-      containerTop: 0,
-      drawerHeight: MIN_HEIGHT,
-      calculatedHeight: 0,
-      maxHeight: 0
-    });
     const [isDragging, setIsDragging] = useState(false);
     const dragState = useRef({
       startY: 0,
@@ -79,12 +72,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
         if (blurb) {
           blurbRect = blurb.getBoundingClientRect();
           topBoundary = blurbRect.top;
-          // Debug log
-          // @ts-ignore
-          window.__drawerBlurb = blurb;
-          console.log('[ChatDrawer] Using blurb:', blurb, 'top:', topBoundary);
-        } else {
-          console.log('[ChatDrawer] No blurb found, falling back.');
         }
         // Fallback if blurb not found or topBoundary is too close to footer
         const subheader = document.querySelector('.profiles-roles-subheader');
@@ -102,7 +89,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
               const subheaderRect = subheader.getBoundingClientRect();
               topBoundary = subheaderRect.bottom;
             }
-            console.log('[ChatDrawer] Fallback to subheader/section boundary:', topBoundary);
           }
         }
         const windowHeight = window.innerHeight;
@@ -110,14 +96,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
         const minHeight = MIN_HEIGHT;
         const finalHeight = Math.max(available, minHeight);
         setMaxHeight(finalHeight);
-        setDebugInfo((info) => ({
-          ...info,
-          footerTop: windowHeight - footerHeight,
-          containerTop: topBoundary,
-          drawerHeight: drawerHeight ?? MIN_HEIGHT,
-          calculatedHeight: available,
-          maxHeight: finalHeight
-        }));
         // If the boundary is still bad, retry up to 5 times
         if (
           retryCount < 5 &&
@@ -132,31 +110,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
         if (timeoutId) clearTimeout(timeoutId);
       };
     }, [footerHeight, drawerHeight]);
-
-    // Debug overlay for blurb
-    useEffect(() => {
-      const blurb = Array.from(document.querySelectorAll('p')).find(
-        p => p.textContent && p.textContent.includes('Kicaco gives you a clear and up-to-date view')
-      );
-      let overlay: HTMLDivElement | null = null;
-      if (blurb) {
-        const rect = blurb.getBoundingClientRect();
-        overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.left = rect.left + 'px';
-        overlay.style.top = rect.top + 'px';
-        overlay.style.width = rect.width + 'px';
-        overlay.style.height = rect.height + 'px';
-        overlay.style.background = 'rgba(0,255,0,0.15)';
-        overlay.style.pointerEvents = 'none';
-        overlay.style.zIndex = '100';
-        overlay.style.border = '2px dashed green';
-        document.body.appendChild(overlay);
-      }
-      return () => {
-        if (overlay) document.body.removeChild(overlay);
-      };
-    }, [debugInfo.containerTop]);
 
     // Drag handlers
     const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -224,65 +177,6 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
 
     return (
       <Portal>
-        {/* Debug Overlay */}
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            pointerEvents: 'none',
-            zIndex: 50,
-          }}
-        >
-          {/* Footer Boundary */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: debugInfo.footerTop,
-              height: '2px',
-              background: 'red',
-              opacity: 0.5,
-            }}
-          />
-          {/* Container Boundary */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: debugInfo.containerTop,
-              height: '2px',
-              background: 'blue',
-              opacity: 0.5,
-            }}
-          />
-          {/* Debug Info */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 10,
-              right: 10,
-              background: 'rgba(0,0,0,0.8)',
-              color: 'white',
-              padding: '10px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              zIndex: 51,
-            }}
-          >
-            <div>Footer Top: {Math.round(debugInfo.footerTop)}px</div>
-            <div>Container Top: {Math.round(debugInfo.containerTop)}px</div>
-            <div>Drawer Height: {Math.round(drawerHeight ?? 0)}px</div>
-            <div>Calculated Height: {Math.round(debugInfo.calculatedHeight)}px</div>
-            <div>Max Height: {Math.round(debugInfo.maxHeight)}px</div>
-          </div>
-        </div>
-
         <div
           ref={containerRef}
           className={`chat-drawer-container w-full flex flex-col items-center${className ? ` ${className}` : ''}`}

@@ -77,9 +77,10 @@ export default function Home() {
     return localStorage.getItem('kicaco_intro_played') === 'true';
   });
   const introStartedRef = useRef(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [collectedFields, setCollectedFields] = useState<ParsedFields>({});
+  const [isInitializing, setIsInitializing] = useState(true);
   const { 
+    threadId,
+    setThreadId,
     messages, 
     addMessage, 
     removeMessageById, 
@@ -144,14 +145,38 @@ export default function Home() {
     localStorage.setItem('kicaco_intro_played', 'true');
   }, [hasIntroPlayed, addMessage]);
 
-  // Initialize thread and run test case
+  // Initialize thread
   useEffect(() => {
     const initThread = async () => {
-      const id = await createOpenAIThread();
-      setThreadId(id);
+      try {
+        setIsInitializing(true);
+        console.log('Initializing thread...');
+        const response = await createOpenAIThread();
+        console.log('Thread creation response:', response);
+        if (!response) {
+          throw new Error('No response from thread creation');
+        }
+        setThreadId(response);
+        // Log Zustand store value after setting
+        setTimeout(() => {
+          console.log('Zustand threadId after set:', useKicacoStore.getState().threadId);
+        }, 0);
+        console.log('Thread initialized with ID:', response);
+      } catch (error) {
+        console.error('Failed to initialize thread:', error);
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'assistant',
+          content: 'I\'m having trouble starting our conversation. Please refresh the page and try again.'
+        });
+      } finally {
+        setIsInitializing(false);
+      }
     };
-    initThread();
-  }, []);
+    if (!threadId) {
+      initThread();
+    }
+  }, [threadId, setThreadId, addMessage]);
 
   const [pendingEvent, setPendingEvent] = useState<any>(null);
   const [eventCreationMessage, setEventCreationMessage] = useState<string>("");
@@ -166,8 +191,16 @@ export default function Home() {
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
 
   const handleSend = async () => {
-    if (!input.trim() || !threadId) {
-      console.log('No input or threadId:', { input, threadId });
+    console.log('Current threadId:', threadId, 'isInitializing:', isInitializing);
+    if (!input.trim()) return;
+    if (isInitializing || !threadId) {
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: isInitializing
+          ? 'Please wait while I initialize our conversation...'
+          : 'I\'m having trouble with our conversation. Please refresh the page and try again.'
+      });
       return;
     }
 
@@ -597,6 +630,7 @@ export default function Home() {
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSend}
+        disabled={isInitializing || !threadId}
       />
     </div>
   );

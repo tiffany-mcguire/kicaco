@@ -197,20 +197,32 @@ export async function createOpenAIThread(): Promise<string> {
     return currentThreadId;
   }
 
-  const t0 = performance.now();
-  const thread = await openai.beta.threads.create();
-  const t1 = performance.now();
-  console.log(`🧵 New thread created in ${Math.round(t1 - t0)}ms: ${thread.id}`);
+  try {
+    const t0 = performance.now();
+    console.log('🧵 Creating new OpenAI thread...');
 
-  // Send the system prompt as the first user message (do NOT display this in the chat UI)
-  await openai.beta.threads.messages.create(thread.id, {
-    role: 'user',
-    content: SYSTEM_PROMPT
-  });
+    // Create the thread
+    const thread = await openai.beta.threads.create();
+    if (!thread || !thread.id) {
+      throw new Error('Failed to create thread: No thread ID returned');
+    }
 
-  // Store the new thread ID
-  currentThreadId = thread.id;
-  return thread.id;
+    // Store the thread ID
+    currentThreadId = thread.id;
+    console.log(`🧵 Thread created: ${thread.id} (${(performance.now() - t0).toFixed(0)}ms)`);
+
+    // Send the system prompt as the first message
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: SYSTEM_PROMPT
+    });
+
+    return thread.id;
+  } catch (error) {
+    console.error('Failed to create thread:', error);
+    currentThreadId = null;
+    throw error;
+  }
 }
 
 // Add a function to clear the thread (useful for testing or resetting conversation)
@@ -221,148 +233,122 @@ export function clearThread(): void {
 }
 
 async function pollRunStatus(threadId: string, runId: string, maxWaitTime: number): Promise<string> {
-  let runStatus = 'in_progress';
   let waited = 0;
-  let attempts = 0;
-  const pollStart = performance.now();
-  
-  // Start with fast polling (100ms) for the first 20 attempts
-  const INITIAL_INTERVAL = 100;
-  const MAX_ATTEMPTS_BEFORE_BACKOFF = 20;
-  const MAX_INTERVAL = 1000;
-  const BACKOFF_FACTOR = 1.2; // More gradual backoff
+  const startTime = Date.now();
 
-  while (
-    runStatus !== 'completed' &&
-    runStatus !== 'failed' &&
-    runStatus !== 'cancelled' &&
-    waited < maxWaitTime
-  ) {
-    const pollIterationStart = performance.now();
-    const updatedRun = await openai.beta.threads.runs.retrieve(threadId, runId);
-    const pollIterationEnd = performance.now();
-    
-    runStatus = updatedRun.status;
-    attempts++;
-    
-    // Log each poll attempt with timing
-    if (verbose) {
-      console.log(`⏱️ Poll #${attempts} took ${Math.round(pollIterationEnd - pollIterationStart)}ms, status: ${runStatus}`);
-    }
-
-    // If we're done, return immediately
-    if (runStatus === 'completed' || runStatus === 'failed' || runStatus === 'cancelled') {
-      const pollEnd = performance.now();
-      console.log(`✅ Run ${runStatus} after ${attempts} attempts, total polling time: ${Math.round(pollEnd - pollStart)}ms`);
-      return runStatus;
-    }
-
-    // Calculate next interval
-    let interval;
-    if (attempts < MAX_ATTEMPTS_BEFORE_BACKOFF) {
-      interval = INITIAL_INTERVAL;
-    } else {
-      // More gradual backoff after initial fast polling
-      interval = Math.min(
-        INITIAL_INTERVAL * Math.pow(BACKOFF_FACTOR, attempts - MAX_ATTEMPTS_BEFORE_BACKOFF),
-        MAX_INTERVAL
-      );
-    }
-
-    // Add a small random jitter to prevent thundering herd
-    interval += Math.random() * 50;
-
-    await new Promise(res => setTimeout(res, interval));
-    waited += interval;
+  // Log the values before making the API call
+  console.log('pollRunStatus called with:', { threadId, runId });
+  if (!threadId || !runId) {
+    throw new Error(`pollRunStatus: threadId or runId is undefined! threadId: ${threadId}, runId: ${runId}`);
   }
 
-  const pollEnd = performance.now();
-  console.log(`⏱️ Polling stopped after ${attempts} attempts, total time: ${Math.round(pollEnd - pollStart)}ms`);
+  while (waited < maxWaitTime) {
+    try {
+      // FIX: Use correct parameter order for OpenAI SDK v5
+      const runStatus = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
+      
+      if (runStatus.status === 'completed') {
+        // Get messages
+        const messages = await openai.beta.threads.messages.list(threadId);
+        const assistantMessages = messages.data
+          .filter(m => m.role === 'assistant')
+          .sort((a, b) => b.created_at - a.created_at);
 
-  if (waited >= maxWaitTime) {
-    console.error(`Run timed out after ${maxWaitTime}ms. Final status: ${runStatus}`);
-    throw new Error("Kicaco got stuck thinking. Please try again.");
+        if (assistantMessages.length === 0) {
+          throw new Error('No assistant messages found after run completion');
+        }
+
+        const reply = assistantMessages[0];
+        // Normalize the content
+        let normalizedContent = '';
+        if (typeof reply.content === 'string') {
+          normalizedContent = reply.content;
+        } else if (Array.isArray(reply.content)) {
+          normalizedContent = reply.content.map(part => {
+            if (typeof part === 'string') return part;
+            if (part && typeof part === 'object') {
+              const text = (part as any).text;
+              const value = (part as any).value;
+              if (text && typeof text === 'object' && typeof text.value === 'string') return text.value;
+              if (typeof text === 'string') return text;
+              if (typeof value === 'string') return value;
+              return '';
+            }
+            return '';
+          }).join('');
+        } else if (reply.content && typeof reply.content === 'object') {
+          const text = (reply.content as any).text;
+          const value = (reply.content as any).value;
+          if (text && typeof text === 'object' && typeof text.value === 'string') normalizedContent = text.value;
+          else if (typeof text === 'string') normalizedContent = text;
+          else if (typeof value === 'string') normalizedContent = value;
+          else normalizedContent = JSON.stringify(reply.content);
+        }
+
+        return normalizedContent;
+      }
+
+      if (runStatus.status === 'failed') {
+        throw new Error('Run failed');
+      }
+
+      if (runStatus.status === 'requires_action') {
+        throw new Error('Run requires action');
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      waited = Date.now() - startTime;
+    } catch (error) {
+      console.error('Error polling run status:', error);
+      throw error;
+    }
   }
 
-  return runStatus;
+  throw new Error('Assistant took too long to respond');
 }
 
 export async function sendMessageToAssistant(threadId: string, userMessage: string): Promise<string> {
   if (!threadId) {
-    throw new Error('Thread ID is required');
+    throw new Error('No threadId provided. Did you forget to call createOpenAIThread()?');
+  }
+
+  if (!userMessage.trim()) {
+    throw new Error('Empty message provided');
   }
 
   try {
-    // Add user message to thread
-    await openai.beta.threads.messages.create(threadId, {
+    console.log(`📤 Sending message to thread ${threadId}...`);
+    
+    // Add message to thread
+    const message = await openai.beta.threads.messages.create(threadId, {
       role: 'user',
       content: userMessage
     });
+
+    if (!message || !message.id) {
+      throw new Error('Failed to create message: No message ID returned');
+    }
 
     // Create a run
     const run = await openai.beta.threads.runs.create(threadId, {
       assistant_id: import.meta.env.VITE_ASSISTANT_ID
     });
 
-    // Poll for run completion with timeout
-    const MAX_WAIT_TIME = 30000; // 30 seconds
-    let waited = 0;
-    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-    while (runStatus.status !== 'completed' && waited < MAX_WAIT_TIME) {
-      if (runStatus.status === 'failed') {
-        throw new Error('Run failed');
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      waited += 1000;
-      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
-    }
-    if (waited >= MAX_WAIT_TIME) {
-      console.error('Assistant took too long to respond.');
-      return 'Sorry, I took too long to respond. Please try again or rephrase your message.';
+    if (!run || !run.id) {
+      throw new Error('Failed to create run: No run ID returned');
     }
 
-    // Get messages
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const assistantMessages = messages.data
-      .filter(m => m.role === 'assistant')
-      .sort((a, b) => b.created_at - a.created_at);
-
-    if (assistantMessages.length === 0) {
-      console.error('No assistant messages found after run completion.');
-      return 'Sorry, I could not generate a response. Please try again.';
+    // Poll for completion
+    const response = await pollRunStatus(threadId, run.id, 30000);
+    if (!response) {
+      throw new Error('No response received from assistant');
     }
 
-    const reply = assistantMessages[0];
-    // Normalize the content
-    let normalizedContent = '';
-    if (typeof reply.content === 'string') {
-      normalizedContent = reply.content;
-    } else if (Array.isArray(reply.content)) {
-      normalizedContent = reply.content.map(part => {
-        if (typeof part === 'string') return part;
-        if (part && typeof part === 'object') {
-          const text = (part as any).text;
-          const value = (part as any).value;
-          if (text && typeof text === 'object' && typeof text.value === 'string') return text.value;
-          if (typeof text === 'string') return text;
-          if (typeof value === 'string') return value;
-          return '';
-        }
-        return '';
-      }).join('');
-    } else if (reply.content && typeof reply.content === 'object') {
-      const text = (reply.content as any).text;
-      const value = (reply.content as any).value;
-      if (text && typeof text === 'object' && typeof text.value === 'string') normalizedContent = text.value;
-      else if (typeof text === 'string') normalizedContent = text;
-      else if (typeof value === 'string') normalizedContent = value;
-      else normalizedContent = JSON.stringify(reply.content);
-    }
-
-    return normalizedContent;
+    return response;
   } catch (error) {
     console.error('Error in sendMessageToAssistant:', error);
-    return 'Sorry, something went wrong. Please try again.';
+    throw error;
   }
 }
 
