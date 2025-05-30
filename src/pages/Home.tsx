@@ -91,7 +91,8 @@ export default function Home() {
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44); // initial: minimized height + gap
+  const [drawerHeight, setDrawerHeight] = useState(44); // collapsed height + gap
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [drawerTop, setDrawerTop] = useState(window.innerHeight); // initial: bottom of viewport
   const [subheaderBottom, setSubheaderBottom] = useState(0);
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
@@ -364,10 +365,33 @@ export default function Home() {
     }
   }, [messages.length, visibleCount]);
 
-  // Update drawerTop when drawer height changes
+  // On mount, set initial drawer height just below the second blurb
+  useLayoutEffect(() => {
+    const blurbs = Array.from(document.querySelectorAll('p.section-blurb'));
+    const footer = document.querySelector('.global-footer');
+    const footerHeight = footer ? footer.getBoundingClientRect().height : 0;
+    if (blurbs.length >= 2) {
+      const secondBlurb = blurbs[1];
+      const blurbRect = secondBlurb.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const padding = 4;
+      const initialHeight = windowHeight - footerHeight - blurbRect.bottom - padding;
+      setDrawerHeight(Math.max(initialHeight, 44));
+    }
+    // Also set maxDrawerHeight to the top of the first blurb
+    if (blurbs.length >= 1) {
+      const firstBlurb = blurbs[0];
+      const blurbRect = firstBlurb.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const padding = 4;
+      const maxHeight = windowHeight - footerHeight - blurbRect.top - padding;
+      setMaxDrawerHeight(Math.max(maxHeight, 44));
+    }
+  }, []);
+
+  // Handler for drawer height change (drag, etc)
   const handleDrawerHeightChange = (height: number) => {
-    setDrawerHeight(height);
-    setDrawerTop(window.innerHeight - height);
+    setDrawerHeight(Math.max(Math.min(height, maxDrawerHeight), 44));
   };
 
   // Update subheaderBottom on mount and resize
@@ -473,10 +497,10 @@ export default function Home() {
           </div>
         )}
       </div>
-      <GlobalChatDrawer 
-        ref={chatDrawerRef} 
-        onHeightChange={handleDrawerHeightChange} 
-        initialHeight={200} // Set initial height to match second subheader position
+      <GlobalChatDrawer
+        drawerHeight={drawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        onHeightChange={handleDrawerHeightChange}
       >
         <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
           {messages.map((msg, idx) => {

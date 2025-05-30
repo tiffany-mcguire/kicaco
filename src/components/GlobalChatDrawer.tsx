@@ -11,6 +11,8 @@ interface GlobalChatDrawerProps extends PropsWithChildren {
   initialHeight?: number; // New prop for custom initial height
   className?: string;
   onHeightChange?: (height: number) => void;
+  drawerHeight?: number; // Add this
+  maxDrawerHeight?: number; // Add this
 }
 
 export interface GlobalChatDrawerHandle {
@@ -18,167 +20,274 @@ export interface GlobalChatDrawerHandle {
 }
 
 const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProps>(
-  ({ children, initialClosed = true, initialPosition = 'bottom', initialHeight, className, onHeightChange }, ref) => {
-    const [maxHeight, setMaxHeight] = useState(400); // fallback default
+  ({ children, initialClosed = true, initialPosition = 'bottom', initialHeight, className, onHeightChange, drawerHeight, maxDrawerHeight }, ref) => {
     const [footerHeight, setFooterHeight] = useState(0);
-    const [headerHeight, setHeaderHeight] = useState(0);
-    const y = useMotionValue(0);
+    const [maxHeight, setMaxHeight] = useState(400); // fallback default
     const containerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
     const [isFullyClosed, setIsFullyClosed] = useState(true);
-    const [isFullyOpen, setIsFullyOpen] = useState(false);
+    const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer
+    const MIN_HEIGHT = 48; // px, just the handle
+    const [debugInfo, setDebugInfo] = useState({
+      footerTop: 0,
+      containerTop: 0,
+      drawerHeight: MIN_HEIGHT,
+      calculatedHeight: 0,
+      maxHeight: 0
+    });
+    const [isDragging, setIsDragging] = useState(false);
+    const dragState = useRef({
+      startY: 0,
+      startHeight: 0
+    });
 
-    // Robustly wait for footer and subheader to exist before measuring
+    // Dynamically measure footer height
     useLayoutEffect(() => {
-      let animationFrame: number;
-      let retryCount = 0;
-      let retryTimeout: number;
-      function updateHeights() {
+      const updateFooterHeight = () => {
         const footer = document.querySelector('.global-footer');
-        const subheader = document.querySelector('.profiles-roles-subheader');
-        const container = containerRef.current;
-        if (footer && subheader && container) {
-          const footerRect = (footer as HTMLElement).getBoundingClientRect();
-          const subheaderRect = (subheader as HTMLElement).getBoundingClientRect();
-          setFooterHeight(footerRect.height);
-
-          // Find the first section (Upcoming Events)
-          const firstSection = subheader.querySelector('section:first-child');
-          let maxExtension = subheaderRect.top + 8; // fallback
-          if (firstSection) {
-            // Find the header row (flex container with icon and title)
-            const headerRow = firstSection.querySelector('div.flex.items-center');
-            if (headerRow) {
-              const headerRowRect = headerRow.getBoundingClientRect();
-              maxExtension = headerRowRect.bottom + 8; // 8px padding below header
-            }
-          }
-          setHeaderHeight(maxExtension);
-
-          // Available height is from max extension point to footer top
-          const available = Math.floor(footerRect.top - maxExtension);
-          setMaxHeight(available > 0 ? available : 400);
-        } else if (retryCount < 20) { // retry for up to 1 second
-          retryCount++;
-          retryTimeout = window.setTimeout(updateHeights, 50);
+        if (footer) {
+          setFooterHeight(footer.getBoundingClientRect().height);
         } else {
           setFooterHeight(0);
-          setHeaderHeight(0);
-          setMaxHeight(400); // fallback default
         }
-      }
-      updateHeights();
-      window.addEventListener('resize', updateHeights);
-      // Use ResizeObserver for robust detection
+      };
+      updateFooterHeight();
+      window.addEventListener('resize', updateFooterHeight);
       let ro: ResizeObserver | null = null;
-      if (window.ResizeObserver) {
-        ro = new ResizeObserver(() => {
-          cancelAnimationFrame(animationFrame);
-          animationFrame = requestAnimationFrame(updateHeights);
-        });
-        const footer = document.querySelector('.global-footer');
-        const subheader = document.querySelector('.profiles-roles-subheader');
-        if (footer) ro.observe(footer);
-        if (subheader) ro.observe(subheader);
-        if (containerRef.current) ro.observe(containerRef.current);
+      const footer = document.querySelector('.global-footer');
+      if (footer && window.ResizeObserver) {
+        ro = new ResizeObserver(updateFooterHeight);
+        ro.observe(footer);
       }
       return () => {
-        window.removeEventListener('resize', updateHeights);
+        window.removeEventListener('resize', updateFooterHeight);
         if (ro) ro.disconnect();
-        cancelAnimationFrame(animationFrame);
-        clearTimeout(retryTimeout);
       };
     }, []);
 
-    // Clamp drag between fully open (just under header) and minimized (just above footer)
-    const dragConstraints = { top: 0, bottom: Math.max(0, maxHeight - MINIMIZED_HEIGHT) };
-
-    // Set initial position to just under Keepers section on mount
+    // Calculate max available height for the drawer
     useLayoutEffect(() => {
-      let hasSetInitial = false;
-      function setInitialPosition() {
-        if (hasSetInitial) return;
+      let retryCount = 0;
+      let timeoutId: number | undefined;
+      function measureAndSetBoundary() {
+        let topBoundary = 0;
+        // Find the blurb <p> by its text content
+        const blurb = Array.from(document.querySelectorAll('p')).find(
+          p => p.textContent && p.textContent.includes('Kicaco gives you a clear and up-to-date view')
+        );
+        let blurbRect = null;
+        if (blurb) {
+          blurbRect = blurb.getBoundingClientRect();
+          topBoundary = blurbRect.top;
+          // Debug log
+          // @ts-ignore
+          window.__drawerBlurb = blurb;
+          console.log('[ChatDrawer] Using blurb:', blurb, 'top:', topBoundary);
+        } else {
+          console.log('[ChatDrawer] No blurb found, falling back.');
+        }
+        // Fallback if blurb not found or topBoundary is too close to footer
         const subheader = document.querySelector('.profiles-roles-subheader');
-        const sections = subheader?.querySelectorAll('section');
-        const secondSection = sections?.[1];
-        if (secondSection && subheader) {
-          const keepersBottom = secondSection.getBoundingClientRect().bottom + 12; // 12px padding
-          // Calculate max extension (header row of first section + 8px)
-          let maxExtension = subheader.getBoundingClientRect().top + 8; // fallback
-          const firstSection = subheader.querySelector('section:first-child');
-          if (firstSection) {
-            const headerRow = firstSection.querySelector('div.flex.items-center');
-            if (headerRow) {
-              maxExtension = headerRow.getBoundingClientRect().bottom + 8;
+        if (
+          !blurb ||
+          !blurbRect ||
+          (footerHeight > 0 && Math.abs(window.innerHeight - footerHeight - topBoundary) < 50)
+        ) {
+          if (subheader) {
+            const firstSection = subheader.querySelector('section');
+            if (firstSection) {
+              const sectionRect = firstSection.getBoundingClientRect();
+              topBoundary = sectionRect.bottom;
+            } else {
+              const subheaderRect = subheader.getBoundingClientRect();
+              topBoundary = subheaderRect.bottom;
             }
+            console.log('[ChatDrawer] Fallback to subheader/section boundary:', topBoundary);
           }
-          // The initial Y is the distance between the max extension and the keepers bottom
-          const initialY = keepersBottom - maxExtension;
-          y.set(initialY);
-          hasSetInitial = true;
-          return;
         }
-        // Fallback to default position
-        let initialY = dragConstraints.bottom;
-        if (initialPosition === 'top') {
-          initialY = dragConstraints.top;
-        } else if (initialHeight !== undefined) {
-          initialY = Math.max(0, maxHeight - initialHeight);
+        const windowHeight = window.innerHeight;
+        const available = windowHeight - footerHeight - topBoundary - CHAT_FOOTER_PADDING;
+        const minHeight = MIN_HEIGHT;
+        const finalHeight = Math.max(available, minHeight);
+        setMaxHeight(finalHeight);
+        setDebugInfo((info) => ({
+          ...info,
+          footerTop: windowHeight - footerHeight,
+          containerTop: topBoundary,
+          drawerHeight: drawerHeight ?? MIN_HEIGHT,
+          calculatedHeight: available,
+          maxHeight: finalHeight
+        }));
+        // If the boundary is still bad, retry up to 5 times
+        if (
+          retryCount < 5 &&
+          (topBoundary === 0 || (footerHeight > 0 && Math.abs(window.innerHeight - footerHeight - topBoundary) < 50))
+        ) {
+          retryCount++;
+          timeoutId = window.setTimeout(measureAndSetBoundary, 100);
         }
-        y.set(initialY);
-        hasSetInitial = true;
       }
-      setInitialPosition();
-    }, [dragConstraints.bottom, initialPosition, initialHeight, maxHeight]);
-
-    // Expose setToTop method to parent via ref
-    useImperativeHandle(ref, () => ({
-      setToTop: () => {
-        y.set(0);
-      }
-    }), [y]);
-
-    // Track if drawer is fully closed
-    useMotionValueEvent(y, 'change', (latest) => {
-      setIsFullyClosed(Math.abs(latest - dragConstraints.bottom) < 2);
-      // Persist drawer position
-      localStorage.setItem(STORAGE_KEY, String(latest));
-    });
-
-    // Report drawer height to parent
-    useEffect(() => {
-      if (!onHeightChange) return;
-      const update = () => {
-        // Drawer visible height = maxHeight - y
-        onHeightChange(maxHeight - y.get());
+      measureAndSetBoundary();
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId);
       };
-      update();
-      const unsub = y.on('change', update);
-      return () => unsub();
-    }, [maxHeight, y, onHeightChange]);
+    }, [footerHeight, drawerHeight]);
 
-    // Dynamic handle text and aria-label
-    const handleText = isFullyClosed ? 'Slide up to chat with Kicaco' : 'Slide down to see more';
-
-    // Lock body scroll when drawer is fully open
+    // Debug overlay for blurb
     useEffect(() => {
-      if (isFullyClosed) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
+      const blurb = Array.from(document.querySelectorAll('p')).find(
+        p => p.textContent && p.textContent.includes('Kicaco gives you a clear and up-to-date view')
+      );
+      let overlay: HTMLDivElement | null = null;
+      if (blurb) {
+        const rect = blurb.getBoundingClientRect();
+        overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.left = rect.left + 'px';
+        overlay.style.top = rect.top + 'px';
+        overlay.style.width = rect.width + 'px';
+        overlay.style.height = rect.height + 'px';
+        overlay.style.background = 'rgba(0,255,0,0.15)';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '100';
+        overlay.style.border = '2px dashed green';
+        document.body.appendChild(overlay);
       }
       return () => {
-        document.body.style.overflow = '';
+        if (overlay) document.body.removeChild(overlay);
       };
-    }, [isFullyClosed]);
+    }, [debugInfo.containerTop]);
+
+    // Drag handlers
+    const onDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+      setIsDragging(true);
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      dragState.current = {
+        startY: clientY,
+        startHeight: drawerHeight ?? MIN_HEIGHT
+      };
+      document.body.style.userSelect = 'none';
+    };
+    const onDragMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDragging) return;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+      const delta = clientY - dragState.current.startY;
+      let newHeight = dragState.current.startHeight - delta;
+      const maxH = maxDrawerHeight ?? maxHeight;
+      newHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, maxH));
+      if (onHeightChange) onHeightChange(newHeight);
+    };
+    const onDragEnd = () => {
+      setIsDragging(false);
+      document.body.style.userSelect = '';
+    };
+    useEffect(() => {
+      if (!isDragging) return;
+      const move = (e: MouseEvent | TouchEvent) => onDragMove(e);
+      const up = () => onDragEnd();
+      window.addEventListener('mousemove', move);
+      window.addEventListener('touchmove', move);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('touchend', up);
+      return () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('touchmove', move);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('touchend', up);
+      };
+    }, [isDragging]);
+
+    // Set initial drawer position on first load (just below second blurb)
+    useLayoutEffect(() => {
+      // Only set if there is no saved position
+      const saved = localStorage.getItem('globalChatDrawerInitialHeight');
+      if (saved) return;
+      // Find all blurbs with class 'section-blurb'
+      const blurbs = Array.from(document.querySelectorAll('p.section-blurb'));
+      if (blurbs.length >= 2) {
+        const secondBlurb = blurbs[1];
+        const blurbRect = secondBlurb.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const desiredTop = blurbRect.bottom + CHAT_FOOTER_PADDING;
+        const initialHeight = windowHeight - footerHeight - desiredTop;
+        localStorage.setItem('globalChatDrawerInitialHeight', String(initialHeight));
+      }
+    }, [footerHeight]);
+
+    // Restore previous drawer position on navigation (if exists)
+    useLayoutEffect(() => {
+      const saved = localStorage.getItem('globalChatDrawerSavedHeight');
+      if (saved) {
+        localStorage.setItem('globalChatDrawerSavedHeight', saved);
+      }
+    }, []);
 
     return (
       <Portal>
-        <motion.div
+        {/* Debug Overlay */}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'none',
+            zIndex: 50,
+          }}
+        >
+          {/* Footer Boundary */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: debugInfo.footerTop,
+              height: '2px',
+              background: 'red',
+              opacity: 0.5,
+            }}
+          />
+          {/* Container Boundary */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: debugInfo.containerTop,
+              height: '2px',
+              background: 'blue',
+              opacity: 0.5,
+            }}
+          />
+          {/* Debug Info */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 10,
+              right: 10,
+              background: 'rgba(0,0,0,0.8)',
+              color: 'white',
+              padding: '10px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              zIndex: 51,
+            }}
+          >
+            <div>Footer Top: {Math.round(debugInfo.footerTop)}px</div>
+            <div>Container Top: {Math.round(debugInfo.containerTop)}px</div>
+            <div>Drawer Height: {Math.round(drawerHeight ?? 0)}px</div>
+            <div>Calculated Height: {Math.round(debugInfo.calculatedHeight)}px</div>
+            <div>Max Height: {Math.round(debugInfo.maxHeight)}px</div>
+          </div>
+        </div>
+
+        <div
           ref={containerRef}
           className={`chat-drawer-container w-full flex flex-col items-center${className ? ` ${className}` : ''}`}
           style={{
-            y,
-            height: maxHeight,
+            height: drawerHeight ?? MIN_HEIGHT,
             position: 'fixed',
             left: 0,
             right: 0,
@@ -191,56 +300,36 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
             touchAction: 'none',
             display: 'flex',
             flexDirection: 'column',
-          }}
-          drag="y"
-          dragConstraints={dragConstraints}
-          dragElastic={0.06}
-          dragTransition={{ 
-            bounceStiffness: 500, 
-            bounceDamping: 40,
-            power: 0.8,
-            timeConstant: 200
-          }}
-          initial={false}
-          transition={{ 
-            type: 'spring', 
-            stiffness: 250, 
-            damping: 30,
-            mass: 1,
-            velocity: 0.3,
-            restDelta: 0.001,
-            restSpeed: 0.001
+            transition: isDragging ? 'none' : 'height 0.2s',
           }}
         >
-          {/* Handle Bar with subtle top border and dynamic text */}
+          {/* Handle Bar */}
           <div
-            className="chat-drawer-handle w-full flex flex-col items-center cursor-grab select-none bg-white border-t border-b border-gray-200"
-            style={{ height: MINIMIZED_HEIGHT, borderRadius: '16px 16px 0 0' }}
+            className="chat-drawer-handle w-full flex flex-col items-center cursor-ns-resize select-none bg-white border-t border-b border-gray-200"
+            style={{ height: 32, borderRadius: '16px 16px 0 0', touchAction: 'none' }}
             role="button"
-            aria-label={handleText}
+            aria-label={isFullyClosed ? 'Open chat drawer' : 'Close chat drawer'}
             tabIndex={0}
+            onMouseDown={onDragStart}
+            onTouchStart={onDragStart}
           >
             <div className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={handleText}
-                className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center"
-                style={{ lineHeight: 1, minHeight: 18 }}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
-                aria-live="polite"
-              >
-                {handleText}
-              </motion.div>
-            </AnimatePresence>
+            <div className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center" style={{ lineHeight: 1, minHeight: 18 }}>
+              {(drawerHeight ?? MIN_HEIGHT) <= MIN_HEIGHT + 2 ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
+            </div>
           </div>
           {/* Chat content */}
-          <div className="chat-drawer-content flex-1 w-full px-4 pt-2 pb-4 overflow-y-auto">
+          <div
+            ref={contentRef}
+            className="chat-drawer-content flex-1 w-full px-4 pt-2 overflow-y-auto"
+            style={{ 
+              maxHeight: (drawerHeight ?? MIN_HEIGHT) - 32,
+              transition: isDragging ? 'none' : 'max-height 0.2s'
+            }}
+          >
             {children}
           </div>
-        </motion.div>
+        </div>
       </Portal>
     );
   }
