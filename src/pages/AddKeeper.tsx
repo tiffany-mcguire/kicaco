@@ -5,11 +5,13 @@ import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
 import { Link, useLocation } from 'react-router-dom';
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { useKicacoStore } from '../store/kicacoStore';
+import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 // Notebook/Binder Icon (Lucide style, simple)
 const AddKeeperIcon = () => {
@@ -36,16 +38,49 @@ const AddKeeperIcon = () => {
 export default function AddKeeper() {
   const [input, setInput] = useState("");
   const location = useLocation();
-  const headerRef = React.useRef<HTMLDivElement>(null);
-  const subheaderRef = React.useRef<HTMLDivElement>(null);
-  const footerRef = React.useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  React.useLayoutEffect(() => {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const subheaderRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const pageScrollRef = useRef<HTMLDivElement>(null);
+
+  const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
+  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
+  const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
+
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesContentRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const autoscrollFlagRef = useRef(false);
+  const previousMessagesLengthRef = useRef(0);
+  const firstEffectRunAfterLoadRef = useRef(true);
+
+  const {
+    messages,
+    threadId,
+    addMessage,
+    removeMessageById,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition,
+  } = useKicacoStore();
+
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  const handleGlobalDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+    
+    setMainContentDrawerOffset(height);
+    setMainContentTopClearance(window.innerHeight - height);
+  };
+
+  useLayoutEffect(() => {
     function updateSubheaderBottom() {
       if (subheaderRef.current) {
         setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
@@ -53,20 +88,174 @@ export default function AddKeeper() {
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
+
+    const calculateMaxDrawerHeight = () => {
+      const subheaderElement = subheaderRef.current;
+      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
+      if (subheaderElement) {
+        const subheaderRect = subheaderElement.getBoundingClientRect();
+        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
+        setMaxDrawerHeight(Math.max(44, availableHeight));
+      } else {
+        setMaxDrawerHeight(window.innerHeight * 0.6);
+      }
+    };
+    calculateMaxDrawerHeight();
+    window.addEventListener('resize', calculateMaxDrawerHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    };
   }, []);
 
-  React.useEffect(() => {
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
+  useEffect(() => {
+    if (mainContentDrawerOffset > 44 + 8) {
+      setMainContentScrollOverflow('auto');
     } else {
-      setScrollOverflow('hidden');
+      setMainContentScrollOverflow('hidden');
     }
-  }, [drawerHeight]);
+  }, [mainContentDrawerOffset]);
 
-  const handleDrawerHeightChange = (height: number) => {
-    setDrawerHeight(height);
-    setDrawerTop(window.innerHeight - height);
+  // Chat Scroll Management Logic
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) return;
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) {
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop);
+        requestAnimationFrame(() => { // Second scroll for pending rendering
+          if (internalChatContentScrollRef.current) {
+            const currentSc2 = internalChatContentScrollRef.current;
+            const targetScrollTop2 = Math.max(0, currentSc2.scrollHeight - currentSc2.clientHeight);
+            if (Math.abs(currentSc2.scrollTop - targetScrollTop2) > 1) {
+              currentSc2.scrollTop = targetScrollTop2;
+              if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop2);
+            }
+          }
+        });
+      }
+    });
+  }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]);
+
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+  }, []);
+
+  useEffect(() => { // Main Scroll/Restore/Autoscroll Effect
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer) return;
+    let isConsideredNewMessages = false;
+    if (firstEffectRunAfterLoadRef.current) {
+      if (chatScrollPosition !== null && Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+        scrollContainer.scrollTop = chatScrollPosition;
+      }
+      firstEffectRunAfterLoadRef.current = false;
+    } else {
+      if (messages.length > previousMessagesLengthRef.current) isConsideredNewMessages = true;
+    }
+    if (isConsideredNewMessages) {
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom();
+    }
+    previousMessagesLengthRef.current = messages.length;
+    return () => { firstEffectRunAfterLoadRef.current = true; };
+  }, [messages, chatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // ResizeObserver Effect
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer || !window.ResizeObserver) return;
+    const observer = new ResizeObserver(() => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current) executeScrollToBottom();
+    });
+    observer.observe(scrollContainer);
+    resizeObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); resizeObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // MutationObserver Effect
+    const contentElement = messagesContentRef.current;
+    if (!scrollRefReady || !contentElement || !window.MutationObserver) return;
+    const observer = new MutationObserver((mutationsList) => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current && mutationsList.length > 0) executeScrollToBottom();
+    });
+    observer.observe(contentElement, { childList: true, subtree: true, characterData: true });
+    mutationObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); mutationObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // Manual Scroll useEffect
+    const scrollElement = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollElement) return;
+    let scrollTimeout: number;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          setChatScrollPosition(sc.scrollTop);
+          autoscrollFlagRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 5;
+        }
+      }, 150);
+    };
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
+  }, [scrollRefReady, setChatScrollPosition]);
+
+  // Full implementation for handleSendMessage
+  const handleSendMessage = async () => {
+    if (!input.trim()) return; // Use the existing input state for chat
+
+    if (!threadId) {
+      console.error("AddKeeper: Cannot send message, threadId is null.");
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
+      });
+      return;
+    }
+
+    const userMessageId = crypto.randomUUID();
+    addMessage({
+      id: userMessageId,
+      sender: 'user',
+      content: input, 
+    });
+    const messageToSend = input;
+    setInput(""); // Clear input
+
+    autoscrollFlagRef.current = true;
+
+    const thinkingMessageId = 'thinking-addkeeper';
+    addMessage({
+      id: thinkingMessageId,
+      sender: 'assistant',
+      content: 'Kicaco is thinking'
+    });
+
+    try {
+      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: assistantResponseText,
+      });
+    } catch (error) {
+      console.error("Error sending message from AddKeeper:", error);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I encountered an error. Please try again.",
+      });
+    }
   };
 
   return (
@@ -80,29 +269,46 @@ export default function AddKeeper() {
         frameOpacity={0.75}
       />
       <div
-        ref={scrollRef}
+        ref={pageScrollRef}
         className="add-keeper-content-scroll bg-white"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
-          bottom: window.innerHeight - drawerTop,
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: scrollOverflow,
+          overflowY: mainContentScrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         {/* Content intentionally left empty for now */}
       </div>
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+      <GlobalChatDrawer 
+        onHeightChange={handleGlobalDrawerHeightChange}
+        drawerHeight={currentDrawerHeight} 
+        maxDrawerHeight={maxDrawerHeight}
+        scrollContainerRefCallback={chatContentScrollRef}
+      >
+        <div 
+          ref={messagesContentRef}
+          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+        >
+          {/* Render Messages */}
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              side={msg.sender === 'user' ? 'right' : 'left'}
+            >
+              {msg.content}
+            </ChatBubble>
+          ))}
         </div>
       </GlobalChatDrawer>
       <GlobalFooter
         ref={footerRef}
-        value={input}
+        value={input} 
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        onSend={handleSendMessage} // Connect send handler
       />
     </div>
   );

@@ -5,11 +5,13 @@ import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
 import { Link, useLocation } from 'react-router-dom';
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { useKicacoStore } from '../store/kicacoStore';
+import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 const WeeklyIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -79,23 +81,49 @@ const AddByDayButton = (props: { label?: string }) => {
 export default function WeeklyCalendar() {
   const [input, setInput] = useState("");
   const location = useLocation();
-  const headerRef = React.useRef<HTMLDivElement>(null);
-  const subheaderRef = React.useRef<HTMLDivElement>(null);
-  const footerRef = React.useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const [contentPadding, setContentPadding] = useState(44);
 
-  const handleDrawerHeightChange = (height: number) => {
-    setDrawerHeight(height);
-    setDrawerTop(window.innerHeight - height);
-    setContentPadding(height);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const subheaderRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const pageScrollRef = useRef<HTMLDivElement>(null);
+
+  const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
+  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
+  const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
+
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesContentRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const autoscrollFlagRef = useRef(false);
+  const previousMessagesLengthRef = useRef(0);
+  const firstEffectRunAfterLoadRef = useRef(true);
+
+  const {
+    messages,
+    threadId,
+    addMessage,
+    removeMessageById,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition,
+  } = useKicacoStore();
+
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  const handleGlobalDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+    
+    setMainContentDrawerOffset(height);
+    setMainContentTopClearance(window.innerHeight - height);
   };
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     function updateSubheaderBottom() {
       if (subheaderRef.current) {
         setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
@@ -103,16 +131,175 @@ export default function WeeklyCalendar() {
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
+
+    const calculateMaxDrawerHeight = () => {
+      const subheaderElement = subheaderRef.current;
+      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
+      if (subheaderElement) {
+        const subheaderRect = subheaderElement.getBoundingClientRect();
+        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
+        setMaxDrawerHeight(Math.max(44, availableHeight));
+      } else {
+        setMaxDrawerHeight(window.innerHeight * 0.6);
+      }
+    };
+    calculateMaxDrawerHeight();
+    window.addEventListener('resize', calculateMaxDrawerHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    };
   }, []);
 
-  React.useEffect(() => {
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
+  useEffect(() => {
+    if (mainContentDrawerOffset > 44 + 8) {
+      setMainContentScrollOverflow('auto');
     } else {
-      setScrollOverflow('hidden');
+      setMainContentScrollOverflow('hidden');
     }
-  }, [drawerHeight]);
+  }, [mainContentDrawerOffset]);
+
+  // Chat Scroll Management Logic
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) return;
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) {
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop);
+        requestAnimationFrame(() => { // Second scroll for pending rendering
+          if (internalChatContentScrollRef.current) {
+            const currentSc2 = internalChatContentScrollRef.current;
+            const targetScrollTop2 = Math.max(0, currentSc2.scrollHeight - currentSc2.clientHeight);
+            if (Math.abs(currentSc2.scrollTop - targetScrollTop2) > 1) {
+              currentSc2.scrollTop = targetScrollTop2;
+              if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop2);
+            }
+          }
+        });
+      }
+    });
+  }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]);
+
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+  }, []);
+
+  useEffect(() => { // Main Scroll/Restore/Autoscroll Effect
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer) return;
+    let isConsideredNewMessages = false;
+    if (firstEffectRunAfterLoadRef.current) {
+      if (chatScrollPosition !== null && Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+        scrollContainer.scrollTop = chatScrollPosition;
+      }
+      firstEffectRunAfterLoadRef.current = false;
+    } else {
+      if (messages.length > previousMessagesLengthRef.current) isConsideredNewMessages = true;
+    }
+    if (isConsideredNewMessages) {
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom();
+    }
+    previousMessagesLengthRef.current = messages.length;
+    return () => { firstEffectRunAfterLoadRef.current = true; };
+  }, [messages, chatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // ResizeObserver Effect
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer || !window.ResizeObserver) return;
+    const observer = new ResizeObserver(() => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current) executeScrollToBottom();
+    });
+    observer.observe(scrollContainer);
+    resizeObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); resizeObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // MutationObserver Effect
+    const contentElement = messagesContentRef.current;
+    if (!scrollRefReady || !contentElement || !window.MutationObserver) return;
+    const observer = new MutationObserver((mutationsList) => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current && mutationsList.length > 0) executeScrollToBottom();
+    });
+    observer.observe(contentElement, { childList: true, subtree: true, characterData: true });
+    mutationObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); mutationObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { // Manual Scroll useEffect
+    const scrollElement = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollElement) return;
+    let scrollTimeout: number;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          setChatScrollPosition(sc.scrollTop);
+          autoscrollFlagRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 5;
+        }
+      }, 150);
+    };
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
+  }, [scrollRefReady, setChatScrollPosition]);
+
+  // Full implementation for handleSendMessage
+  const handleSendMessage = async () => {
+    if (!input.trim()) return; // Use the existing input state for chat
+
+    if (!threadId) {
+      console.error("WeeklyCalendar: Cannot send message, threadId is null.");
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
+      });
+      return;
+    }
+
+    const userMessageId = crypto.randomUUID();
+    addMessage({
+      id: userMessageId,
+      sender: 'user',
+      content: input, 
+    });
+    const messageToSend = input;
+    setInput(""); // Clear input
+
+    autoscrollFlagRef.current = true;
+
+    const thinkingMessageId = 'thinking-weeklycalendar';
+    addMessage({
+      id: thinkingMessageId,
+      sender: 'assistant',
+      content: 'Kicaco is thinking'
+    });
+
+    try {
+      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: assistantResponseText,
+      });
+    } catch (error) {
+      console.error("Error sending message from WeeklyCalendar:", error);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I encountered an error. Please try again.",
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -126,53 +313,45 @@ export default function WeeklyCalendar() {
         frameOpacity={0.75}
       />
       <div
-        ref={scrollRef}
+        ref={pageScrollRef}
         className="weekly-calendar-content-scroll bg-white"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
-          bottom: window.innerHeight - drawerTop,
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: scrollOverflow,
+          overflowY: mainContentScrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        {/* Weekly Calendar Body: Rainbow Day Cards */}
         <div className="relative flex-1 flex flex-col overflow-hidden">
           <div className="overflow-y-auto px-4 pb-2 pt-4" style={{ paddingBottom: 32 }}>
             <div className="flex flex-col gap-3">
-              {/* Sunday - Red */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #f8b6c2', boxShadow: '0 0 16px 8px #f8b6c233, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#f8b6c2', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#b91142]">Sunday May 11, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Monday - Orange */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #ffd8b5', boxShadow: '0 0 16px 8px #ffd8b533, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#ffd8b5', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#e67c1a]">Monday May 12, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Tuesday - Yellow */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #fef9c3', boxShadow: '0 0 16px 8px #fef9c333, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#fef9c3', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#eab308]">Tuesday May 13, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Wednesday - Green */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #bbf7d0', boxShadow: '0 0 16px 8px #bbf7d033, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#bbf7d0', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#16a34a]">Wednesday May 14, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Thursday - Blue */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #c0e2e7', boxShadow: '0 0 16px 8px #c0e2e733, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#c0e2e7', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#217e8f]">Thursday May 15, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Friday - Indigo */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #d1d5fa', boxShadow: '0 0 16px 8px #d1d5fa33, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#d1d5fa', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#6366f1]">Friday May 16, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
               </div>
-              {/* Saturday - Violet */}
               <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #e9d5ff', boxShadow: '0 0 16px 8px #e9d5ff33, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#e9d5ff', opacity: 1}}>
                 <div className="font-medium text-[16px] text-[#a21caf]">Saturday May 17, 2025</div>
                 <div className="text-gray-400 text-[15px]">No activities or events</div>
@@ -181,15 +360,32 @@ export default function WeeklyCalendar() {
           </div>
         </div>
       </div>
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+      <GlobalChatDrawer 
+        onHeightChange={handleGlobalDrawerHeightChange}
+        drawerHeight={currentDrawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        scrollContainerRefCallback={chatContentScrollRef}
+      >
+        <div 
+          ref={messagesContentRef}
+          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+        >
+          {/* Render Messages */}
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              side={msg.sender === 'user' ? 'right' : 'left'}
+            >
+              {msg.content}
+            </ChatBubble>
+          ))}
         </div>
       </GlobalChatDrawer>
       <GlobalFooter
         ref={footerRef}
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        onSend={handleSendMessage}
       />
     </div>
   );
