@@ -50,7 +50,7 @@ export default function Keepers() {
     setChatScrollPosition,
   } = useKicacoStore();
 
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const executeScrollToBottom = useCallback(() => {
     const sc = internalChatContentScrollRef.current;
@@ -86,7 +86,7 @@ export default function Keepers() {
   }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]); // Added autoscrollFlagRef to dependencies
 
   const handleDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
   };
 

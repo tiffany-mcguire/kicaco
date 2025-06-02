@@ -170,7 +170,7 @@ export default function UpcomingEvents() {
   }, [subheaderRef]);
 
   const handleDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
   };
 
@@ -296,7 +296,7 @@ export default function UpcomingEvents() {
     };
   }, [setChatScrollPosition, scrollRefReady]);
 
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
     internalChatContentScrollRef.current = node;

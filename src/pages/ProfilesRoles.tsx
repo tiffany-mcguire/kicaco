@@ -302,10 +302,10 @@ export default function ProfilesRoles() {
     setChatScrollPosition,
   } = useKicacoStore();
 
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const handleGlobalDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
     setOldDrawerHeight(height);
     setOldDrawerTop(window.innerHeight - height);

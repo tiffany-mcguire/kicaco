@@ -298,12 +298,13 @@ export default function Home() {
     }
   }, [currentWindowHeight, storedDrawerHeight, setStoredDrawerHeight, subheaderRef, blurbGone, setMaxDrawerHeight, initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated]);
 
-  // The currentDrawerHeight to pass to GlobalChatDrawer should always be from the store
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+  // Adjust default fallback for currentDrawerHeight
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   // handleDrawerHeightChange should clamp against the trueSubheaderMax (which is in maxDrawerHeight state)
   const handleDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44); // maxDrawerHeight here is trueSubheaderMax
+    // Adjust minimum clamp in handleDrawerHeightChange
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32); // Changed from 44 to 32
     setStoredDrawerHeight(newHeight);
   };
 

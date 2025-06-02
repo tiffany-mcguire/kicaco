@@ -2,7 +2,7 @@ import React, { useRef, useLayoutEffect, useState, useEffect, PropsWithChildren,
 import { motion, useMotionValue, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import Portal from './Portal';
 
-const MIN_HEIGHT = 48; // px, just the handle
+const MIN_HEIGHT = 32; // px, now matches the handle bar's height
 const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer
 
 interface GlobalChatDrawerProps extends PropsWithChildren {
@@ -146,6 +146,27 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       };
     }, [isDragging]);
 
+    // Update isFullyClosed based on drawerHeight and MIN_HEIGHT
+    useEffect(() => {
+      setIsFullyClosed(drawerHeight <= MIN_HEIGHT);
+    }, [drawerHeight]);
+
+    // Base style for the handle
+    const handleBaseStyle: React.CSSProperties = {
+      height: 32,
+      borderRadius: '16px 16px 0 0',
+      touchAction: 'none',
+      transition: 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+      borderWidth: '1.5px',
+      borderStyle: 'solid',
+      borderColor: '#c0e2e7',
+    };
+
+    // Dynamic style for the handle when dragging
+    const handleInteractionStyle: React.CSSProperties = isDragging
+      ? { boxShadow: 'inset 0 0 6px 3px rgba(192, 226, 231, 0.85)' }
+      : { boxShadow: 'none' };
+
     return (
       <Portal>
         <div
@@ -170,8 +191,8 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
         >
           {/* Handle Bar */}
           <div
-            className="chat-drawer-handle w-full flex flex-col items-center cursor-ns-resize select-none bg-white border-t border-b border-gray-200"
-            style={{ height: 32, borderRadius: '16px 16px 0 0', touchAction: 'none' }}
+            className="chat-drawer-handle w-full flex flex-col items-center cursor-ns-resize select-none bg-white hover:shadow-[inset_0_0_5px_2px_rgba(192,226,231,0.75)]"
+            style={{ ...handleBaseStyle, ...handleInteractionStyle }}
             role="button"
             aria-label={isFullyClosed ? 'Open chat drawer' : 'Close chat drawer'}
             tabIndex={0}
@@ -180,7 +201,7 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
           >
             <div className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
             <div className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center" style={{ lineHeight: 1, minHeight: 18 }}>
-              {drawerHeight <= MIN_HEIGHT + 2 ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
+              {drawerHeight <= MIN_HEIGHT ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
             </div>
           </div>
           {/* Chat content */}
