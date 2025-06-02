@@ -5,11 +5,13 @@ import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
+import { useKicacoStore } from '../store/kicacoStore';
+import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 type ChildProfile = {
   id: string;
@@ -237,20 +239,33 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
 };
 
 export default function ProfilesRoles() {
-  const [input, setInput] = useState("");
+  const [inviteInput, setInviteInput] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-  const [drawerHeight, setDrawerHeight] = useState(44); // initial: minimized height + gap
-  const prevDrawerHeight = useRef(drawerHeight);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [chatInput, setChatInput] = useState("");
+
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+  const pageScrollRef = useRef<HTMLDivElement>(null);
+
+  const [oldDrawerHeight, setOldDrawerHeight] = useState(44);
   const [minScrollHeight, setMinScrollHeight] = useState('0px');
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const [scrollPadding, setScrollPadding] = useState<number>(drawerHeight);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight); // initial: bottom of viewport
+  const [oldScrollOverflow, setOldScrollOverflow] = useState<'auto' | 'hidden'>('auto');
+  const [oldDrawerTop, setOldDrawerTop] = useState(window.innerHeight);
   const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+
+  // Declarations for chat scroll management logic - ENSURE THESE ARE PRESENT AND CORRECTLY SCOPED
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesContentRef = useRef<HTMLDivElement | null>(null); // Added this ref as it's used by MutationObserver
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const autoscrollFlagRef = useRef(false);
+  const previousMessagesLengthRef = useRef(0);
+  const firstEffectRunAfterLoadRef = useRef(true);
+  // End of declarations for chat scroll management
 
   const [children, setChildren] = useState<ChildProfile[]>([
     {
@@ -276,16 +291,26 @@ export default function ProfilesRoles() {
     }
   ]);
 
-  const handleAddChild = () => {
-    setTimeout(() => navigate('/edit-child'), 150);
+  const {
+    messages,
+    threadId,
+    addMessage,
+    removeMessageById,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition,
+  } = useKicacoStore();
+
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  const handleGlobalDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+    setOldDrawerHeight(height);
+    setOldDrawerTop(window.innerHeight - height);
   };
 
-  // Update drawerTop when drawer height changes
-  const handleDrawerHeightChange = (drawerHeight: number) => {
-    setDrawerTop(window.innerHeight - drawerHeight);
-  };
-
-  // Update subheaderBottom on mount and resize
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
       if (subheaderRef.current) {
@@ -294,49 +319,203 @@ export default function ProfilesRoles() {
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
+
+    const calculateMaxDrawerHeight = () => {
+      const subheaderElement = subheaderRef.current;
+      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
+      if (subheaderElement) {
+        const subheaderRect = subheaderElement.getBoundingClientRect();
+        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
+        setMaxDrawerHeight(Math.max(44, availableHeight));
+      } else {
+        setMaxDrawerHeight(window.innerHeight * 0.6);
+      }
+    };
+    calculateMaxDrawerHeight();
+    window.addEventListener('resize', calculateMaxDrawerHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    };
   }, []);
 
-  // Dynamically set min-height for scroll area
   useLayoutEffect(() => {
     function updateMinHeight() {
       const headerH = headerRef.current?.offsetHeight || 0;
       const subheaderH = subheaderRef.current?.offsetHeight || 0;
       const footerH = footerRef.current?.offsetHeight || 0;
-      setMinScrollHeight(`calc(100vh - ${headerH + subheaderH + footerH + drawerHeight}px)`);
+      setMinScrollHeight(`calc(100vh - ${headerH + subheaderH + footerH + oldDrawerHeight}px)`);
     }
     updateMinHeight();
     window.addEventListener('resize', updateMinHeight);
     return () => window.removeEventListener('resize', updateMinHeight);
-  }, [drawerHeight]);
+  }, [oldDrawerHeight]);
 
-  // Use ResizeObserver to set overflow-y and padding-bottom based on content size
   useEffect(() => {
-    const scrollEl = scrollRef.current;
+    const scrollEl = pageScrollRef.current;
     if (!scrollEl || typeof ResizeObserver === 'undefined') return;
     const checkOverflow = () => {
-      // visible area above the drawer
-      const visibleArea = scrollEl.clientHeight - drawerHeight;
-      // Detect if drawer is docked (minimized)
-      const isDrawerDocked = drawerHeight <= 44; // 32px handle + gap, adjust if needed
-      // If drawer is docked and content fits, lock scroll and scroll to top
+      const visibleArea = scrollEl.clientHeight - oldDrawerHeight;
+      const isDrawerDocked = oldDrawerHeight <= 44;
       if (isDrawerDocked && scrollEl.scrollHeight <= scrollEl.clientHeight + 2) {
-        setScrollOverflow('hidden');
-        setScrollPadding(0);
-        scrollEl.scrollTop = 0;
+        setOldScrollOverflow('hidden');
       } else if (scrollEl.scrollHeight > visibleArea + 2) {
-        setScrollOverflow('auto');
-        setScrollPadding(drawerHeight);
+        setOldScrollOverflow('auto');
       } else {
-        setScrollOverflow('hidden');
-        setScrollPadding(0);
+        setOldScrollOverflow('hidden');
       }
     };
     checkOverflow();
     const ro = new ResizeObserver(checkOverflow);
     ro.observe(scrollEl);
     return () => ro.disconnect();
-  }, [drawerHeight, minScrollHeight]);
+  }, [oldDrawerHeight, minScrollHeight]);
+
+  const handleAddChild = () => {
+    setTimeout(() => navigate('/edit-child'), 150);
+  };
+
+  // Full implementation for handleChatSendMessage
+  const handleChatSendMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    if (!threadId) {
+      console.error("ProfilesRoles: Cannot send message, threadId is null.");
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
+      });
+      return;
+    }
+
+    const userMessageId = crypto.randomUUID();
+    addMessage({
+      id: userMessageId,
+      sender: 'user',
+      content: chatInput, // Use chatInput state
+    });
+    const messageToSend = chatInput;
+    setChatInput(""); // Clear chatInput
+
+    autoscrollFlagRef.current = true;
+
+    const thinkingMessageId = 'thinking-profilesroles';
+    addMessage({
+      id: thinkingMessageId,
+      sender: 'assistant',
+      content: 'Kicaco is thinking'
+    });
+
+    try {
+      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: assistantResponseText,
+      });
+    } catch (error) {
+      console.error("Error sending message from ProfilesRoles:", error);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I encountered an error. Please try again.",
+      });
+    }
+  };
+
+  // Chat Scroll Management Logic (from previous step, now should have its variables in scope)
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) return;
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) {
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop);
+        requestAnimationFrame(() => { 
+          if (internalChatContentScrollRef.current) {
+            const currentSc2 = internalChatContentScrollRef.current;
+            const targetScrollTop2 = Math.max(0, currentSc2.scrollHeight - currentSc2.clientHeight);
+            if (Math.abs(currentSc2.scrollTop - targetScrollTop2) > 1) {
+              currentSc2.scrollTop = targetScrollTop2;
+              if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop2);
+            }
+          }
+        });
+      }
+    });
+  }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]);
+
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+  }, []);
+
+  useEffect(() => { 
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer) return;
+    let isConsideredNewMessages = false;
+    if (firstEffectRunAfterLoadRef.current) {
+      if (chatScrollPosition !== null && Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+        scrollContainer.scrollTop = chatScrollPosition;
+      }
+      firstEffectRunAfterLoadRef.current = false;
+    } else {
+      if (messages.length > previousMessagesLengthRef.current) isConsideredNewMessages = true;
+    }
+    if (isConsideredNewMessages) {
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom();
+    }
+    previousMessagesLengthRef.current = messages.length;
+    return () => { firstEffectRunAfterLoadRef.current = true; };
+  }, [messages, chatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { 
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer || !window.ResizeObserver) return;
+    const observer = new ResizeObserver(() => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current) executeScrollToBottom();
+    });
+    observer.observe(scrollContainer);
+    resizeObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); resizeObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { 
+    const contentElement = messagesContentRef.current;
+    if (!scrollRefReady || !contentElement || !window.MutationObserver) return;
+    const observer = new MutationObserver((mutationsList) => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current && mutationsList.length > 0) executeScrollToBottom();
+    });
+    observer.observe(contentElement, { childList: true, subtree: true, characterData: true });
+    mutationObserverRef.current = observer;
+    return () => { if (observer) observer.disconnect(); mutationObserverRef.current = null; };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => { 
+    const scrollElement = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollElement) return;
+    let scrollTimeout: number;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          setChatScrollPosition(sc.scrollTop);
+          autoscrollFlagRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 5;
+        }
+      }, 150);
+    };
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
+  }, [scrollRefReady, setChatScrollPosition]);
 
   return (
     <div className="profiles-roles-page flex flex-col min-h-screen bg-white">
@@ -349,21 +528,20 @@ export default function ProfilesRoles() {
         frameColor="#2e8b57"
       />
       <div
-        ref={scrollRef}
+        ref={pageScrollRef}
         className="profiles-roles-content-scroll bg-white"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
-          bottom: window.innerHeight - drawerTop,
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: 'auto',
+          overflowY: oldScrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
 
-          {/* Section 1: Manage Your Household */}
           <div className="profiles-roles-section-manage-household">
             <h2 className="text-xl font-semibold text-[#1a6e7e]">Manage Your Household</h2>
             <p className="text-sm text-gray-700 mt-1">
@@ -373,7 +551,6 @@ export default function ProfilesRoles() {
 
           <div className="profiles-roles-divider border-t border-gray-200 my-6"></div>
 
-          {/* Section 2: Your Children */}
           <div className="profiles-roles-section-children">
             <h3 className="text-lg font-semibold text-[#1a6e7e]">Your Children</h3>
             <div className="profiles-roles-children-list">
@@ -407,7 +584,6 @@ export default function ProfilesRoles() {
             </div>
           </div>
 
-          {/* Section 3: Shared Access & Permissions */}
           <div className="profiles-roles-section-shared-users">
             <h3 className="text-lg font-semibold text-[#1a6e7e]">Shared Access & Permissions</h3>
             <div className="profiles-roles-shared-users-list">
@@ -454,17 +630,16 @@ export default function ProfilesRoles() {
               )}
             </div>
 
-            {/* Always show invite field */}
             <div className="profiles-roles-invite mt-6">
               <p className="text-sm text-[#1a6e7e] font-semibold mb-1">Invite by email</p>
               <input
                 type="email"
                 placeholder="e.g. someone@example.com"
                 className="profiles-roles-invite-input w-full px-4 py-2 border border-[#c0e2e7] rounded-lg shadow-sm text-sm focus:outline-none focus:ring-0 focus:shadow-[0_0_8px_2px_#c0e2e7]"
-                value={input}
-                onChange={e => setInput(e.target.value)}
+                value={inviteInput}
+                onChange={e => setInviteInput(e.target.value)}
               />
-              <BigActionButton onClick={() => console.log('Send invite to', input)}>Send Invite</BigActionButton>
+              <BigActionButton onClick={() => console.log('Send invite to', inviteInput)}>Send Invite</BigActionButton>
             </div>
           </div>
 
@@ -472,12 +647,29 @@ export default function ProfilesRoles() {
       </div>
       <GlobalFooter
         ref={footerRef}
-        value={input}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        value={chatInput}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChatInput(e.target.value)}
+        onSend={handleChatSendMessage}
       />
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+      <GlobalChatDrawer
+        drawerHeight={currentDrawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        onHeightChange={handleGlobalDrawerHeightChange}
+        scrollContainerRefCallback={chatContentScrollRef}
+      >
+        <div 
+          ref={messagesContentRef}
+          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+        >
+          {/* Render Messages */}
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              side={msg.sender === 'user' ? 'right' : 'left'}
+            >
+              {msg.content}
+            </ChatBubble>
+          ))}
         </div>
       </GlobalChatDrawer>
     </div>

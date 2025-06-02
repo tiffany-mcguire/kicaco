@@ -158,9 +158,9 @@ export default function UpcomingEvents() {
     function updatePageSpecificMaxHeight() {
       if (subheaderRef.current) {
         const bottom = subheaderRef.current.getBoundingClientRect().bottom;
-        const footer = document.querySelector('.global-footer');
+        const footer = document.querySelector('.global-footer') as HTMLElement | null;
         const footerHeightVal = footer ? footer.getBoundingClientRect().height : 0;
-        const availableHeight = window.innerHeight - bottom - footerHeightVal - 8; // 8px padding
+        const availableHeight = window.innerHeight - bottom - footerHeightVal - 4;
         setMaxDrawerHeight(Math.max(availableHeight, 44));
       }
     }

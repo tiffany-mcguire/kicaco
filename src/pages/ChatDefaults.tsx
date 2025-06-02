@@ -1,16 +1,18 @@
 import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
-import IconButton from '../components/IconButton';
-import ChatBubble from '../components/ChatBubble';
+import IconButton from '../components/IconButton.tsx';
+import ChatBubble from '../components/ChatBubble.tsx';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
 import { Link, useLocation } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import AddKeeperButton from '../components/AddKeeperButton';
-import GlobalHeader from '../components/GlobalHeader';
-import GlobalFooter from '../components/GlobalFooter';
-import GlobalChatDrawer from '../components/GlobalChatDrawer';
-import GlobalSubheader from '../components/GlobalSubheader';
+import GlobalHeader from '../components/GlobalHeader.tsx';
+import GlobalFooter from '../components/GlobalFooter.tsx';
+import GlobalChatDrawer from '../components/GlobalChatDrawer.tsx';
+import GlobalSubheader from '../components/GlobalSubheader.tsx';
+import { useKicacoStore } from '../store/kicacoStore';
+import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 const ChatDefaultsIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 24 24">
@@ -95,9 +97,35 @@ export default function ChatDefaults() {
   const [drawerTop, setDrawerTop] = useState(window.innerHeight);
   const [subheaderBottom, setSubheaderBottom] = useState(0);
   const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const pageScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleDrawerHeightChange = (height: number) => {
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesContentRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const autoscrollFlagRef = useRef(false);
+  const previousMessagesLengthRef = useRef(0);
+  const firstEffectRunAfterLoadRef = useRef(true);
+
+  const {
+    messages,
+    threadId,
+    addMessage,
+    removeMessageById,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition,
+  } = useKicacoStore();
+
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  const handleGlobalDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+
     setDrawerHeight(height);
     setDrawerTop(window.innerHeight - height);
   };
@@ -110,7 +138,26 @@ export default function ChatDefaults() {
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
+
+    const calculateMaxDrawerHeight = () => {
+      const subheaderElement = subheaderRef.current;
+      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
+      if (subheaderElement) {
+        const subheaderRect = subheaderElement.getBoundingClientRect();
+        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
+        setMaxDrawerHeight(Math.max(44, availableHeight));
+      } else {
+        setMaxDrawerHeight(window.innerHeight * 0.6);
+      }
+    };
+    calculateMaxDrawerHeight();
+    window.addEventListener('resize', calculateMaxDrawerHeight);
+
+    return () => {
+      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    };
   }, []);
 
   useEffect(() => {
@@ -146,6 +193,189 @@ export default function ChatDefaults() {
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
   });
 
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    // Ensure threadId exists, otherwise, how to handle? For now, basic check.
+    if (!threadId) {
+      console.error("ChatDefaults: Cannot send message, threadId is null.");
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
+      });
+      return;
+    }
+
+    const userMessageId = crypto.randomUUID();
+    addMessage({
+      id: userMessageId,
+      sender: 'user',
+      content: input,
+    });
+    const messageToSend = input;
+    setInput("");
+
+    autoscrollFlagRef.current = true; // Intend to autoscroll for new user message + assistant reply
+
+    const thinkingMessageId = 'thinking-chatdefaults';
+    addMessage({
+      id: thinkingMessageId,
+      sender: 'assistant',
+      content: 'Kicaco is thinking'
+    });
+
+    try {
+      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: assistantResponseText,
+      });
+    } catch (error) {
+      console.error("Error sending message from ChatDefaults:", error);
+      removeMessageById(thinkingMessageId);
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant',
+        content: "Sorry, I encountered an error. Please try again.",
+      });
+    }
+  };
+
+  // 7. Chat Scroll Management Logic
+
+  // executeScrollToBottom function
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) {
+      console.log("[ChatDefaults] executeScrollToBottom: Aborted - Scroll container not ready.");
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) {
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        if (autoscrollFlagRef.current) {
+          setChatScrollPosition(targetScrollTop);
+        }
+        requestAnimationFrame(() => {
+          if (internalChatContentScrollRef.current) {
+            const currentScAfterSecondRaf = internalChatContentScrollRef.current;
+            const targetScrollTopAfterSecondRaf = Math.max(0, currentScAfterSecondRaf.scrollHeight - currentScAfterSecondRaf.clientHeight);
+            if (Math.abs(currentScAfterSecondRaf.scrollTop - targetScrollTopAfterSecondRaf) > 1) {
+              currentScAfterSecondRaf.scrollTop = targetScrollTopAfterSecondRaf;
+              if (autoscrollFlagRef.current) {
+                setChatScrollPosition(targetScrollTopAfterSecondRaf);
+              }
+            }
+          }
+        });
+      }
+    });
+  }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]);
+
+  // chatContentScrollRef callback
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+  }, []);
+
+  // Main Scroll/Restore/Autoscroll Effect
+  useEffect(() => {
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer) {
+      console.log("[ChatDefaults MainScrollEffect] Aborted: No scroll container or not ready.");
+      return;
+    }
+    let isConsideredNewMessages = false;
+    if (firstEffectRunAfterLoadRef.current) {
+      console.log(`[ChatDefaults MainScrollEffect] First run. StoredScroll: ${chatScrollPosition}`);
+      if (chatScrollPosition !== null) {
+        if (Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+          scrollContainer.scrollTop = chatScrollPosition;
+        }
+      }
+      firstEffectRunAfterLoadRef.current = false;
+    } else {
+      if (messages.length > previousMessagesLengthRef.current) {
+        isConsideredNewMessages = true;
+      }
+    }
+    if (isConsideredNewMessages) {
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom();
+    }
+    previousMessagesLengthRef.current = messages.length;
+    return () => {
+      firstEffectRunAfterLoadRef.current = true; // Reset on unmount/deps change
+    };
+  }, [messages, chatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  // ResizeObserver Effect
+  useEffect(() => {
+    const scrollContainer = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollContainer || !window.ResizeObserver) return;
+    const observer = new ResizeObserver(() => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current) {
+        executeScrollToBottom();
+        // autoscrollFlagRef.current = false; // Typically reset after scroll, but executeScrollToBottom might rely on it
+      }
+    });
+    observer.observe(scrollContainer);
+    resizeObserverRef.current = observer;
+    return () => {
+      if (observer) observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  // MutationObserver Effect
+  useEffect(() => {
+    const contentElement = messagesContentRef.current;
+    if (!scrollRefReady || !contentElement || !window.MutationObserver) return;
+    const observer = new MutationObserver((mutationsList) => {
+      if (autoscrollFlagRef.current && internalChatContentScrollRef.current && mutationsList.length > 0) {
+        executeScrollToBottom();
+        // autoscrollFlagRef.current = false;
+      }
+    });
+    observer.observe(contentElement, { childList: true, subtree: true, characterData: true });
+    mutationObserverRef.current = observer;
+    return () => {
+      if (observer) observer.disconnect();
+      mutationObserverRef.current = null;
+    };
+  }, [scrollRefReady, executeScrollToBottom]); // Add messagesContentRef.current readiness? No, effect runs when it becomes available.
+
+  // Manual Scroll useEffect
+  useEffect(() => {
+    const scrollElement = internalChatContentScrollRef.current;
+    if (!scrollRefReady || !scrollElement) return;
+    let scrollTimeout: number;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          const currentScrollTop = sc.scrollTop;
+          setChatScrollPosition(currentScrollTop);
+          const isAtBottom = sc.scrollHeight - currentScrollTop - sc.clientHeight < 5;
+          if (autoscrollFlagRef.current !== isAtBottom) {
+            autoscrollFlagRef.current = isAtBottom;
+          }
+        }
+      }, 150);
+    };
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      clearTimeout(scrollTimeout);
+      scrollElement.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollRefReady, setChatScrollPosition]);
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
@@ -157,12 +387,12 @@ export default function ChatDefaults() {
         frameColor="#2e8b57"
       />
       <div
-        ref={scrollRef}
+        ref={pageScrollRef}
         className="chat-defaults-content-scroll bg-white"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
-          bottom: window.innerHeight - drawerTop,
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
           overflowY: scrollOverflow,
@@ -170,7 +400,6 @@ export default function ChatDefaults() {
         }}
       >
         <div className="relative flex-1 flex flex-col overflow-hidden">
-          {/* Scrollable content */}
           <div className="overflow-y-auto" style={{ paddingBottom: 40 }}>
             <div className="px-4 pt-4 pb-2">
               <h3 className="text-[16px] font-semibold text-[#00647a]">Follow-up prompts</h3>
@@ -242,15 +471,31 @@ export default function ChatDefaults() {
           </div>
         </div>
       </div>
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
-          {/* No default chat bubbles on this page */}
+      <GlobalChatDrawer
+        drawerHeight={currentDrawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        onHeightChange={handleGlobalDrawerHeightChange}
+        scrollContainerRefCallback={chatContentScrollRef}
+      >
+        <div 
+          ref={messagesContentRef}
+          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+        >
+          {messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              side={msg.sender === 'user' ? 'right' : 'left'}
+            >
+              {msg.content}
+            </ChatBubble>
+          ))}
         </div>
       </GlobalChatDrawer>
       <GlobalFooter
         ref={footerRef}
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        onSend={handleSendMessage}
       />
     </div>
   );

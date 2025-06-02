@@ -219,69 +219,91 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []); // Runs once on mount to attach listener
 
-  // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height ---
+  // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height (Restoring Prior Logic Pattern) ---
   useLayoutEffect(() => {
-    console.log(`[Home useLayoutEffect - Drawer Sizing] STARTING. currentWindowHeight (from state): ${currentWindowHeight}, initialHomePageDrawerHeightCalculated: ${initialHomePageDrawerHeightCalculated}, storedDrawerHeight: ${storedDrawerHeight}`);
+    console.log(`[Home Reverted Logic - Drawer Sizing] START. storedDrawerHeight: ${storedDrawerHeight}, initialCalculated: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}`);
     try {
-      const footer = document.querySelector('.global-footer');
-      if (!footer) console.warn("[Home useLayoutEffect - Drawer Sizing] Global footer NOT FOUND.");
+      const footer = document.querySelector('.global-footer') as HTMLElement | null;
       const footerHeightVal = footer ? footer.getBoundingClientRect().height : 0;
 
-      let calculatedMaxDrawerHeight = 44; // Default minimum
-      const blurbsForMax = Array.from(document.querySelectorAll('p.section-blurb'));
-      if (blurbsForMax.length >= 1) {
-        const firstBlurb = blurbsForMax[0];
-        const blurbRect = firstBlurb.getBoundingClientRect();
-        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - blurbRect.top - 4;
-      } else if (subheaderRef.current) {
-        const subheaderBottomVal = subheaderRef.current.getBoundingClientRect().bottom;
-        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - subheaderBottomVal - 4;
-      } else {
-        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - 4;
-      }
-      calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 44);
-      console.log("[Home useLayoutEffect - Drawer Sizing] Calculated newMaxHeight:", calculatedMaxDrawerHeight, "using currentWindowHeight:", currentWindowHeight);
-      setMaxDrawerHeight(calculatedMaxDrawerHeight);
-
-      if ((storedDrawerHeight === null || storedDrawerHeight === undefined) && !initialHomePageDrawerHeightCalculated) {
-        console.log("[Home useLayoutEffect - Drawer Sizing] Calculating initial homepage drawer height.");
-        const blurbsForInitial = Array.from(document.querySelectorAll('p.section-blurb'));
-        let homeInitialHeight = 44;
-        if (blurbsForInitial.length >= 2) {
-          const secondBlurb = blurbsForInitial[1];
-          const blurbRectInitial = secondBlurb.getBoundingClientRect();
-          homeInitialHeight = currentWindowHeight - footerHeightVal - blurbRectInitial.bottom - 4;
-          homeInitialHeight = Math.max(homeInitialHeight, 44);
-        }
-        // Ensure initial height doesn't exceed the just-calculated maxDrawerHeight
-        const cappedInitialHeight = Math.min(homeInitialHeight, calculatedMaxDrawerHeight);
-        console.log("[Home useLayoutEffect - Drawer Sizing] Setting storedDrawerHeight to (initial):", cappedInitialHeight);
-        setStoredDrawerHeight(cappedInitialHeight);
-        setInitialHomePageDrawerHeightCalculated(true);
-      } else if (initialHomePageDrawerHeightCalculated && storedDrawerHeight !== null) {
-        // If already initialized, check if current storedDrawerHeight exceeds the new maxDrawerHeight
-        if (storedDrawerHeight > calculatedMaxDrawerHeight) {
-          console.log(`[Home useLayoutEffect - Drawer Sizing] Adjusting storedDrawerHeight (${storedDrawerHeight}) to new maxDrawerHeight (${calculatedMaxDrawerHeight}) due to resize.`);
-          setStoredDrawerHeight(calculatedMaxDrawerHeight);
+      // Determine Home's max height: can be lower if blurbs are present, otherwise up to subheader.
+      let homeCalculatedMaxHeight = 44;
+      if (!blurbGone) {
+        // Blurbs are visible: max height is likely based on first blurb position to avoid overlap initially.
+        const blurbsForMax = Array.from(document.querySelectorAll('p.section-blurb'));
+        if (blurbsForMax.length >= 1) {
+          const firstBlurb = blurbsForMax[0];
+          homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - firstBlurb.getBoundingClientRect().top - 4; // 4px padding above footer
+          console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs visible) calculated: ${homeCalculatedMaxHeight}`);
+        } else if (subheaderRef.current) { // Fallback if blurbs were expected but not found
+            homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - subheaderRef.current.getBoundingClientRect().bottom - 4;
+            console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs visible, no blurbs found, using subheader) calculated: ${homeCalculatedMaxHeight}`);
         } else {
-          console.log("[Home useLayoutEffect - Drawer Sizing] StoredDrawerHeight is within new maxDrawerHeight. No change to storedDrawerHeight needed.");
+            homeCalculatedMaxHeight = currentWindowHeight * 0.7; // Generic fallback
+        }
+      } else {
+        // Blurbs are gone: max height is up to the subheader.
+        if (subheaderRef.current) {
+          const subheaderBottomVal = subheaderRef.current.getBoundingClientRect().bottom;
+          homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - subheaderBottomVal - 4;
+          console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs gone, using subheader) calculated: ${homeCalculatedMaxHeight}`);
+        } else {
+            homeCalculatedMaxHeight = currentWindowHeight * 0.85; // Fallback if no subheader
+        }
+      }
+      homeCalculatedMaxHeight = Math.max(homeCalculatedMaxHeight, 44);
+      setMaxDrawerHeight(homeCalculatedMaxHeight); // This is Home's current operational max height.
+
+      // Manage storedDrawerHeight
+      if (!initialHomePageDrawerHeightCalculated) {
+        let heightToSetInStore;
+        if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
+          // Store has a value (e.g. from another page). Use it, but cap by Home's *current* operational max.
+          heightToSetInStore = Math.min(storedDrawerHeight, homeCalculatedMaxHeight);
+          console.log(`[Home Reverted Logic - Drawer Sizing] Initial: Using pre-existing store value ${storedDrawerHeight}, capped to ${heightToSetInStore}`);
+        } else {
+          // Store is empty. Set it to a fraction of Home's *current* operational max, or a blurb-based height.
+          // This logic should ensure the initial opening is sensible for the current state (blurbs vs no blurbs).
+          if (!blurbGone) {
+            const blurbsForInitialOpen = Array.from(document.querySelectorAll('p.section-blurb'));
+            if (blurbsForInitialOpen.length >= 2) {
+                 heightToSetInStore = currentWindowHeight - footerHeightVal - blurbsForInitialOpen[1].getBoundingClientRect().bottom - 4;
+            } else {
+                 heightToSetInStore = homeCalculatedMaxHeight * 0.6; // Default open to 60% of current max if blurbs visible but not 2 found
+            }
+          } else {
+            heightToSetInStore = homeCalculatedMaxHeight * 0.75; // Default open to 75% of current max if blurbs gone
+          }
+          heightToSetInStore = Math.max(heightToSetInStore, 44);
+          heightToSetInStore = Math.min(heightToSetInStore, homeCalculatedMaxHeight); // Cap by current max
+          console.log(`[Home Reverted Logic - Drawer Sizing] Initial: Store empty. Setting to calculated open height: ${heightToSetInStore}`);
+        }
+        setStoredDrawerHeight(heightToSetInStore);
+        setInitialHomePageDrawerHeightCalculated(true);
+      } else {
+        // Initial Home setup is done. Only cap storedDrawerHeight if it exceeds Home's current operational max.
+        if (storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > homeCalculatedMaxHeight) {
+          console.log(`[Home Reverted Logic - Drawer Sizing] Post-Initial: Stored value ${storedDrawerHeight} exceeds current max ${homeCalculatedMaxHeight}. Capping.`);
+          setStoredDrawerHeight(homeCalculatedMaxHeight);
         }
       }
     } catch (error) {
-      console.error("[Home useLayoutEffect - Drawer Sizing] Error during execution:", error);
-      setMaxDrawerHeight(Math.max(currentWindowHeight - 60 - 4, 44));
-      if ((storedDrawerHeight === null || storedDrawerHeight === undefined) && !initialHomePageDrawerHeightCalculated) {
+      console.error("[Home Reverted Logic - Drawer Sizing] Error:", error);
+      // Simplified fallback
+      setMaxDrawerHeight(Math.max(currentWindowHeight - 160, 44));
+      if (!initialHomePageDrawerHeightCalculated && (storedDrawerHeight === null || storedDrawerHeight === undefined)) {
         setStoredDrawerHeight(44);
         setInitialHomePageDrawerHeightCalculated(true);
       }
     }
-    // Logging maxDrawerHeight from state, and storedDrawerHeight from closure (which might be updated by setStoredDrawerHeight above)
-    console.log("[Home useLayoutEffect - Drawer Sizing] ENDING. Current maxDrawerHeight (state):", maxDrawerHeight, "Current storedDrawerHeight (closure):", storedDrawerHeight);
-  }, [currentWindowHeight, storedDrawerHeight, setStoredDrawerHeight, initialHomePageDrawerHeightCalculated, subheaderRef, blurbGone, maxDrawerHeight, setMaxDrawerHeight]); // Added setMaxDrawerHeight to dependencies
+  }, [currentWindowHeight, storedDrawerHeight, setStoredDrawerHeight, subheaderRef, blurbGone, setMaxDrawerHeight, initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated]);
 
-  // --- Drawer Height Change Handler ---
+  // The currentDrawerHeight to pass to GlobalChatDrawer should always be from the store
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  // handleDrawerHeightChange should clamp against the trueSubheaderMax (which is in maxDrawerHeight state)
   const handleDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44); // maxDrawerHeight here is trueSubheaderMax
     setStoredDrawerHeight(newHeight);
   };
 
@@ -311,7 +333,7 @@ export default function Home() {
                  setChatScrollPosition(targetScrollTopAfterSecondRaf);
                  console.log(`  [executeScrollToBottom] Second scroll attempt to: ${targetScrollTopAfterSecondRaf}, scrollHeight: ${currentScAfterSecondRaf.scrollHeight}, clientHeight: ${currentScAfterSecondRaf.clientHeight}`);
             } else {
-              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. No scroll needed. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
+              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
             }
           } else {
             console.log("  [executeScrollToBottom] Aborted second scroll in rAF: Scroll container ref lost.");
@@ -690,8 +712,6 @@ export default function Home() {
       setVisibleCount(messages.length);
     }
   }, [messages.length, visibleCount]);
-
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
 
   // Add debug logs before rendering
   console.log("[Home Rendering Debug] State values:", {
