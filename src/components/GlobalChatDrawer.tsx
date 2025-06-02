@@ -2,17 +2,15 @@ import React, { useRef, useLayoutEffect, useState, useEffect, PropsWithChildren,
 import { motion, useMotionValue, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 import Portal from './Portal';
 
-const MINIMIZED_HEIGHT = 32; // px, handle only
-const STORAGE_KEY = 'globalChatDrawerY';
+const MIN_HEIGHT = 48; // px, just the handle
+const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer
 
 interface GlobalChatDrawerProps extends PropsWithChildren {
-  initialClosed?: boolean;
-  initialPosition?: 'top' | 'bottom';
-  initialHeight?: number; // New prop for custom initial height
   className?: string;
   onHeightChange?: (height: number) => void;
-  drawerHeight?: number; // Add this
-  maxDrawerHeight?: number; // Add this
+  drawerHeight: number; // Required prop
+  maxDrawerHeight?: number;
+  scrollContainerRefCallback?: (node: HTMLDivElement | null) => void;
 }
 
 export interface GlobalChatDrawerHandle {
@@ -20,14 +18,12 @@ export interface GlobalChatDrawerHandle {
 }
 
 const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProps>(
-  ({ children, initialClosed = true, initialPosition = 'bottom', initialHeight, className, onHeightChange, drawerHeight, maxDrawerHeight }, ref) => {
+  ({ children, className, onHeightChange, drawerHeight, maxDrawerHeight, scrollContainerRefCallback }, ref) => {
     const [footerHeight, setFooterHeight] = useState(0);
     const [maxHeight, setMaxHeight] = useState(400); // fallback default
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [isFullyClosed, setIsFullyClosed] = useState(true);
-    const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer
-    const MIN_HEIGHT = 48; // px, just the handle
     const [isDragging, setIsDragging] = useState(false);
     const dragState = useRef({
       startY: 0,
@@ -117,7 +113,7 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       dragState.current = {
         startY: clientY,
-        startHeight: drawerHeight ?? MIN_HEIGHT
+        startHeight: drawerHeight
       };
       document.body.style.userSelect = 'none';
     };
@@ -150,38 +146,13 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       };
     }, [isDragging]);
 
-    // Set initial drawer position on first load (just below second blurb)
-    useLayoutEffect(() => {
-      // Only set if there is no saved position
-      const saved = localStorage.getItem('globalChatDrawerInitialHeight');
-      if (saved) return;
-      // Find all blurbs with class 'section-blurb'
-      const blurbs = Array.from(document.querySelectorAll('p.section-blurb'));
-      if (blurbs.length >= 2) {
-        const secondBlurb = blurbs[1];
-        const blurbRect = secondBlurb.getBoundingClientRect();
-        const windowHeight = window.innerHeight;
-        const desiredTop = blurbRect.bottom + CHAT_FOOTER_PADDING;
-        const initialHeight = windowHeight - footerHeight - desiredTop;
-        localStorage.setItem('globalChatDrawerInitialHeight', String(initialHeight));
-      }
-    }, [footerHeight]);
-
-    // Restore previous drawer position on navigation (if exists)
-    useLayoutEffect(() => {
-      const saved = localStorage.getItem('globalChatDrawerSavedHeight');
-      if (saved) {
-        localStorage.setItem('globalChatDrawerSavedHeight', saved);
-      }
-    }, []);
-
     return (
       <Portal>
         <div
           ref={containerRef}
           className={`chat-drawer-container w-full flex flex-col items-center${className ? ` ${className}` : ''}`}
           style={{
-            height: drawerHeight ?? MIN_HEIGHT,
+            height: drawerHeight,
             position: 'fixed',
             left: 0,
             right: 0,
@@ -209,15 +180,15 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
           >
             <div className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
             <div className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center" style={{ lineHeight: 1, minHeight: 18 }}>
-              {(drawerHeight ?? MIN_HEIGHT) <= MIN_HEIGHT + 2 ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
+              {drawerHeight <= MIN_HEIGHT + 2 ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
             </div>
           </div>
           {/* Chat content */}
           <div
-            ref={contentRef}
+            ref={scrollContainerRefCallback}
             className="chat-drawer-content flex-1 w-full px-4 pt-2 overflow-y-auto"
             style={{ 
-              maxHeight: (drawerHeight ?? MIN_HEIGHT) - 32,
+              maxHeight: Math.max(0, drawerHeight - 32),
               transition: isDragging ? 'none' : 'max-height 0.2s'
             }}
           >

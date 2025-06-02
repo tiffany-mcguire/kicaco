@@ -3,7 +3,7 @@ import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBubble from '../components/ChatBubble';
 import IconButton from '../components/IconButton';
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
@@ -20,6 +20,13 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { parse, format } from 'date-fns';
 import PasswordModal from '../components/PasswordModal';
 import PostSignupOptions from '../components/PostSignupOptions';
+
+// Add NodeJS type definition
+declare global {
+  namespace NodeJS {
+    interface Timeout {}
+  }
+}
 
 const intro = [
   "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
@@ -72,12 +79,20 @@ function formatTime(time?: string) {
 }
 
 export default function Home() {
+  console.log("[Home Function Body] window.innerHeight:", window.innerHeight);
+
   const [input, setInput] = useState("");
   const [hasIntroPlayed, setHasIntroPlayed] = useState(() => {
     return localStorage.getItem('kicaco_intro_played') === 'true';
   });
+  const [currentWindowHeight, setCurrentWindowHeight] = useState(window.innerHeight);
   const introStartedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const autoscrollFlagRef = useRef(false); // For managing autoscroll after new message
+  const mutationObserverRef = useRef<MutationObserver | null>(null); // Ref for the new MutationObserver
   const { 
     threadId,
     setThreadId,
@@ -87,18 +102,18 @@ export default function Home() {
     setLatestEvent,
     eventInProgress,
     setEventInProgress,
-    addEvent
+    addEvent,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition
   } = useKicacoStore();
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44); // collapsed height + gap
+  const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight); // initial: bottom of viewport
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const chatDrawerRef = useRef<any>(null);
+  const [initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated] = useState(false);
 
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
@@ -109,7 +124,6 @@ export default function Home() {
   });
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
-  // In the future, also check keepers.length > 0
 
   useEffect(() => {
     console.log('Events:', events);
@@ -157,7 +171,6 @@ export default function Home() {
           throw new Error('No response from thread creation');
         }
         setThreadId(response);
-        // Log Zustand store value after setting
         setTimeout(() => {
           console.log('Zustand threadId after set:', useKicacoStore.getState().threadId);
         }, 0);
@@ -175,6 +188,10 @@ export default function Home() {
     };
     if (!threadId) {
       initThread();
+    } else {
+      // If threadId already exists from the store, we are not initializing a new one,
+      // so make sure the input field is enabled.
+      setIsInitializing(false);
     }
   }, [threadId, setThreadId, addMessage]);
 
@@ -189,6 +206,290 @@ export default function Home() {
 
   // Track the most recent event's childName for use in signup flow
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
+
+  // Add resize listener useEffect
+  useEffect(() => {
+    const handleResize = () => {
+      console.log("[Home Resize Listener] window.innerHeight updated to:", window.innerHeight);
+      setCurrentWindowHeight(window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+    // Initial set just in case
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []); // Runs once on mount to attach listener
+
+  // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height ---
+  useLayoutEffect(() => {
+    console.log(`[Home useLayoutEffect - Drawer Sizing] STARTING. currentWindowHeight (from state): ${currentWindowHeight}, initialHomePageDrawerHeightCalculated: ${initialHomePageDrawerHeightCalculated}, storedDrawerHeight: ${storedDrawerHeight}`);
+    try {
+      const footer = document.querySelector('.global-footer');
+      if (!footer) console.warn("[Home useLayoutEffect - Drawer Sizing] Global footer NOT FOUND.");
+      const footerHeightVal = footer ? footer.getBoundingClientRect().height : 0;
+
+      let calculatedMaxDrawerHeight = 44; // Default minimum
+      const blurbsForMax = Array.from(document.querySelectorAll('p.section-blurb'));
+      if (blurbsForMax.length >= 1) {
+        const firstBlurb = blurbsForMax[0];
+        const blurbRect = firstBlurb.getBoundingClientRect();
+        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - blurbRect.top - 4;
+      } else if (subheaderRef.current) {
+        const subheaderBottomVal = subheaderRef.current.getBoundingClientRect().bottom;
+        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - subheaderBottomVal - 4;
+      } else {
+        calculatedMaxDrawerHeight = currentWindowHeight - footerHeightVal - 4;
+      }
+      calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 44);
+      console.log("[Home useLayoutEffect - Drawer Sizing] Calculated newMaxHeight:", calculatedMaxDrawerHeight, "using currentWindowHeight:", currentWindowHeight);
+      setMaxDrawerHeight(calculatedMaxDrawerHeight);
+
+      if ((storedDrawerHeight === null || storedDrawerHeight === undefined) && !initialHomePageDrawerHeightCalculated) {
+        console.log("[Home useLayoutEffect - Drawer Sizing] Calculating initial homepage drawer height.");
+        const blurbsForInitial = Array.from(document.querySelectorAll('p.section-blurb'));
+        let homeInitialHeight = 44;
+        if (blurbsForInitial.length >= 2) {
+          const secondBlurb = blurbsForInitial[1];
+          const blurbRectInitial = secondBlurb.getBoundingClientRect();
+          homeInitialHeight = currentWindowHeight - footerHeightVal - blurbRectInitial.bottom - 4;
+          homeInitialHeight = Math.max(homeInitialHeight, 44);
+        }
+        // Ensure initial height doesn't exceed the just-calculated maxDrawerHeight
+        const cappedInitialHeight = Math.min(homeInitialHeight, calculatedMaxDrawerHeight);
+        console.log("[Home useLayoutEffect - Drawer Sizing] Setting storedDrawerHeight to (initial):", cappedInitialHeight);
+        setStoredDrawerHeight(cappedInitialHeight);
+        setInitialHomePageDrawerHeightCalculated(true);
+      } else if (initialHomePageDrawerHeightCalculated && storedDrawerHeight !== null) {
+        // If already initialized, check if current storedDrawerHeight exceeds the new maxDrawerHeight
+        if (storedDrawerHeight > calculatedMaxDrawerHeight) {
+          console.log(`[Home useLayoutEffect - Drawer Sizing] Adjusting storedDrawerHeight (${storedDrawerHeight}) to new maxDrawerHeight (${calculatedMaxDrawerHeight}) due to resize.`);
+          setStoredDrawerHeight(calculatedMaxDrawerHeight);
+        } else {
+          console.log("[Home useLayoutEffect - Drawer Sizing] StoredDrawerHeight is within new maxDrawerHeight. No change to storedDrawerHeight needed.");
+        }
+      }
+    } catch (error) {
+      console.error("[Home useLayoutEffect - Drawer Sizing] Error during execution:", error);
+      setMaxDrawerHeight(Math.max(currentWindowHeight - 60 - 4, 44));
+      if ((storedDrawerHeight === null || storedDrawerHeight === undefined) && !initialHomePageDrawerHeightCalculated) {
+        setStoredDrawerHeight(44);
+        setInitialHomePageDrawerHeightCalculated(true);
+      }
+    }
+    // Logging maxDrawerHeight from state, and storedDrawerHeight from closure (which might be updated by setStoredDrawerHeight above)
+    console.log("[Home useLayoutEffect - Drawer Sizing] ENDING. Current maxDrawerHeight (state):", maxDrawerHeight, "Current storedDrawerHeight (closure):", storedDrawerHeight);
+  }, [currentWindowHeight, storedDrawerHeight, setStoredDrawerHeight, initialHomePageDrawerHeightCalculated, subheaderRef, blurbGone, maxDrawerHeight, setMaxDrawerHeight]); // Added setMaxDrawerHeight to dependencies
+
+  // --- Drawer Height Change Handler ---
+  const handleDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+  };
+
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) {
+      console.log("  [executeScrollToBottom] Aborted: Scroll container not ready.");
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) { // Re-check ref
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        // Update position after scroll attempt
+        setChatScrollPosition(targetScrollTop);
+        console.log(`  [executeScrollToBottom] First scroll attempt to: ${targetScrollTop}, scrollHeight: ${currentSc.scrollHeight}, clientHeight: ${currentSc.clientHeight}`);
+
+        // Second scroll attempt in the next frame to handle pending rendering changes
+        requestAnimationFrame(() => {
+          if (internalChatContentScrollRef.current) {
+            const currentScAfterSecondRaf = internalChatContentScrollRef.current;
+            const targetScrollTopAfterSecondRaf = Math.max(0, currentScAfterSecondRaf.scrollHeight - currentScAfterSecondRaf.clientHeight);
+            if (Math.abs(currentScAfterSecondRaf.scrollTop - targetScrollTopAfterSecondRaf) > 1) { // Only scroll if not already at/near bottom
+                 currentScAfterSecondRaf.scrollTop = targetScrollTopAfterSecondRaf;
+                 setChatScrollPosition(targetScrollTopAfterSecondRaf);
+                 console.log(`  [executeScrollToBottom] Second scroll attempt to: ${targetScrollTopAfterSecondRaf}, scrollHeight: ${currentScAfterSecondRaf.scrollHeight}, clientHeight: ${currentScAfterSecondRaf.clientHeight}`);
+            } else {
+              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. No scroll needed. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
+            }
+          } else {
+            console.log("  [executeScrollToBottom] Aborted second scroll in rAF: Scroll container ref lost.");
+          }
+        });
+      } else {
+        console.log("  [executeScrollToBottom] Aborted first scroll in rAF: Scroll container ref lost.");
+      }
+    });
+  }, [setChatScrollPosition, scrollRefReady]);
+
+  // Callback ref for the messages content div to attach MutationObserver
+  const messagesContentRef = useCallback((node: HTMLDivElement | null) => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    
+    // Disconnect previous observer if any
+    if (mutationObserverRef.current) {
+      mutationObserverRef.current.disconnect();
+      mutationObserverRef.current = null;
+      console.log(`  [${pageName}] Mutation Observer: DISCONNECTED (due to ref callback re-run or node removal).`);
+    }
+
+    if (node && scrollRefReady) { // Only observe if node exists and scroll container is ready
+      console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node. Setting up Mutation Observer.`);
+      const observer = new MutationObserver((mutationsList) => {
+        // Check if autoscroll is intended and if there were actual mutations
+        if (autoscrollFlagRef.current && mutationsList.length > 0) {
+          console.log(`    [${pageName}] Mutation Observer: Autoscroll flag TRUE, content mutated (${mutationsList.length} mutations). Scrolling.`);
+          executeScrollToBottom();
+        } else if (mutationsList.length > 0) {
+           console.log(`    [${pageName}] Mutation Observer: Autoscroll flag FALSE or no mutations, content mutated (${mutationsList.length} mutations). No scroll by MutationObserver.`);
+        }
+      });
+      
+      observer.observe(node, { childList: true, subtree: true, characterData: true });
+      mutationObserverRef.current = observer; // Store the new observer
+      console.log(`  [${pageName}] Mutation Observer: ATTACHED to new messagesContentRef node.`);
+    } else if (node) {
+        console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node, but scrollRefReady is FALSE (${scrollRefReady}). Observer not attached yet.`);
+    } else {
+        console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with NULL node. Observer not attached.`);
+    }
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  // Replace the first scroll management useEffect (EFFECT 1)
+  useEffect(() => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    console.log(`%c[${pageName}] EFFECT 1 TRIGGERED (Scroll/Restore/Autoscroll Intent)`, "color: blue; font-weight: bold;");
+    console.log(`  [${pageName}]   Deps: messages.length: ${messages.length}, chatScrollPosition: ${chatScrollPosition}, scrollRefReady: ${scrollRefReady}`);
+    console.log(`  [${pageName}]   Prev. messages.length (ref before logic): ${previousMessagesLengthRef.current}`);
+
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (!scrollRefReady || !scrollContainer) {
+      console.warn(`  [${pageName}]   EFFECT 1: Scroll container ref NOT READY or NULL. scrollRefReady: ${scrollRefReady}.`);
+      console.log(`%c[${pageName}] EFFECT 1 END (No scrollContainer or not ready)`, "color: blue;");
+      return;
+    }
+    console.log(`  [${pageName}]   EFFECT 1: Actual scrollContainer.scrollTop BEFORE logic: ${scrollContainer.scrollTop}`);
+
+    const newMessagesAdded = messages.length > previousMessagesLengthRef.current;
+    console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded: ${newMessagesAdded}`);
+
+    if (newMessagesAdded) {
+      console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded TRUE. Setting autoscrollFlag TRUE.`);
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom(); // Use the new helper
+    } else {
+      // This branch runs if not newMessagesAdded (e.g., scroll restoration or re-runs due to chatScrollPosition/scrollRefReady changes).
+      if (chatScrollPosition !== null && scrollContainer) {
+        console.log(`  [${pageName}]   EFFECT 1 (no new messages): Potentially restoring scroll. Stored chatScrollPosition: ${chatScrollPosition}, Current scrollTop: ${scrollContainer.scrollTop}`);
+        if (Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+          console.log(`    [${pageName}]   EFFECT 1: Restoring scrollTop to ${chatScrollPosition}.`);
+          requestAnimationFrame(() => {
+            if (internalChatContentScrollRef.current) {
+              internalChatContentScrollRef.current.scrollTop = chatScrollPosition;
+            }
+          });
+        } else {
+          console.log(`    [${pageName}]   EFFECT 1: ScrollTop already matches stored position or is close. No restoration needed.`);
+        }
+      } else {
+        console.log(`  [${pageName}]   EFFECT 1 (no new messages): chatScrollPosition is null or scrollContainer lost. No scroll restoration action.`);
+      }
+      console.log(`  [${pageName}]   EFFECT 1 (no new messages): Finished. autoscrollFlagRef.current is: ${autoscrollFlagRef.current}`);
+    }
+
+    previousMessagesLengthRef.current = messages.length;
+    console.log(`  [${pageName}]   EFFECT 1: Updated previousMessagesLengthRef.current to: ${previousMessagesLengthRef.current}`);
+    console.log(`%c[${pageName}] EFFECT 1 END (Processed logic)`, "color: blue;");
+  }, [messages, chatScrollPosition, setChatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  // Add ResizeObserver useEffect
+  useEffect(() => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT TRIGGERED. scrollRefReady: ${scrollRefReady}`, "color: purple; font-weight: bold;");
+
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (scrollRefReady && scrollContainer) {
+      console.log(`  [${pageName}] Resize Observer: Scroll container is READY. Setting up observer.`);
+      const observer = new ResizeObserver((entries) => {
+        const pageNameObs = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home"; // Use a different var name to avoid shadow
+        
+        if (autoscrollFlagRef.current && entries.length > 0 && internalChatContentScrollRef.current) {
+          console.log(`    [${pageNameObs}] Resize Observer: Autoscroll flag is TRUE and content resized.`);
+          executeScrollToBottom(); // Use the new helper
+        } else if (entries.length > 0) {
+          console.log(`    [${pageNameObs}] Resize Observer CALLED (autoscrollFlag: ${autoscrollFlagRef.current}). Content may have resized.`);
+        }
+      });
+      observer.observe(scrollContainer);
+      resizeObserverRef.current = observer;
+      console.log(`  [${pageName}] Resize Observer: ATTACHED to scrollContainer.`);
+      return () => {
+        if (observer) {
+          observer.disconnect();
+          resizeObserverRef.current = null;
+          console.log(`  [${pageName}] Resize Observer: DISCONNECTED.`);
+        }
+      };
+    } else {
+      console.warn(`  [${pageName}] Resize Observer: Scroll container not ready (scrollRefReady: ${scrollRefReady}) or ref is null. Observer not set up.`);
+    }
+    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT END`, "color: purple;");
+  }, [scrollRefReady, setChatScrollPosition, executeScrollToBottom]);
+
+  // Add EFFECT 2 (Manual Scroll Listener)
+  useEffect(() => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (!scrollRefReady || !scrollContainer) {
+      console.warn(`  [${pageName}] Manual Scroll EFFECT: Scroll container NOT READY. scrollRefReady: ${scrollRefReady}. Listener not attached.`);
+      return;
+    }
+
+    console.log(`%c[${pageName}] EFFECT 2 ATTEMPTING ATTACH (Manual Scroll Listener Setup)`, "color: green; font-weight: bold;");
+    let scrollTimeout: number;
+
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          const currentScrollTop = sc.scrollTop;
+          console.log(`  [${pageName}] Manual Scroll DEBOUNCED: Updating store chatScrollPosition to: ${currentScrollTop}`);
+          setChatScrollPosition(currentScrollTop);
+
+          // Update autoscrollFlag based on scroll position
+          const isAtBottom = sc.scrollHeight - currentScrollTop - sc.clientHeight < 5; // 5px tolerance
+          if (autoscrollFlagRef.current !== isAtBottom) {
+            console.log(`    [${pageName}] Manual Scroll: autoscrollFlagRef changed from ${autoscrollFlagRef.current} to ${isAtBottom}`);
+            autoscrollFlagRef.current = isAtBottom;
+          }
+        } else {
+          console.warn(`  [${pageName}] Manual Scroll DEBOUNCED: Scroll container ref lost inside timeout.`);
+        }
+      }, 150);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    console.log(`  [${pageName}] Manual Scroll: Listener ATTACHED.`);
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+      console.log(`  [${pageName}] Manual Scroll: Listener REMOVED.`);
+    };
+  }, [setChatScrollPosition, scrollRefReady]);
+
+  // Update chatContentScrollRef to use useCallback
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+    if (node) {
+      console.log("[Home] chatContentScrollRef CALLBACK FIRED with node.");
+    }
+  }, []); // Empty dependency array for stable ref callback
 
   const handleSend = async () => {
     console.log('Current threadId:', threadId, 'isInitializing:', isInitializing);
@@ -246,7 +547,6 @@ export default function Home() {
         }, 400);
         return;
       }
-      // After this, you can handle more steps or finish the signup
       return;
     }
 
@@ -355,13 +655,6 @@ export default function Home() {
           event: eventObj
         };
         addMessage(assistantMessage);
-        // Auto-scroll after confirmation message
-        setTimeout(() => {
-          const scrollContainer = scrollRef.current;
-          if (scrollContainer) {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-          }
-        }, 100);
       } else {
         const assistantMessage = {
           id: crypto.randomUUID(),
@@ -398,198 +691,174 @@ export default function Home() {
     }
   }, [messages.length, visibleCount]);
 
-  // On mount, set initial drawer height just below the second blurb
-  useLayoutEffect(() => {
-    const blurbs = Array.from(document.querySelectorAll('p.section-blurb'));
-    const footer = document.querySelector('.global-footer');
-    const footerHeight = footer ? footer.getBoundingClientRect().height : 0;
-    if (blurbs.length >= 2) {
-      const secondBlurb = blurbs[1];
-      const blurbRect = secondBlurb.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const padding = 4;
-      const initialHeight = windowHeight - footerHeight - blurbRect.bottom - padding;
-      setDrawerHeight(Math.max(initialHeight, 44));
-    }
-    // Also set maxDrawerHeight to the top of the first blurb
-    if (blurbs.length >= 1) {
-      const firstBlurb = blurbs[0];
-      const blurbRect = firstBlurb.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      const padding = 4;
-      const maxHeight = windowHeight - footerHeight - blurbRect.top - padding;
-      setMaxDrawerHeight(Math.max(maxHeight, 44));
-    }
-  }, []);
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
 
-  // Handler for drawer height change (drag, etc)
-  const handleDrawerHeightChange = (height: number) => {
-    setDrawerHeight(Math.max(Math.min(height, maxDrawerHeight), 44));
-  };
-
-  // Update subheaderBottom on mount and resize
-  useLayoutEffect(() => {
-    function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
-    }
-    updateSubheaderBottom();
-    window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
-  }, []);
-
-  // Lock/unlock scroll based on drawer position
-  useEffect(() => {
-    // If drawer is fully open (docked at top), lock scroll
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
-    } else {
-      setScrollOverflow('hidden');
-    }
-  }, [drawerHeight]);
-
-  // Auto-scroll to bottom when new messages are added
-  useEffect(() => {
-    const scrollContainer = scrollRef.current;
-    if (scrollContainer) {
-      requestAnimationFrame(() => {
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }
-      });
-    }
-  }, [messages]);
+  // Add debug logs before rendering
+  console.log("[Home Rendering Debug] State values:", {
+    hasIntroPlayed,
+    messagesLength: messages.length,
+    isInitializing,
+    threadId,
+    eventsLength: events.length,
+    keepersLength: keepers.length,
+    blurbGone,
+    currentDrawerHeight,
+    storedDrawerHeight
+  });
 
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
       {/* Subheader (for double header effect) */}
-      <div ref={subheaderRef} className="w-full bg-white z-10 profiles-roles-subheader">
-        <section className="mb-2 px-4 pt-4">
-          <div style={{width:'180px'}}>
-            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
-            <div className="flex items-center space-x-2 pl-1">
-              <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
-              <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
-            </div>
-            <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
-          </div>
-          {!blurbGone && (
-            <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
-              Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
-            </p>
-          )}
-        </section>
-        {/* Upcoming Events Cards */}
-        {events.length > 0 && (
-          <div className="flex flex-col w-full pt-2 pb-2 px-4">
-            {events.map((event, idx) => (
-              <div key={event.eventName + event.date + idx}>
-                <EventCard
-                  image={getKicacoEventPhoto(event.eventName)}
-                  name={event.eventName}
-                  date={event.date}
-                  time={event.time}
-                  location={event.location}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Keepers */}
-        <section className="mb-2 px-4">
-          <div className="mt-2" style={{width:'180px'}}>
-            <div className="h-0.5 bg-[#f8b6c2] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
-            <div className="flex items-center space-x-2 pl-1">
-              <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
-              <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Keepers</h2>
-            </div>
-            <div className="h-0.5 bg-[#f8b6c2] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
-          </div>
-          <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
-            Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
-          </p>
-        </section>
-        {/* Keepers Cards */}
-        {keepers.length > 0 && (
-          <div className="flex flex-col items-center w-full pt-2 pb-2">
-            {keepers.map((keeper, idx) => (
-              <div key={keeper.keeperName + keeper.date + idx} className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-pink-200 flex items-center p-3 mb-4 transition hover:shadow-2xl">
-                <div className="w-14 h-14 flex-shrink-0 rounded-full overflow-hidden border border-pink-200 mr-4 bg-pink-100 flex items-center justify-center">
-                  <span role="img" aria-label="keeper" style={{fontSize: 32}}>📒</span>
+      {(() => {
+        console.log("[Home Rendering Debug] Subheader rendering condition:", {
+          hasIntroPlayed,
+          isInitializing,
+          threadId,
+          messagesLength: messages.length
+        });
+        return (
+          <div ref={subheaderRef} className="w-full bg-white z-10 profiles-roles-subheader">
+            <section className="mb-2 px-4 pt-4">
+              <div style={{width:'180px'}}>
+                <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
+                <div className="flex items-center space-x-2 pl-1">
+                  <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+                  <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
                 </div>
-                <div className="flex-1 flex flex-col justify-center min-w-0">
-                  <h3 className="text-base font-bold text-pink-900 truncate mb-0.5">{keeper.keeperName}</h3>
-                  {keeper.date && <div className="text-sm text-pink-600 mb-0.5 truncate">Date: {keeper.date}</div>}
-                  {keeper.time && <div className="text-sm text-pink-600 mb-0.5 truncate">Time: {keeper.time}</div>}
-                  {keeper.location && <div className="text-sm text-pink-600 truncate">Location: {keeper.location}</div>}
-                </div>
+                <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
               </div>
-            ))}
+              {!blurbGone && (
+                <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+                  Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
+                </p>
+              )}
+            </section>
+            {/* Upcoming Events Cards */}
+            {events.length > 0 && (
+              <div className="flex flex-col w-full pt-2 pb-2 px-4">
+                {events.map((event, idx) => (
+                  <div key={event.eventName + event.date + idx}>
+                    <EventCard
+                      image={getKicacoEventPhoto(event.eventName)}
+                      name={event.eventName}
+                      date={event.date}
+                      time={event.time}
+                      location={event.location}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Keepers */}
+            <section className="mb-2 px-4">
+              <div className="mt-2" style={{width:'180px'}}>
+                <div className="h-0.5 bg-[#f8b6c2] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
+                <div className="flex items-center space-x-2 pl-1">
+                  <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
+                  <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Keepers</h2>
+                </div>
+                <div className="h-0.5 bg-[#f8b6c2] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
+              </div>
+              <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+                Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
+              </p>
+            </section>
+            {/* Keepers Cards */}
+            {keepers.length > 0 && (
+              <div className="flex flex-col items-center w-full pt-2 pb-2">
+                {keepers.map((keeper, idx) => (
+                  <div key={keeper.keeperName + keeper.date + idx} className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-pink-200 flex items-center p-3 mb-4 transition hover:shadow-2xl">
+                    <div className="w-14 h-14 flex-shrink-0 rounded-full overflow-hidden border border-pink-200 mr-4 bg-pink-100 flex items-center justify-center">
+                      <span role="img" aria-label="keeper" style={{fontSize: 32}}>📒</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center min-w-0">
+                      <h3 className="text-base font-bold text-pink-900 truncate mb-0.5">{keeper.keeperName}</h3>
+                      {keeper.date && <div className="text-sm text-pink-600 mb-0.5 truncate">Date: {keeper.date}</div>}
+                      {keeper.time && <div className="text-sm text-pink-600 mb-0.5 truncate">Time: {keeper.time}</div>}
+                      {keeper.location && <div className="text-sm text-pink-600 truncate">Location: {keeper.location}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
       <GlobalChatDrawer
-        drawerHeight={drawerHeight}
+        drawerHeight={currentDrawerHeight}
         maxDrawerHeight={maxDrawerHeight}
         onHeightChange={handleDrawerHeightChange}
+        scrollContainerRefCallback={chatContentScrollRef}
       >
-        <div ref={scrollRef} className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4 overflow-y-auto max-h-full">
-          {messages.map((msg, idx) => {
-            if (msg.type === 'event_confirmation' && msg.event) {
-              return (
-                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                  <div>
-                    <EventCard
-                      image={getKicacoEventPhoto(msg.event.eventName)}
-                      name={msg.event.eventName}
-                      date={msg.event.date}
-                      time={msg.event.time}
-                      location={msg.event.location}
-                    />
-                    <div className="mt-2 text-left w-full text-sm text-gray-900">{
-                      msg.content.replace(/Want to change anything\??/, '').trim()
-                    }</div>
-                    <div className="mt-3 text-xs text-gray-500 font-inter">
-                      Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
-                    </div>
-                    <button
-                      className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
-                      onClick={() => {
-                        setShowSignup(true);
-                        setSignupStep(0);
-                        setSignupData({});
-                        addMessage({
-                          id: crypto.randomUUID(),
-                          sender: 'assistant',
-                          content: "Let's get you set up! What's your name?"
-                        });
-                      }}
-                    >
-                      Create an account
-                    </button>
-                  </div>
-                </ChatBubble>
-              );
-            }
-            if (msg.type === 'post_signup_options') {
-              return (
-                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                  <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
-                </ChatBubble>
-              );
-            }
-            return (
-              <ChatBubble
-                key={msg.id}
-                side={msg.sender === 'user' ? 'right' : 'left'}
-              >
-                {msg.content}
-              </ChatBubble>
-            );
-          })}
-        </div>
+        {(() => {
+          console.log("[Home Rendering Debug] ChatDrawer content rendering:", {
+            messagesLength: messages.length,
+            isInitializing,
+            threadId,
+            scrollRefReady
+          });
+          return (
+            <div
+              ref={messagesContentRef}
+              className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+            >
+              {messages.map((msg, idx) => {
+                if (msg.type === 'event_confirmation' && msg.event) {
+                  return (
+                    <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                      <div>
+                        <EventCard
+                          image={getKicacoEventPhoto(msg.event.eventName)}
+                          name={msg.event.eventName}
+                          date={msg.event.date}
+                          time={msg.event.time}
+                          location={msg.event.location}
+                        />
+                        <div className="mt-2 text-left w-full text-sm text-gray-900">{
+                          msg.content.replace(/Want to change anything\??/, '').trim()
+                        }</div>
+                        <div className="mt-3 text-xs text-gray-500 font-inter">
+                          Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                        </div>
+                        <button
+                          className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+                          onClick={() => {
+                            setShowSignup(true);
+                            setSignupStep(0);
+                            setSignupData({});
+                            addMessage({
+                              id: crypto.randomUUID(),
+                              sender: 'assistant',
+                              content: "Let's get you set up! What's your name?"
+                            });
+                          }}
+                        >
+                          Create an account
+                        </button>
+                      </div>
+                    </ChatBubble>
+                  );
+                }
+                if (msg.type === 'post_signup_options') {
+                  return (
+                    <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                      <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
+                    </ChatBubble>
+                  );
+                }
+                return (
+                  <ChatBubble
+                    key={msg.id}
+                    side={msg.sender === 'user' ? 'right' : 'left'}
+                  >
+                    {msg.content}
+                  </ChatBubble>
+                );
+              })}
+            </div>
+          );
+        })()}
       </GlobalChatDrawer>
       {pendingEvent && (
         <EventConfirmationCard

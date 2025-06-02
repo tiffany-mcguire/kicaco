@@ -48,6 +48,11 @@ type KicacoState = {
 
   keepers: Keeper[];
   addKeeper: (keeper: Partial<Keeper>) => void;
+
+  drawerHeight: number | null;
+  setDrawerHeight: (height: number) => void;
+  chatScrollPosition: number | null;
+  setChatScrollPosition: (position: number | null) => void;
 };
 
 export const useKicacoStore = create<KicacoState>((set) => ({
@@ -82,4 +87,9 @@ export const useKicacoStore = create<KicacoState>((set) => ({
   keepers: [],
   addKeeper: (keeper) =>
     set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] })),
+
+  drawerHeight: null,
+  setDrawerHeight: (height) => set({ drawerHeight: height }),
+  chatScrollPosition: null,
+  setChatScrollPosition: (position) => set({ chatScrollPosition: position }),
 })); 

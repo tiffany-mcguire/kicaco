@@ -1,7 +1,7 @@
 import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
 import IconButton from '../components/IconButton';
 import ChatBubble from '../components/ChatBubble';
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
@@ -14,6 +14,7 @@ import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
+import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
 // Add CalendarIcon definition
 const CalendarIcon = () => (
@@ -95,36 +96,289 @@ export default function UpcomingEvents() {
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { events, messages } = useKicacoStore();
+  const [scrollRefReady, setScrollRefReady] = useState(false);
+  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const autoscrollFlagRef = useRef(false); // For managing autoscroll after new message
+  const mutationObserverRef = useRef<MutationObserver | null>(null); // Ref for the new MutationObserver
+  const {
+    events,
+    messages,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+    chatScrollPosition,
+    setChatScrollPosition,
+    threadId,
+    addMessage,
+    removeMessageById,
+    addEvent
+  } = useKicacoStore();
+  const previousMessagesLengthRef = useRef(messages.length);
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
 
-  const handleDrawerHeightChange = (height: number) => {
-    setDrawerHeight(height);
-    setDrawerTop(window.innerHeight - height);
-  };
+  const executeScrollToBottom = useCallback(() => {
+    const sc = internalChatContentScrollRef.current;
+    if (!sc || !scrollRefReady) {
+      console.log("  [executeScrollToBottom] Aborted: Scroll container not ready.");
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (internalChatContentScrollRef.current) { // Re-check ref
+        const currentSc = internalChatContentScrollRef.current;
+        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
+        currentSc.scrollTop = targetScrollTop;
+        // Update position after scroll attempt
+        setChatScrollPosition(targetScrollTop);
+        console.log(`  [executeScrollToBottom] First scroll attempt to: ${targetScrollTop}, scrollHeight: ${currentSc.scrollHeight}, clientHeight: ${currentSc.clientHeight}`);
+        
+        // Second scroll attempt in the next frame to handle pending rendering changes
+        requestAnimationFrame(() => {
+          if (internalChatContentScrollRef.current) {
+            const currentScAfterSecondRaf = internalChatContentScrollRef.current;
+            const targetScrollTopAfterSecondRaf = Math.max(0, currentScAfterSecondRaf.scrollHeight - currentScAfterSecondRaf.clientHeight);
+            if (Math.abs(currentScAfterSecondRaf.scrollTop - targetScrollTopAfterSecondRaf) > 1) { // Only scroll if not already at/near bottom
+                 currentScAfterSecondRaf.scrollTop = targetScrollTopAfterSecondRaf;
+                 setChatScrollPosition(targetScrollTopAfterSecondRaf);
+                 console.log(`  [executeScrollToBottom] Second scroll attempt to: ${targetScrollTopAfterSecondRaf}, scrollHeight: ${currentScAfterSecondRaf.scrollHeight}, clientHeight: ${currentScAfterSecondRaf.clientHeight}`);
+            } else {
+              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. No scroll needed. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
+            }
+          } else {
+            console.log("  [executeScrollToBottom] Aborted second scroll in rAF: Scroll container ref lost.");
+          }
+        });
+      } else {
+        console.log("  [executeScrollToBottom] Aborted first scroll in rAF: Scroll container ref lost.");
+      }
+    });
+  }, [setChatScrollPosition, scrollRefReady]);
 
   useLayoutEffect(() => {
-    function updateSubheaderBottom() {
+    function updatePageSpecificMaxHeight() {
       if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
+        const bottom = subheaderRef.current.getBoundingClientRect().bottom;
+        const footer = document.querySelector('.global-footer');
+        const footerHeightVal = footer ? footer.getBoundingClientRect().height : 0;
+        const availableHeight = window.innerHeight - bottom - footerHeightVal - 8; // 8px padding
+        setMaxDrawerHeight(Math.max(availableHeight, 44));
       }
     }
-    updateSubheaderBottom();
-    window.addEventListener('resize', updateSubheaderBottom);
-    return () => window.removeEventListener('resize', updateSubheaderBottom);
-  }, []);
+    updatePageSpecificMaxHeight();
+    window.addEventListener('resize', updatePageSpecificMaxHeight);
+    return () => window.removeEventListener('resize', updatePageSpecificMaxHeight);
+  }, [subheaderRef]);
+
+  const handleDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 44);
+    setStoredDrawerHeight(newHeight);
+  };
 
   useEffect(() => {
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
-    } else {
-      setScrollOverflow('hidden');
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    console.log(`%c[${pageName}] EFFECT 1 TRIGGERED (Scroll/Restore/Autoscroll Intent)`, "color: blue; font-weight: bold;");
+    console.log(`  [${pageName}]   Deps: messages.length: ${messages.length}, chatScrollPosition: ${chatScrollPosition}, scrollRefReady: ${scrollRefReady}`);
+    console.log(`  [${pageName}]   Prev. messages.length (ref before logic): ${previousMessagesLengthRef.current}`);
+
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (!scrollRefReady || !scrollContainer) {
+      console.warn(`  [${pageName}]   EFFECT 1: Scroll container ref NOT READY or NULL. scrollRefReady: ${scrollRefReady}.`);
+      console.log(`%c[${pageName}] EFFECT 1 END (No scrollContainer or not ready)`, "color: blue;");
+      return;
     }
-  }, [drawerHeight]);
+    console.log(`  [${pageName}]   EFFECT 1: Actual scrollContainer.scrollTop BEFORE logic: ${scrollContainer.scrollTop}`);
+
+    const newMessagesAdded = messages.length > previousMessagesLengthRef.current;
+    console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded: ${newMessagesAdded}`);
+
+    if (newMessagesAdded) {
+      console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded TRUE. Setting autoscrollFlag TRUE.`);
+      autoscrollFlagRef.current = true;
+      executeScrollToBottom(); // Use the new helper
+    } else {
+      if (chatScrollPosition !== null && scrollContainer) {
+        console.log(`  [${pageName}]   EFFECT 1 (no new messages): Potentially restoring scroll. Stored chatScrollPosition: ${chatScrollPosition}, Current scrollTop: ${scrollContainer.scrollTop}`);
+        if (Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
+          console.log(`    [${pageName}]   EFFECT 1: Restoring scrollTop to ${chatScrollPosition}.`);
+          requestAnimationFrame(() => {
+            if (internalChatContentScrollRef.current) {
+              internalChatContentScrollRef.current.scrollTop = chatScrollPosition;
+            }
+          });
+        } else {
+          console.log(`    [${pageName}]   EFFECT 1: ScrollTop already matches stored position or is close. No restoration needed.`);
+        }
+      } else {
+        console.log(`  [${pageName}]   EFFECT 1 (no new messages): chatScrollPosition is null or scrollContainer lost. No scroll restoration action.`);
+      }
+      console.log(`  [${pageName}]   EFFECT 1 (no new messages): Finished. autoscrollFlagRef.current is: ${autoscrollFlagRef.current}`);
+    }
+
+    previousMessagesLengthRef.current = messages.length;
+    console.log(`  [${pageName}]   EFFECT 1: Updated previousMessagesLengthRef.current to: ${previousMessagesLengthRef.current}`);
+    console.log(`%c[${pageName}] EFFECT 1 END (Processed logic)`, "color: blue;");
+  }, [messages, chatScrollPosition, setChatScrollPosition, scrollRefReady, executeScrollToBottom]);
+
+  useEffect(() => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT TRIGGERED. scrollRefReady: ${scrollRefReady}`, "color: purple; font-weight: bold;");
+
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (scrollRefReady && scrollContainer) {
+      console.log(`  [${pageName}] Resize Observer: Scroll container is READY. Setting up observer.`);
+      const observer = new ResizeObserver((entries) => {
+        const pageNameObs = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home"; // Use a different var name to avoid shadow
+        
+        if (autoscrollFlagRef.current && entries.length > 0 && internalChatContentScrollRef.current) {
+          console.log(`    [${pageNameObs}] Resize Observer: Autoscroll flag is TRUE and content resized.`);
+          executeScrollToBottom(); // Use the new helper
+        } else if (entries.length > 0) {
+          console.log(`    [${pageNameObs}] Resize Observer CALLED (autoscrollFlag: ${autoscrollFlagRef.current}). Content may have resized.`);
+        }
+      });
+      observer.observe(scrollContainer);
+      resizeObserverRef.current = observer;
+      console.log(`  [${pageName}] Resize Observer: ATTACHED to scrollContainer.`);
+      return () => {
+        if (observer) {
+          observer.disconnect();
+          resizeObserverRef.current = null;
+          console.log(`  [${pageName}] Resize Observer: DISCONNECTED.`);
+        }
+      };
+    } else {
+      console.warn(`  [${pageName}] Resize Observer: Scroll container not ready (scrollRefReady: ${scrollRefReady}) or ref is null. Observer not set up.`);
+    }
+    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT END`, "color: purple;");
+  }, [scrollRefReady, setChatScrollPosition, executeScrollToBottom]);
+
+  useEffect(() => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+    const scrollContainer = internalChatContentScrollRef.current;
+
+    if (!scrollRefReady || !scrollContainer) {
+      console.warn(`  [${pageName}] Manual Scroll EFFECT: Scroll container NOT READY. scrollRefReady: ${scrollRefReady}. Listener not attached.`);
+      return;
+    }
+
+    console.log(`%c[${pageName}] EFFECT 2 ATTEMPTING ATTACH (Manual Scroll Listener Setup)`, "color: green; font-weight: bold;");
+      let scrollTimeout: number;
+
+      const handleScroll = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = window.setTimeout(() => {
+        if (internalChatContentScrollRef.current) {
+          const sc = internalChatContentScrollRef.current;
+          const currentScrollTop = sc.scrollTop;
+          console.log(`  [${pageName}] Manual Scroll DEBOUNCED: Updating store chatScrollPosition to: ${currentScrollTop}`);
+          setChatScrollPosition(currentScrollTop);
+
+          // Update autoscrollFlag based on scroll position
+          const isAtBottom = sc.scrollHeight - currentScrollTop - sc.clientHeight < 5; // 5px tolerance
+          if (autoscrollFlagRef.current !== isAtBottom) {
+            console.log(`    [${pageName}] Manual Scroll: autoscrollFlagRef changed from ${autoscrollFlagRef.current} to ${isAtBottom}`);
+            autoscrollFlagRef.current = isAtBottom;
+          }
+          } else {
+            console.warn(`  [${pageName}] Manual Scroll DEBOUNCED: Scroll container ref lost inside timeout.`);
+          }
+        }, 150);
+      };
+
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+      console.log(`  [${pageName}] Manual Scroll: Listener ATTACHED.`);
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+      console.log(`  [${pageName}] Manual Scroll: Listener REMOVED.`);
+    };
+  }, [setChatScrollPosition, scrollRefReady]);
+
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 44;
+
+  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
+    internalChatContentScrollRef.current = node;
+    setScrollRefReady(!!node);
+    if (node) {
+      console.log("[UpcomingEvents] chatContentScrollRef CALLBACK FIRED with node.");
+    }
+  }, []); // Empty dependency array for stable ref callback
+
+  // Callback ref for the messages content div to attach MutationObserver
+  const messagesContentRef = useCallback((node: HTMLDivElement | null) => {
+    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
+
+    if (mutationObserverRef.current) {
+      mutationObserverRef.current.disconnect();
+      mutationObserverRef.current = null;
+      console.log(`  [${pageName}] Mutation Observer: DISCONNECTED (due to ref callback re-run or node removal).`);
+    }
+
+    if (node && scrollRefReady) {
+      console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node. Setting up Mutation Observer.`);
+      const observer = new MutationObserver((mutationsList) => {
+        if (autoscrollFlagRef.current && mutationsList.length > 0) {
+          console.log(`    [${pageName}] Mutation Observer: Autoscroll flag TRUE, content mutated (${mutationsList.length} mutations). Scrolling.`);
+          executeScrollToBottom();
+        } else if (mutationsList.length > 0) {
+          console.log(`    [${pageName}] Mutation Observer: Autoscroll flag FALSE or no mutations, content mutated (${mutationsList.length} mutations). No scroll by MutationObserver.`);
+        }
+      });
+
+      observer.observe(node, { childList: true, subtree: true, characterData: true });
+      mutationObserverRef.current = observer;
+      console.log(`  [${pageName}] Mutation Observer: ATTACHED to new messagesContentRef node.`);
+    } else if (node) {
+      console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node, but scrollRefReady is FALSE (${scrollRefReady}). Observer not attached yet.`);
+    } else {
+      console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with NULL node. Observer not attached.`);
+    }
+  }, [scrollRefReady, executeScrollToBottom]);
+
+  // Assistant-enabled handleSend
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    if (!threadId) {
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: 'Please wait while I initialize our conversation...'
+      });
+      return;
+    }
+    const userText = input.trim();
+    setInput("");
+    const userMessage = {
+      id: crypto.randomUUID(),
+      sender: 'user' as const,
+      content: userText
+    };
+    addMessage(userMessage);
+    const thinkingMessage = {
+      id: 'thinking',
+      sender: 'assistant' as const,
+      content: 'Kicaco is thinking',
+    };
+    addMessage(thinkingMessage);
+    try {
+      const assistantResponse = await sendMessageToAssistant(threadId, userText);
+      removeMessageById('thinking');
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: assistantResponse
+      });
+    } catch (error) {
+      removeMessageById('thinking');
+      addMessage({
+        id: crypto.randomUUID(),
+        sender: 'assistant' as const,
+        content: 'Sorry, I encountered an error. Please try again.'
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -142,36 +396,23 @@ export default function UpcomingEvents() {
         frameColor="#c0e2e7"
         frameOpacity={0.75}
       />
-      <div
-        ref={scrollRef}
-        className="upcoming-events-content-scroll bg-white"
-        style={{
-          position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: window.innerHeight - drawerTop,
-          left: 0,
-          right: 0,
-          overflowY: scrollOverflow,
-          transition: 'top 0.2s, bottom 0.2s',
-        }}
+      <GlobalChatDrawer 
+        drawerHeight={currentDrawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        onHeightChange={handleDrawerHeightChange}
+        scrollContainerRefCallback={chatContentScrollRef}
       >
-        {events.length > 0 && (
-          <div className="flex flex-col w-full pt-2 pb-2 px-4">
-            {events.map((event, idx) => (
-              <EventCard
-                key={event.eventName + event.date + idx}
-                image={getKicacoEventPhoto(event.eventName)}
-                name={event.eventName}
-                date={event.date}
-                time={event.time}
-                location={event.location}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      <GlobalChatDrawer onHeightChange={handleDrawerHeightChange}>
-        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
+        {(() => {
+          console.log("[UpcomingEvents Rendering Debug] ChatDrawer content rendering:", {
+            messagesLength: messages.length,
+            threadId,
+            scrollRefReady
+          });
+          return (
+        <div
+          ref={messagesContentRef}
+          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+        >
           {messages.map((msg, idx) => {
             if (msg.type === 'event_confirmation' && msg.event) {
               return (
@@ -220,11 +461,41 @@ export default function UpcomingEvents() {
             );
           })}
         </div>
+          );
+        })()}
       </GlobalChatDrawer>
+      <div
+        className="upcoming-events-content-scroll bg-white"
+        style={{
+          position: 'absolute',
+          top: subheaderRef.current ? subheaderRef.current.getBoundingClientRect().bottom + 8 : 0,
+          bottom: currentDrawerHeight + (footerRef.current ? footerRef.current.getBoundingClientRect().height : 0) + 8,
+          left: 0,
+          right: 0,
+          overflowY: 'auto',
+          transition: 'top 0.2s, bottom 0.2s',
+        }}
+      >
+        {events.length > 0 && (
+          <div className="flex flex-col w-full pt-2 pb-2 px-4">
+            {events.map((event, idx) => (
+              <EventCard
+                key={event.eventName + event.date + idx}
+                image={getKicacoEventPhoto(event.eventName)}
+                name={event.eventName}
+                date={event.date}
+                time={event.time}
+                location={event.location}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       <GlobalFooter
         ref={footerRef}
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+        onSend={handleSend}
       />
     </div>
   );
