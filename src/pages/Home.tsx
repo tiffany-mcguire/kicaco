@@ -750,7 +750,7 @@ export default function Home() {
                 <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
               </div>
               {!blurbGone && (
-                <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+                <p className="mt-2 text-gray-400 text-xs leading-snug w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
                   Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
                 </p>
               )}
@@ -781,7 +781,7 @@ export default function Home() {
                 </div>
                 <div className="h-0.5 bg-[#f8b6c2] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
               </div>
-              <p className="mt-2 text-gray-700 text-[15px] leading-snug font-medium w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
+              <p className="mt-2 text-gray-400 text-xs leading-snug w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
                 Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
               </p>
             </section>

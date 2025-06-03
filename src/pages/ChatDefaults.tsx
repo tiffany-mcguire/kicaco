@@ -403,14 +403,10 @@ export default function ChatDefaults() {
           <div className="overflow-y-auto" style={{ paddingBottom: 40 }}>
             <div className="px-4 pt-4 pb-2">
               <h3 className="text-[16px] font-semibold text-[#00647a]">Follow-up prompts</h3>
-              <p className="text-[14px] text-[#030303] leading-snug mt-1 mb-3">
-                Set how Kicaco follows up when details are missing in your messages. These settings let you streamline your chats and reduce back-and-forth.
-              </p>
-              <div className="h-[1px] w-full bg-[#e0e0e0] rounded" />
             </div>
-            <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[14px] text-[#030303]">Always ask for time if not provided</span>
+            <div className="px-4 pt-2 pb-3">
+              <div className="flex items-end justify-between mb-1">
+                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for time if not provided</span>
                 <button
                   type="button"
                   role="switch"
@@ -422,13 +418,16 @@ export default function ChatDefaults() {
                   <span style={toggleKnobStyle(timeToggle)} />
                 </button>
               </div>
-              <p className="text-[12px] text-[#858585] font-light leading-snug">
-                Be advised: When toggled off, Kicaco will not prompt you for an event time, even if it is not shared in the chat.
+              <p 
+                className="text-xs text-gray-400 font-light leading-snug"
+                style={{ maxWidth: 'calc(100% - 52px)' }}
+              >
+                Be advised: When toggled off, Kicaco will not prompt you for an event time, even if not shared in the chat.
               </p>
             </div>
             <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[14px] text-[#030303]">Always ask for location if not provided</span>
+              <div className="flex items-end justify-between mb-1">
+                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for location if not provided</span>
                 <button
                   type="button"
                   role="switch"
@@ -440,13 +439,16 @@ export default function ChatDefaults() {
                   <span style={toggleKnobStyle(locationToggle)} />
                 </button>
               </div>
-              <p className="text-[12px] text-[#858585] font-light leading-snug">
-                Be advised: When toggled off, Kicaco will not prompt you for an event location, even if no location is shared or detected from context.
+              <p 
+                className="text-xs text-gray-400 font-light leading-snug"
+                style={{ maxWidth: 'calc(100% - 52px)' }}
+              >
+                Be advised: When toggled off, Kicaco will not prompt you for an event location, even if no location is shared or parsed from context.
               </p>
             </div>
             <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[14px] text-[#030303]">Always ask for reminder settings</span>
+              <div className="flex items-end justify-between mb-1">
+                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for reminder settings</span>
                 <button
                   type="button"
                   role="switch"
@@ -458,14 +460,22 @@ export default function ChatDefaults() {
                   <span style={toggleKnobStyle(reminderToggle)} />
                 </button>
               </div>
-              <p className="text-[12px] text-[#858585] font-light leading-snug">
-                Be advised: When toggled off, Kicaco will not follow up by asking if you want a reminder for an event.
+              <p 
+                className="text-xs text-gray-400 font-light leading-snug"
+                style={{ maxWidth: 'calc(100% - 52px)' }}
+              >
+                Be advised: When toggled off, Kicaco will not follow up by asking whether you want a reminder for an event.
               </p>
             </div>
             <div className="px-4 pt-4 pb-6">
-              <p className="text-[14px] leading-snug">
-                <span className="text-[#b91142] font-medium">Child Profile Distinction</span>
-                <span className="text-[#030303] font-normal"> – In multi-child households, Kicaco will always ask which child an event or task is for if the name isn't included in your message.</span>
+              <div className="mb-1">
+                <span className="text-[#b91142] font-medium text-[14px] leading-none">Child Profile Distinction</span>
+              </div>
+              <p 
+                className="text-xs text-gray-400 leading-snug"
+                style={{ maxWidth: 'calc(100% - 52px)' }}
+              >
+                In multi-child households, Kicaco will always ask which child an event or task is for if the name isn't included in your message.
               </p>
             </div>
           </div>

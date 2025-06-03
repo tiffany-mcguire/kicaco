@@ -13,6 +13,74 @@ import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
+// Styles and function copied from EditChild.tsx for consistent input styling
+
+// Base style for the input WRAPPER
+const inputWrapperBaseStyle: React.CSSProperties = {
+  borderWidth: '1px',
+  borderColor: '#c0e2e799', // Changed from #d1d5db to card border color
+  borderRadius: '0.5rem', // Tailwind rounded-lg
+  boxShadow: '0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)', // Lift shadow
+  transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+};
+// Style for the inner INPUT element
+const inputElementStyle: React.CSSProperties = {
+  width: '100%',
+  paddingTop: '0.375rem', // py-1.5
+  paddingBottom: '0.375rem', // py-1.5
+  paddingLeft: '0.75rem', // px-3
+  paddingRight: '0.75rem', // px-3
+  border: 'none',
+  outline: 'none',
+  backgroundColor: 'transparent',
+  fontSize: '0.75rem', // text-xs (was '0.875rem' i.e. text-sm)
+  color: '#9ca3af', // text-gray-400 (was '#111827' i.e. text-gray-900)
+};
+
+const getFocusStyle = (isFocused: boolean, isRequired: boolean): React.CSSProperties => {
+  const nonFocusedBorderColor = '#c0e2e799'; // Card border color C0E2E7 at 60% opacity
+  const nonFocusedBlurColor = 'rgba(192, 226, 231, 0.6)'; // #c0e2e7 at 60% opacity for shadow blur
+  
+  const baseBorderWidth = '1px';
+  const baseBorderStyle = 'solid'; 
+
+  const nonFocusedBoxShadow = `0 0 2px 0 ${nonFocusedBlurColor}, 0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)`;
+  
+  if (isFocused) {
+    const bottomBorderColorOnFocus = isRequired ? '#fbb6ce' : '#c0e2e7'; // Will be #c0e2e7 for invite field
+    const bottomGlowColor = isRequired ? 'rgba(251, 182, 206, 0.5)' : 'rgba(192, 226, 231, 0.5)'; // Blue glow
+    
+    return {
+      borderTopColor: nonFocusedBorderColor,       // Keep non-focused color
+      borderRightColor: nonFocusedBorderColor,     // Keep non-focused color
+      borderLeftColor: nonFocusedBorderColor,      // Keep non-focused color
+      borderBottomColor: bottomBorderColorOnFocus, 
+      borderTopWidth: baseBorderWidth,
+      borderRightWidth: baseBorderWidth,
+      borderLeftWidth: baseBorderWidth,
+      borderBottomWidth: '2px',
+      borderStyle: baseBorderStyle,
+      boxShadow: `${nonFocusedBoxShadow}, 0 2px 5px -1px ${bottomGlowColor}`,
+      borderRadius: '0.5rem', 
+    };
+  }
+  
+  // When not focused:
+  return {
+    borderTopColor: nonFocusedBorderColor,    
+    borderRightColor: nonFocusedBorderColor,   
+    borderBottomColor: nonFocusedBorderColor,  
+    borderLeftColor: nonFocusedBorderColor,    
+    borderTopWidth: baseBorderWidth,
+    borderRightWidth: baseBorderWidth,
+    borderBottomWidth: baseBorderWidth, 
+    borderLeftWidth: baseBorderWidth,
+    borderStyle: baseBorderStyle,
+    boxShadow: nonFocusedBoxShadow, 
+    borderRadius: '0.5rem', 
+  };
+};
+
 type ChildProfile = {
   id: string;
   name: string;
@@ -47,7 +115,7 @@ const UpdateProfilesButton = (props: { label?: string }) => {
 
   const getButtonStyle = () => {
     let s = {
-      width: '140px', // Match all other custom buttons
+      width: '140px',
       height: '30px',
       padding: '0px 8px',
       border: '1px solid #c0e2e7',
@@ -110,22 +178,23 @@ const BigActionButton = (props: { children: React.ReactNode; onClick?: () => voi
 
   const getButtonStyle = () => {
     let s = {
-      marginTop: '12px',
-      padding: '10px 0',
+      height: '30px',
+      width: '140px',
+      margin: '12px auto 0 auto',
+      padding: '0px 8px',
       boxSizing: 'border-box' as const,
       fontFamily: 'Nunito',
       fontWeight: 600,
-      fontSize: '16px',
-      lineHeight: '22px',
+      fontSize: '14px',
+      lineHeight: '20px',
       background: '#fff',
       color: '#217e8f',
       outline: 'none',
       transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
       display: 'block',
-      width: '100%',
-      borderRadius: '8px',
+      borderRadius: '6px',
       border: '1px solid #c0e2e7',
-      boxShadow: '-2px 2px 0px rgba(0,0,0,0.15)',
+      boxShadow: '-2px 2px 0px rgba(0,0,0,0.25)',
       borderColor: '#c0e2e7',
     } as React.CSSProperties;
     if (hovered || focused) {
@@ -179,7 +248,7 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
 
   const getButtonStyle = () => {
     let s = {
-      minWidth: '80px',
+      width: '140px',
       height: '28px',
       padding: '0px 12px',
       border: `1.2px solid ${borderColor}`,
@@ -187,8 +256,8 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
       borderRadius: '6px',
       fontFamily: 'Nunito',
       fontWeight: 600,
-      fontSize: '13px',
-      lineHeight: '18px',
+      fontSize: '14px',
+      lineHeight: 'normal',
       boxShadow: `${baseShadow}, ${liftShadow}`,
       background: '#fff',
       color: props.color ?? '#217e8f',
@@ -196,6 +265,9 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
       borderColor: borderColor,
       transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
       cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     } as React.CSSProperties;
     if (hovered || focused) {
       s = {
@@ -240,6 +312,7 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
 
 export default function ProfilesRoles() {
   const [inviteInput, setInviteInput] = useState("");
+  const [isInviteInputFocused, setIsInviteInputFocused] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [chatInput, setChatInput] = useState("");
@@ -542,15 +615,6 @@ export default function ProfilesRoles() {
       >
         <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
 
-          <div className="profiles-roles-section-manage-household">
-            <h2 className="text-xl font-semibold text-[#1a6e7e]">Manage Your Household</h2>
-            <p className="text-sm text-gray-700 mt-1">
-              Set up your household by adding child profiles and inviting others to share access and responsibilities.
-            </p>
-          </div>
-
-          <div className="profiles-roles-divider border-t border-gray-200 my-6"></div>
-
           <div className="profiles-roles-section-children">
             <h3 className="text-lg font-semibold text-[#1a6e7e]">Your Children</h3>
             <div className="profiles-roles-children-list">
@@ -559,18 +623,18 @@ export default function ProfilesRoles() {
                   <p className="text-sm text-gray-700 mt-1">
                     You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
                   </p>
-                  <BigActionButton onClick={handleAddChild}>
-                    + Add Child Profile
-                  </BigActionButton>
+                  <div className="flex justify-start">
+                    <MiniActionButton label="+ Add Child" onClick={handleAddChild} extraClassName="mt-3" />
+                  </div>
                 </>
               ) : (
                 <>
                   {children.map(child => (
                     <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-center justify-between">
                       <div className="profiles-roles-child-info">
-                        <p className="text-[#1a6e7e] font-semibold text-base">{child.name}</p>
-                        <p className="text-xs text-gray-500 mt-1">DOB: {child.dob}</p>
-                        <p className="text-xs text-gray-500">School: {child.school}</p>
+                        <p className="text-[#1a6e7e] font-semibold text-sm">{child.name}</p>
+                        <p className="text-xs text-gray-400 mt-1">DOB: {child.dob}</p>
+                        <p className="text-xs text-gray-400">School: {child.school}</p>
                       </div>
                       <div className="profiles-roles-child-actions flex flex-col gap-2 ml-4">
                         <MiniActionButton label="Edit" onClick={() => console.log('Edit', child.id)} />
@@ -578,7 +642,9 @@ export default function ProfilesRoles() {
                       </div>
                     </div>
                   ))}
-                  <BigActionButton onClick={handleAddChild}>+ Add Another Child</BigActionButton>
+                  <div className="flex justify-start">
+                    <MiniActionButton label="+ Add Child" onClick={handleAddChild} extraClassName="mt-3" />
+                  </div>
                 </>
               )}
             </div>
@@ -597,26 +663,26 @@ export default function ProfilesRoles() {
                 sharedUsers.map(user => (
                   <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-start justify-between">
                     <div className="profiles-roles-shared-user-info min-w-0">
-                      <p className="text-[#1a6e7e] font-semibold text-base">{user.name} <span className="text-sm text-gray-500 font-normal">({user.role})</span></p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-[#1a6e7e] font-semibold text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
                       <div className="text-sm text-gray-700 mt-3">
                         <span className="text-[#1a6e7e] font-semibold">Permissions:</span>
                         <div className="profiles-roles-shared-user-permissions md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
                           <span className="flex items-center gap-1">
                             <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>View</span>
+                            <span className="text-xs text-gray-400">View</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canAdd ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>Add</span>
+                            <span className="text-xs text-gray-400">Add</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canEdit ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>Edit</span>
+                            <span className="text-xs text-gray-400">Edit</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canManage ? '✓' : '✗'}</span>
-                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>Manage</span>
+                            <span className="text-xs text-gray-400">Manage</span>
                           </span>
                         </div>
                       </div>
@@ -630,16 +696,25 @@ export default function ProfilesRoles() {
               )}
             </div>
 
-            <div className="profiles-roles-invite mt-6">
-              <p className="text-sm text-[#1a6e7e] font-semibold mb-1">Invite by email</p>
-              <input
-                type="email"
-                placeholder="e.g. someone@example.com"
-                className="profiles-roles-invite-input w-full px-4 py-2 border border-[#c0e2e7] rounded-lg shadow-sm text-sm focus:outline-none focus:ring-0 focus:shadow-[0_0_8px_2px_#c0e2e7]"
-                value={inviteInput}
-                onChange={e => setInviteInput(e.target.value)}
-              />
-              <BigActionButton onClick={() => console.log('Send invite to', inviteInput)}>Send Invite</BigActionButton>
+            <div className="profiles-roles-invite mt-3">
+              <div 
+                style={{...inputWrapperBaseStyle, ...getFocusStyle(isInviteInputFocused, false)}} 
+                className="mt-1"
+              >
+                <input
+                  type="email"
+                  placeholder="Invite by email (e.g. someone@example.com)"
+                  style={inputElementStyle}
+                  className="w-full placeholder-gray-400"
+                  value={inviteInput}
+                  onChange={e => setInviteInput(e.target.value)}
+                  onFocus={() => setIsInviteInputFocused(true)}
+                  onBlur={() => setIsInviteInputFocused(false)}
+                />
+              </div>
+              <div className="flex justify-start">
+                <MiniActionButton label="+ Send Invite" onClick={() => console.log('Send invite to', inviteInput)} extraClassName="mt-3" />
+              </div>
             </div>
           </div>
 
