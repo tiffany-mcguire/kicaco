@@ -15,6 +15,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
+import { motion } from 'framer-motion';
 
 // Add CalendarIcon definition
 const CalendarIcon = () => (
@@ -142,7 +143,7 @@ export default function UpcomingEvents() {
                  setChatScrollPosition(targetScrollTopAfterSecondRaf);
                  console.log(`  [executeScrollToBottom] Second scroll attempt to: ${targetScrollTopAfterSecondRaf}, scrollHeight: ${currentScAfterSecondRaf.scrollHeight}, clientHeight: ${currentScAfterSecondRaf.clientHeight}`);
             } else {
-              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. No scroll needed. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
+              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
             }
           } else {
             console.log("  [executeScrollToBottom] Aborted second scroll in rAF: Scroll container ref lost.");
@@ -413,51 +414,49 @@ export default function UpcomingEvents() {
           ref={messagesContentRef}
           className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
         >
-          {messages.map((msg, idx) => {
+          {messages.map((msg) => {
             if (msg.type === 'event_confirmation' && msg.event) {
               return (
-                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                  <div>
-                    <EventCard
-                      image={getKicacoEventPhoto(msg.event.eventName)}
-                      name={msg.event.eventName}
-                      date={msg.event.date}
-                      time={msg.event.time}
-                      location={msg.event.location}
-                    />
-                    <div className="mt-2 text-left w-full text-sm text-gray-900">{
-                      msg.content.replace(/Want to change anything\?\?/, '').trim()
-                    }</div>
-                    <div className="mt-3 text-xs text-gray-500 font-inter">
-                      Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full"
+                >
+                  <ChatBubble side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                    <div>
+                      <EventCard
+                        image={getKicacoEventPhoto(msg.event.eventName)}
+                        name={msg.event.eventName}
+                        date={msg.event.date}
+                        time={msg.event.time}
+                        location={msg.event.location}
+                      />
+                      <div className="mt-2 text-left w-full text-sm text-gray-900">{
+                        msg.content.replace(/Want to change anything\??/, '').trim()
+                      }</div>
+                      {/* Simplified: No signup button here as in Home.tsx unless specifically needed */}
                     </div>
-                    <button
-                      className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
-                      onClick={() => {
-                        // No signup logic here, just a placeholder
-                      }}
-                    >
-                      Create an account
-                    </button>
-                  </div>
-                </ChatBubble>
+                  </ChatBubble>
+                </motion.div>
               );
             }
-            if (msg.type === 'post_signup_options') {
-              return (
-                <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                  {/* You may want to import and use PostSignupOptions here if needed */}
-                  <span>Post-signup options go here.</span>
-                </ChatBubble>
-              );
-            }
+            // If 'post_signup_options' or other types were genuinely used in UpcomingEvents, add them here.
             return (
-              <ChatBubble
+              <motion.div
                 key={msg.id}
-                side={msg.sender === 'user' ? 'right' : 'left'}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full"
               >
-                {msg.content}
-              </ChatBubble>
+                <ChatBubble
+                  side={msg.sender === 'user' ? 'right' : 'left'}
+                >
+                  {msg.content}
+                </ChatBubble>
+              </motion.div>
             );
           })}
         </div>

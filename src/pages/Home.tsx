@@ -116,6 +116,8 @@ export default function Home() {
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated] = useState(false);
   const [contentAreaTop, setContentAreaTop] = useState(0);
+  const keepersBlurbRef = useRef<HTMLDivElement>(null); // Ref for Keepers blurb
+  const [pageContentLoadedAndMeasured, setPageContentLoadedAndMeasured] = useState(false); // New state
   // const [upcomingEventsSectionHeight, setUpcomingEventsSectionHeight] = useState(0); // Not strictly needed if used directly
 
   // Animated message reveal state
@@ -139,28 +141,40 @@ export default function Home() {
 
   // Staggered intro messages
   useEffect(() => {
-    if (hasIntroPlayed || introStartedRef.current) return;
-    introStartedRef.current = true;
+    const playIntroWithThinking = async () => {
+      if (hasIntroPlayed || introStartedRef.current) return;
+      introStartedRef.current = true;
 
-    const introMessages = [
-      "Hi, I'm Kicaco! You can chat with me about events and I'll remember everything for you.",
-      "Type it, say it, snap a photo, upload a flyer, or paste in a note – whatever makes your day easier, I'll turn it into a real event. No forms, no fuss.",
-      "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them."
-    ];
+      for (let i = 0; i < intro.length; i++) {
+        const thinkingId = `intro-thinking-${i}`;
+        addMessage({
+          id: thinkingId,
+          sender: 'assistant',
+          content: 'Kicaco is thinking' // Content for ThinkingWave
+        });
 
-    introMessages.forEach((text, i) => {
-      setTimeout(() => {
+        // Wait for the thinking duration
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        removeMessageById(thinkingId);
         addMessage({
           id: crypto.randomUUID(),
           sender: 'assistant',
-          content: text
+          content: intro[i]
         });
-      }, i * 800); // Stagger every 800ms
-    });
 
-    setHasIntroPlayed(true);
-    localStorage.setItem('kicaco_intro_played', 'true');
-  }, [hasIntroPlayed, addMessage]);
+        // Add a short pause after the message is displayed, before thinking for the next one
+        if (i < intro.length - 1) { // Only pause if there's a next message
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Changed to 1000ms pause
+        }
+      }
+
+      setHasIntroPlayed(true);
+      localStorage.setItem('kicaco_intro_played', 'true');
+    };
+
+    playIntroWithThinking();
+  }, [hasIntroPlayed, addMessage, removeMessageById]);
 
   // Initialize thread
   useEffect(() => {
@@ -222,64 +236,135 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []); // Runs once on mount to attach listener
 
-  // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height (Restoring Prior Logic Pattern) ---
+  // Effect to determine if critical page content is loaded and measured
   useLayoutEffect(() => {
-    console.log(`[Home LayoutEffect] START. storedDrawerHeight: ${storedDrawerHeight}, initialCalculated: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}`);
-    try {
-      const globalHeaderH = headerRef.current?.offsetHeight ?? 0;
-      const upcomingTitleH = upcomingEventsTitleRef.current?.offsetHeight ?? 0;
-      const globalFooterH = footerRef.current?.offsetHeight ?? 0;
+    const globalHeaderH = headerRef.current?.offsetHeight ?? 0;
+    const upcomingTitleH = upcomingEventsTitleRef.current?.offsetHeight ?? 0;
+    const keepersBlurbRect = keepersBlurbRef.current?.getBoundingClientRect();
+    const footerH = footerRef.current?.offsetHeight ?? 0;
 
-      if (globalHeaderH > 0 && upcomingTitleH > 0) { // Ensure refs are measured
-        const newContentAreaTop = globalHeaderH + upcomingTitleH;
+    if (globalHeaderH > 0 && upcomingTitleH > 0 && keepersBlurbRef.current && keepersBlurbRect && keepersBlurbRect.bottom > (globalHeaderH + upcomingTitleH) && footerH > 0) {
+      console.log(`[Home ContentMeasureEffect] All critical elements measured. KB Bottom: ${keepersBlurbRect.bottom.toFixed(2)}, HeaderH: ${globalHeaderH}, UpcomingTitleH: ${upcomingTitleH}, FooterH: ${footerH}`);
+      setPageContentLoadedAndMeasured(true);
+    } else {
+      // console.log(`[Home ContentMeasureEffect] Waiting for elements. GH: ${globalHeaderH}, UTH: ${upcomingTitleH}, KB Ref: ${!!keepersBlurbRef.current}, KB Rect: ${!!keepersBlurbRect}, KB Bottom: ${keepersBlurbRect?.bottom}, FooterH: ${footerH}`);
+      // Set to false if not all conditions met, to allow re-evaluation if something changes
+      // This might be too aggressive if elements appear/disappear, but for initial load it is fine.
+      // setPageContentLoadedAndMeasured(false); 
+    }
+  }, [
+    headerRef.current?.offsetHeight, 
+    upcomingEventsTitleRef.current?.offsetHeight, 
+    keepersBlurbRef.current?.offsetHeight, // Trigger re-check if blurb height changes
+    footerRef.current?.offsetHeight
+  ]);
+
+  // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height ---
+  useLayoutEffect(() => {
+    console.log(`[Home DrawerCalcEffect] START. stored: ${storedDrawerHeight}, initialCalc: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}, contentLoaded: ${pageContentLoadedAndMeasured}, winH: ${currentWindowHeight}`);
+    
+    const globalHeaderH = headerRef.current?.offsetHeight ?? 0;
+    const upcomingTitleH = upcomingEventsTitleRef.current?.offsetHeight ?? 0;
+
+    if (globalHeaderH === 0 || upcomingTitleH === 0) {
+      console.warn(`[Home DrawerCalcEffect] Deferred: Header/UpcomingTitle not ready. GH: ${globalHeaderH}, UTH: ${upcomingTitleH}`);
+      return;
+    }
+
+    const newContentAreaTop = globalHeaderH + upcomingTitleH;
+    if (contentAreaTop !== newContentAreaTop) {
         setContentAreaTop(newContentAreaTop);
-        console.log(`[Home LayoutEffect] ContentAreaTop SET: ${newContentAreaTop}`);
+        console.log(`[Home DrawerCalcEffect] ContentAreaTop updated: ${newContentAreaTop.toFixed(2)}`);
+    }
 
-        let calculatedMaxDrawerHeight = currentWindowHeight - newContentAreaTop - globalFooterH - 12; // Increased buffer to 12px
-        calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 44);
-        setMaxDrawerHeight(calculatedMaxDrawerHeight);
-        console.log(`[Home LayoutEffect] MaxDrawerHeight SET: ${calculatedMaxDrawerHeight}`);
+    const globalFooterH = footerRef.current?.offsetHeight ?? 0;
+    
+    if (globalFooterH === 0 && !initialHomePageDrawerHeightCalculated) {
+      console.warn(`[Home DrawerCalcEffect] Deferred: Footer not ready for initial calc. GFH: ${globalFooterH}`);
+      return;
+    }
 
-        if (!initialHomePageDrawerHeightCalculated) {
-          let heightToSetInStore;
-          if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
-            heightToSetInStore = Math.min(storedDrawerHeight, calculatedMaxDrawerHeight);
-          } else {
-            // Simplified initial open height
-            heightToSetInStore = calculatedMaxDrawerHeight * 0.6;
-            heightToSetInStore = Math.max(heightToSetInStore, 44);
-            heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
-          }
-          setStoredDrawerHeight(heightToSetInStore);
-          setInitialHomePageDrawerHeightCalculated(true);
-          console.log(`[Home LayoutEffect] Initial Drawer Height SET: ${heightToSetInStore}`);
+    let calculatedMaxDrawerHeight = currentWindowHeight - newContentAreaTop - globalFooterH - 12; // 12px buffer
+    calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 32); 
+    setMaxDrawerHeight(calculatedMaxDrawerHeight);
+    console.log(`[Home DrawerCalcEffect] MaxDrawerHeight: ${calculatedMaxDrawerHeight.toFixed(2)} (NCA_Top: ${newContentAreaTop.toFixed(2)}, GFH: ${globalFooterH})`);
+
+    if (!initialHomePageDrawerHeightCalculated) {
+      let heightToSetInStore = null;
+      let calculationPath = "deferred_initial";
+
+      if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
+        if (globalFooterH > 0) { 
+          heightToSetInStore = Math.min(storedDrawerHeight, calculatedMaxDrawerHeight);
+          calculationPath = `StoredPreference (Val: ${storedDrawerHeight} constrained to ${heightToSetInStore?.toFixed(2)})`;
         } else {
-          if (storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > calculatedMaxDrawerHeight) {
-            setStoredDrawerHeight(calculatedMaxDrawerHeight);
-          }
+          calculationPath = "StoredPreference_WaitingForFooter";
         }
-      } else {
-        console.warn(`[Home LayoutEffect] Deferred: Essential heights not ready. GH: ${globalHeaderH}, UETH: ${upcomingTitleH}`);
       }
-    } catch (error) {
-      console.error("[Home LayoutEffect] Error:", error);
-      // Fallbacks
-      setMaxDrawerHeight(Math.max(currentWindowHeight - (headerRef.current?.offsetHeight || 64) - 100, 44));
-      if (!initialHomePageDrawerHeightCalculated && (storedDrawerHeight === null || storedDrawerHeight === undefined)) {
-        setStoredDrawerHeight(44);
+      else if (!blurbGone && pageContentLoadedAndMeasured) { // Key check: pageContentLoadedAndMeasured is true
+        const keepersBlurbElement = keepersBlurbRef.current;
+        // Re-fetch rect here as it might be more stable now
+        const keepersBlurbRect = keepersBlurbElement?.getBoundingClientRect(); 
+
+        if (keepersBlurbElement && keepersBlurbRect && globalFooterH > 0 && newContentAreaTop > 0) {
+          const footerTopEdge = currentWindowHeight - globalFooterH;
+          if (keepersBlurbRect.bottom > newContentAreaTop && keepersBlurbRect.bottom < footerTopEdge) {
+            const buffer = 16; 
+            // Use currentWindowHeight for the top reference of the calculation space
+            const spaceBelowKeepers = currentWindowHeight - keepersBlurbRect.bottom - globalFooterH - buffer;
+            heightToSetInStore = Math.max(spaceBelowKeepers, 32);
+            heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
+            calculationPath = `KeepersBlurb (KB_Bot: ${keepersBlurbRect.bottom.toFixed(2)}, GFH: ${globalFooterH}, Calc_H: ${heightToSetInStore?.toFixed(2)})`;
+          } else {
+            calculationPath = `KeepersBlurb_RectNotPlausible (KB_Bot: ${keepersBlurbRect?.bottom?.toFixed(2)}, NCA_Top: ${newContentAreaTop.toFixed(2)}, Foot_Top: ${footerTopEdge.toFixed(2)})`;
+          }
+        } else {
+          calculationPath = `KeepersBlurb_DepsNotReady (KBElem: ${!!keepersBlurbElement}, KBRect: ${!!keepersBlurbRect}, GFH: ${globalFooterH}, NCATop: ${newContentAreaTop})`;
+        }
+      }
+       else if (blurbGone && pageContentLoadedAndMeasured && globalFooterH > 0) { // Fallback if blurbs hidden, but content is measured
+        heightToSetInStore = calculatedMaxDrawerHeight * 0.6;
+        heightToSetInStore = Math.max(heightToSetInStore, 32);
+        heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
+        calculationPath = `Fallback_BlurbGone (Calc_H: ${heightToSetInStore?.toFixed(2)})`;
+      } else if (!pageContentLoadedAndMeasured) {
+        calculationPath = "Awaiting_PageContentLoadedAndMeasured";
+      }
+
+      console.log(`[Home DrawerCalcEffect] Initial Height Path: ${calculationPath}`);
+
+      if (heightToSetInStore !== null && 
+          calculationPath !== "StoredPreference_WaitingForFooter" && 
+          !calculationPath.startsWith("KeepersBlurb_DepsNotReady") && 
+          !calculationPath.startsWith("KeepersBlurb_RectNotPlausible") &&
+          calculationPath !== "Awaiting_PageContentLoadedAndMeasured" &&
+          calculationPath !== "deferred_initial") {
+        setStoredDrawerHeight(heightToSetInStore);
         setInitialHomePageDrawerHeightCalculated(true);
+        console.log(`[Home DrawerCalcEffect] Initial Drawer Height SET: ${heightToSetInStore.toFixed(2)}`);
+      } else {
+        console.log("[Home DrawerCalcEffect] Initial height calc deferred or prerequisites not met.");
+      }
+    } else { 
+      if (globalFooterH > 0 && storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > calculatedMaxDrawerHeight) {
+        setStoredDrawerHeight(calculatedMaxDrawerHeight);
+        console.log(`[Home DrawerCalcEffect] Clamped storedDrawerHeight on update: ${calculatedMaxDrawerHeight.toFixed(2)}`);
       }
     }
   }, [
-    currentWindowHeight, 
-    storedDrawerHeight, 
-    initialHomePageDrawerHeightCalculated, 
-    // Key geometric dependencies to re-run when they are available/change
+    currentWindowHeight,
+    storedDrawerHeight,
+    initialHomePageDrawerHeightCalculated,
+    blurbGone,
+    pageContentLoadedAndMeasured, // Added new state to dependency array
+    contentAreaTop, 
     headerRef.current?.offsetHeight, 
     upcomingEventsTitleRef.current?.offsetHeight,
-    // State setters are not dependencies for calculation but are for effect re-application if their values directly influenced the next calculation cycle.
-    // For geometry, direct offsetHeight changes are better triggers.
-    setStoredDrawerHeight, setMaxDrawerHeight, setContentAreaTop, blurbGone // blurbGone might affect initial open height if that logic is restored
+    footerRef.current?.offsetHeight,
+    // keepersBlurbRef.current?.offsetHeight, // Intentionally removing this direct dependency for this effect, relying on pageContentLoadedAndMeasured
+    setStoredDrawerHeight, 
+    setMaxDrawerHeight, 
+    setContentAreaTop
   ]);
 
   // Adjust default fallback for currentDrawerHeight
@@ -794,7 +879,7 @@ export default function Home() {
               </div>
               {/* Keepers Blurb Card - Ensuring it has mt-3 */}
               {!blurbGone && (
-                <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3">
+                <div ref={keepersBlurbRef} className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3">
                     <p className="text-gray-400 text-xs leading-snug w-full text-left section-blurb">
                     Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
                     </p>
@@ -844,54 +929,77 @@ export default function Home() {
               {messages.map((msg, idx) => {
                 if (msg.type === 'event_confirmation' && msg.event) {
                   return (
-                    <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                      <div>
-                        <EventCard
-                          image={getKicacoEventPhoto(msg.event.eventName)}
-                          name={msg.event.eventName}
-                          date={msg.event.date}
-                          time={msg.event.time}
-                          location={msg.event.location}
-                        />
-                        <div className="mt-2 text-left w-full text-sm text-gray-900">{
-                          msg.content.replace(/Want to change anything\??/, '').trim()
-                        }</div>
-                        <div className="mt-3 text-xs text-gray-500 font-inter">
-                          Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-full"
+                    >
+                      <ChatBubble side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                        <div>
+                          <EventCard
+                            image={getKicacoEventPhoto(msg.event.eventName)}
+                            name={msg.event.eventName}
+                            date={msg.event.date}
+                            time={msg.event.time}
+                            location={msg.event.location}
+                          />
+                          <div className="mt-2 text-left w-full text-sm text-gray-900">{
+                            msg.content.replace(/Want to change anything\??/, '').trim()
+                          }</div>
+                          <div className="mt-3 text-xs text-gray-500 font-inter">
+                            Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                          </div>
+                          <button
+                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+                            onClick={() => {
+                              setShowSignup(true);
+                              setSignupStep(0);
+                              setSignupData({});
+                              addMessage({
+                                id: crypto.randomUUID(),
+                                sender: 'assistant',
+                                content: "Let's get you set up! What's your name?"
+                              });
+                            }}
+                          >
+                            Create an account
+                          </button>
                         </div>
-                        <button
-                          className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
-                          onClick={() => {
-                            setShowSignup(true);
-                            setSignupStep(0);
-                            setSignupData({});
-                            addMessage({
-                              id: crypto.randomUUID(),
-                              sender: 'assistant',
-                              content: "Let's get you set up! What's your name?"
-                            });
-                          }}
-                        >
-                          Create an account
-                        </button>
-                      </div>
-                    </ChatBubble>
+                      </ChatBubble>
+                    </motion.div>
                   );
                 }
                 if (msg.type === 'post_signup_options') {
                   return (
-                    <ChatBubble key={msg.id} side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                      <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
-                    </ChatBubble>
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-full"
+                    >
+                      <ChatBubble side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
+                        <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
+                      </ChatBubble>
+                    </motion.div>
                   );
                 }
                 return (
-                  <ChatBubble
+                  <motion.div
                     key={msg.id}
-                    side={msg.sender === 'user' ? 'right' : 'left'}
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full"
                   >
-                    {msg.content}
-                  </ChatBubble>
+                    <ChatBubble
+                      side={msg.sender === 'user' ? 'right' : 'left'}
+                    >
+                      {msg.content}
+                    </ChatBubble>
+                  </motion.div>
                 );
               })}
             </div>

@@ -12,6 +12,7 @@ import GlobalSubheader from '../components/GlobalSubheader';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
+import { motion } from 'framer-motion';
 
 const EditChildIcon = () => {
   const styles = {
@@ -589,12 +590,19 @@ export default function EditChild() {
           className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
         >
           {messages.map((msg) => (
-            <ChatBubble
+            <motion.div
               key={msg.id}
-              side={msg.sender === 'user' ? 'right' : 'left'}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full"
             >
-              {msg.content}
-            </ChatBubble>
+              <ChatBubble
+                side={msg.sender === 'user' ? 'right' : 'left'}
+              >
+                {msg.content}
+              </ChatBubble>
+            </motion.div>
           ))}
         </div>
       </GlobalChatDrawer>

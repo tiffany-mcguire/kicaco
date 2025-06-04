@@ -12,6 +12,7 @@ import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
+import { motion } from 'framer-motion';
 
 // Styles and function copied from EditChild.tsx for consistent input styling
 
@@ -718,12 +719,19 @@ export default function ProfilesRoles() {
         >
           {/* Render Messages */}
           {messages.map((msg) => (
-            <ChatBubble
+            <motion.div
               key={msg.id}
-              side={msg.sender === 'user' ? 'right' : 'left'}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full"
             >
-              {msg.content}
-            </ChatBubble>
+              <ChatBubble
+                side={msg.sender === 'user' ? 'right' : 'left'}
+              >
+                {msg.content}
+              </ChatBubble>
+            </motion.div>
           ))}
         </div>
       </GlobalChatDrawer>
