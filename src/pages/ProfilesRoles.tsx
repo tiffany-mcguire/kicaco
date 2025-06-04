@@ -34,7 +34,7 @@ const inputElementStyle: React.CSSProperties = {
   outline: 'none',
   backgroundColor: 'transparent',
   fontSize: '0.75rem', // text-xs (was '0.875rem' i.e. text-sm)
-  color: '#9ca3af', // text-gray-400 (was '#111827' i.e. text-gray-900)
+  color: '#111827', // Changed from #9ca3af (text-gray-400) to text-gray-900 for typed text
 };
 
 const getFocusStyle = (isFocused: boolean, isRequired: boolean): React.CSSProperties => {
@@ -340,29 +340,9 @@ export default function ProfilesRoles() {
   const firstEffectRunAfterLoadRef = useRef(true);
   // End of declarations for chat scroll management
 
-  const [children, setChildren] = useState<ChildProfile[]>([
-    {
-      id: '1',
-      name: 'Jordan Reyes',
-      dob: '08/25/2013',
-      school: 'Pine Hill Elementary'
-    }
-  ]);
+  const [children, setChildren] = useState<ChildProfile[]>([]);
 
-  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([
-    {
-      id: '1',
-      name: 'Casey Morgan',
-      role: 'Co-parent',
-      email: 'casey.morgan@example.com',
-      permissions: {
-        canView: true,
-        canAdd: true,
-        canEdit: true,
-        canManage: true
-      }
-    }
-  ]);
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
 
   const {
     messages,
@@ -620,9 +600,11 @@ export default function ProfilesRoles() {
             <div className="profiles-roles-children-list">
               {children.length === 0 ? (
                 <>
-                  <p className="text-sm text-gray-700 mt-1">
-                    You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
-                  </p>
+                  <div className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg">
+                    <p className="text-xs text-gray-400 font-light leading-snug">
+                      You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
+                    </p>
+                  </div>
                   <div className="flex justify-start">
                     <MiniActionButton label="+ Add Child" onClick={handleAddChild} extraClassName="mt-3" />
                   </div>
@@ -630,7 +612,7 @@ export default function ProfilesRoles() {
               ) : (
                 <>
                   {children.map(child => (
-                    <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-center justify-between">
+                    <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-center justify-between">
                       <div className="profiles-roles-child-info">
                         <p className="text-[#1a6e7e] font-semibold text-sm">{child.name}</p>
                         <p className="text-xs text-gray-400 mt-1">DOB: {child.dob}</p>
@@ -655,13 +637,11 @@ export default function ProfilesRoles() {
             <div className="profiles-roles-shared-users-list">
               {sharedUsers.length === 0 ? (
                 <>
-                  <p className="text-sm text-gray-700 mt-1">
-                    No shared users have been added. Invite a co-parent, grandparent, or sitter to collaborate on your child's schedule.
-                  </p>
+                  {/* This section should be empty when no shared users, as per previous request */}
                 </>
               ) : (
                 sharedUsers.map(user => (
-                  <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_8px_rgba(33,126,143,0.10)] flex items-start justify-between">
+                  <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-start justify-between">
                     <div className="profiles-roles-shared-user-info min-w-0">
                       <p className="text-[#1a6e7e] font-semibold text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
                       <p className="text-xs text-gray-400">{user.email}</p>
@@ -696,7 +676,7 @@ export default function ProfilesRoles() {
               )}
             </div>
 
-            <div className="profiles-roles-invite mt-3">
+            <div className="profiles-roles-invite mt-2">
               <div 
                 style={{...inputWrapperBaseStyle, ...getFocusStyle(isInviteInputFocused, false)}} 
                 className="mt-1"

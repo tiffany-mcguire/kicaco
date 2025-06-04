@@ -375,7 +375,7 @@ export default function EditChild() {
     outline: 'none',
     backgroundColor: 'transparent',
     fontSize: '0.75rem', // Changed from '0.875rem' (text-sm) to text-xs
-    color: '#9ca3af', // Added text-gray-400 for input text
+    color: '#111827', // Changed from #9ca3af (text-gray-400) to text-gray-900 for typed text
   };
 
   const getFocusStyle = (isFocused: boolean, isRequired: boolean): React.CSSProperties => {

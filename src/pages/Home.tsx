@@ -109,11 +109,14 @@ export default function Home() {
     setChatScrollPosition
   } = useKicacoStore();
   const headerRef = useRef<HTMLDivElement>(null);
-  const subheaderRef = useRef<HTMLDivElement>(null);
+  const pageContentRef = useRef<HTMLDivElement>(null); // Renamed from subheaderRef
+  const upcomingEventsTitleRef = useRef<HTMLElement>(null); // New ref for the fixed title section
   const footerRef = useRef<HTMLDivElement>(null);
   const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated] = useState(false);
+  const [contentAreaTop, setContentAreaTop] = useState(0);
+  // const [upcomingEventsSectionHeight, setUpcomingEventsSectionHeight] = useState(0); // Not strictly needed if used directly
 
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
@@ -221,82 +224,63 @@ export default function Home() {
 
   // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height (Restoring Prior Logic Pattern) ---
   useLayoutEffect(() => {
-    console.log(`[Home Reverted Logic - Drawer Sizing] START. storedDrawerHeight: ${storedDrawerHeight}, initialCalculated: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}`);
+    console.log(`[Home LayoutEffect] START. storedDrawerHeight: ${storedDrawerHeight}, initialCalculated: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}`);
     try {
-      const footer = document.querySelector('.global-footer') as HTMLElement | null;
-      const footerHeightVal = footer ? footer.getBoundingClientRect().height : 0;
+      const globalHeaderH = headerRef.current?.offsetHeight ?? 0;
+      const upcomingTitleH = upcomingEventsTitleRef.current?.offsetHeight ?? 0;
+      const globalFooterH = footerRef.current?.offsetHeight ?? 0;
 
-      // Determine Home's max height: can be lower if blurbs are present, otherwise up to subheader.
-      let homeCalculatedMaxHeight = 44;
-      if (!blurbGone) {
-        // Blurbs are visible: max height is likely based on first blurb position to avoid overlap initially.
-        const blurbsForMax = Array.from(document.querySelectorAll('p.section-blurb'));
-        if (blurbsForMax.length >= 1) {
-          const firstBlurb = blurbsForMax[0];
-          homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - firstBlurb.getBoundingClientRect().top - 4; // 4px padding above footer
-          console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs visible) calculated: ${homeCalculatedMaxHeight}`);
-        } else if (subheaderRef.current) { // Fallback if blurbs were expected but not found
-            homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - subheaderRef.current.getBoundingClientRect().bottom - 4;
-            console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs visible, no blurbs found, using subheader) calculated: ${homeCalculatedMaxHeight}`);
-        } else {
-            homeCalculatedMaxHeight = currentWindowHeight * 0.7; // Generic fallback
-        }
-      } else {
-        // Blurbs are gone: max height is up to the subheader.
-        if (subheaderRef.current) {
-          const subheaderBottomVal = subheaderRef.current.getBoundingClientRect().bottom;
-          homeCalculatedMaxHeight = currentWindowHeight - footerHeightVal - subheaderBottomVal - 4;
-          console.log(`[Home Reverted Logic - Drawer Sizing] Max height (blurbs gone, using subheader) calculated: ${homeCalculatedMaxHeight}`);
-        } else {
-            homeCalculatedMaxHeight = currentWindowHeight * 0.85; // Fallback if no subheader
-        }
-      }
-      homeCalculatedMaxHeight = Math.max(homeCalculatedMaxHeight, 44);
-      setMaxDrawerHeight(homeCalculatedMaxHeight); // This is Home's current operational max height.
+      if (globalHeaderH > 0 && upcomingTitleH > 0) { // Ensure refs are measured
+        const newContentAreaTop = globalHeaderH + upcomingTitleH;
+        setContentAreaTop(newContentAreaTop);
+        console.log(`[Home LayoutEffect] ContentAreaTop SET: ${newContentAreaTop}`);
 
-      // Manage storedDrawerHeight
-      if (!initialHomePageDrawerHeightCalculated) {
-        let heightToSetInStore;
-        if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
-          // Store has a value (e.g. from another page). Use it, but cap by Home's *current* operational max.
-          heightToSetInStore = Math.min(storedDrawerHeight, homeCalculatedMaxHeight);
-          console.log(`[Home Reverted Logic - Drawer Sizing] Initial: Using pre-existing store value ${storedDrawerHeight}, capped to ${heightToSetInStore}`);
-        } else {
-          // Store is empty. Set it to a fraction of Home's *current* operational max, or a blurb-based height.
-          // This logic should ensure the initial opening is sensible for the current state (blurbs vs no blurbs).
-          if (!blurbGone) {
-            const blurbsForInitialOpen = Array.from(document.querySelectorAll('p.section-blurb'));
-            if (blurbsForInitialOpen.length >= 2) {
-                 heightToSetInStore = currentWindowHeight - footerHeightVal - blurbsForInitialOpen[1].getBoundingClientRect().bottom - 4;
-            } else {
-                 heightToSetInStore = homeCalculatedMaxHeight * 0.6; // Default open to 60% of current max if blurbs visible but not 2 found
-            }
+        let calculatedMaxDrawerHeight = currentWindowHeight - newContentAreaTop - globalFooterH - 12; // Increased buffer to 12px
+        calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 44);
+        setMaxDrawerHeight(calculatedMaxDrawerHeight);
+        console.log(`[Home LayoutEffect] MaxDrawerHeight SET: ${calculatedMaxDrawerHeight}`);
+
+        if (!initialHomePageDrawerHeightCalculated) {
+          let heightToSetInStore;
+          if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
+            heightToSetInStore = Math.min(storedDrawerHeight, calculatedMaxDrawerHeight);
           } else {
-            heightToSetInStore = homeCalculatedMaxHeight * 0.75; // Default open to 75% of current max if blurbs gone
+            // Simplified initial open height
+            heightToSetInStore = calculatedMaxDrawerHeight * 0.6;
+            heightToSetInStore = Math.max(heightToSetInStore, 44);
+            heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
           }
-          heightToSetInStore = Math.max(heightToSetInStore, 44);
-          heightToSetInStore = Math.min(heightToSetInStore, homeCalculatedMaxHeight); // Cap by current max
-          console.log(`[Home Reverted Logic - Drawer Sizing] Initial: Store empty. Setting to calculated open height: ${heightToSetInStore}`);
+          setStoredDrawerHeight(heightToSetInStore);
+          setInitialHomePageDrawerHeightCalculated(true);
+          console.log(`[Home LayoutEffect] Initial Drawer Height SET: ${heightToSetInStore}`);
+        } else {
+          if (storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > calculatedMaxDrawerHeight) {
+            setStoredDrawerHeight(calculatedMaxDrawerHeight);
+          }
         }
-        setStoredDrawerHeight(heightToSetInStore);
-        setInitialHomePageDrawerHeightCalculated(true);
       } else {
-        // Initial Home setup is done. Only cap storedDrawerHeight if it exceeds Home's current operational max.
-        if (storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > homeCalculatedMaxHeight) {
-          console.log(`[Home Reverted Logic - Drawer Sizing] Post-Initial: Stored value ${storedDrawerHeight} exceeds current max ${homeCalculatedMaxHeight}. Capping.`);
-          setStoredDrawerHeight(homeCalculatedMaxHeight);
-        }
+        console.warn(`[Home LayoutEffect] Deferred: Essential heights not ready. GH: ${globalHeaderH}, UETH: ${upcomingTitleH}`);
       }
     } catch (error) {
-      console.error("[Home Reverted Logic - Drawer Sizing] Error:", error);
-      // Simplified fallback
-      setMaxDrawerHeight(Math.max(currentWindowHeight - 160, 44));
+      console.error("[Home LayoutEffect] Error:", error);
+      // Fallbacks
+      setMaxDrawerHeight(Math.max(currentWindowHeight - (headerRef.current?.offsetHeight || 64) - 100, 44));
       if (!initialHomePageDrawerHeightCalculated && (storedDrawerHeight === null || storedDrawerHeight === undefined)) {
         setStoredDrawerHeight(44);
         setInitialHomePageDrawerHeightCalculated(true);
       }
     }
-  }, [currentWindowHeight, storedDrawerHeight, setStoredDrawerHeight, subheaderRef, blurbGone, setMaxDrawerHeight, initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated]);
+  }, [
+    currentWindowHeight, 
+    storedDrawerHeight, 
+    initialHomePageDrawerHeightCalculated, 
+    // Key geometric dependencies to re-run when they are available/change
+    headerRef.current?.offsetHeight, 
+    upcomingEventsTitleRef.current?.offsetHeight,
+    // State setters are not dependencies for calculation but are for effect re-application if their values directly influenced the next calculation cycle.
+    // For geometry, direct offsetHeight changes are better triggers.
+    setStoredDrawerHeight, setMaxDrawerHeight, setContentAreaTop, blurbGone // blurbGone might affect initial open height if that logic is restored
+  ]);
 
   // Adjust default fallback for currentDrawerHeight
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -730,34 +714,60 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
-      {/* Subheader (for double header effect) */}
+
+      {/* Fixed "Upcoming Events" Title Section */}
+      <section
+        ref={upcomingEventsTitleRef}
+        className="px-4 pt-4 w-full bg-white z-20" // z-index to stay above scrollable content
+        style={{
+          position: 'absolute',
+          top: `${headerRef.current?.offsetHeight ?? 0}px`,
+          left: '0px',
+          right: '0px',
+          // backgroundColor: 'white', // Ensure it has a background
+        }}
+      >
+        <div style={{width:'180px'}}>
+          <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
+          <div className="flex items-center space-x-2 pl-1">
+            <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+            <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
+          </div>
+          <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
+        </div>
+      </section>
+      
+      {/* Scrollable Page Content Area */}
       {(() => {
-        console.log("[Home Rendering Debug] Subheader rendering condition:", {
-          hasIntroPlayed,
-          isInitializing,
-          threadId,
-          messagesLength: messages.length
-        });
+        // Original console log for subheader rendering condition can be kept or removed
+        // console.log("[Home Rendering Debug] Subheader rendering condition:", { /* ... */ });
         return (
-          <div ref={subheaderRef} className="w-full bg-white z-10 profiles-roles-subheader">
-            <section className="mb-2 px-4 pt-4">
-              <div style={{width:'180px'}}>
-                <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
-                <div className="flex items-center space-x-2 pl-1">
-                  <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
-                  <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
+          <div 
+            ref={pageContentRef} // This was 'subheaderRef' from your restored version
+            className="w-full bg-white" // Removed z-10 and profiles-roles-subheader
+            style={{
+              position: 'absolute',
+              top: `${contentAreaTop}px`, // Dynamically set below fixed title section
+              bottom: `${(currentDrawerHeight || 32) + (footerRef.current?.offsetHeight || 0) + 8}px`, // 8px buffer
+              left: '0px',
+              right: '0px',
+              overflowY: 'auto',
+              paddingLeft: '1rem', // px-4
+              paddingRight: '1rem', // px-4
+            }}
+          >
+            {/* "Upcoming Events" Blurb - MOVED HERE */}
+            {!blurbGone && (
+                <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3"> {/* RESTORED mt-3 */}
+                    <p className="text-gray-400 text-xs leading-snug w-full text-left section-blurb">
+                    Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
+                    </p>
                 </div>
-                <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
-              </div>
-              {!blurbGone && (
-                <p className="mt-2 text-gray-400 text-xs leading-snug w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
-                  Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
-                </p>
-              )}
-            </section>
+            )}
+
             {/* Upcoming Events Cards */}
             {events.length > 0 && (
-              <div className="flex flex-col w-full pt-2 pb-2 px-4">
+              <div className="flex flex-col w-full pt-2 pb-2"> {/* Removed px-4 as parent has it */}
                 {events.map((event, idx) => (
                   <div key={event.eventName + event.date + idx}>
                     <EventCard
@@ -771,8 +781,9 @@ export default function Home() {
                 ))}
               </div>
             )}
-            {/* Keepers */}
-            <section className="mb-2 px-4">
+
+            {/* Keepers Section - Title and Blurb */}
+            <section className="mb-2 pt-2"> {/* MODIFIED: Reduced pt-4 to pt-2 for less space above Keepers title */}
               <div className="mt-2" style={{width:'180px'}}>
                 <div className="h-0.5 bg-[#f8b6c2] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
                 <div className="flex items-center space-x-2 pl-1">
@@ -781,10 +792,16 @@ export default function Home() {
                 </div>
                 <div className="h-0.5 bg-[#f8b6c2] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
               </div>
-              <p className="mt-2 text-gray-400 text-xs leading-snug w-full text-left section-blurb" style={{marginBottom: 0, paddingBottom: 0}}>
-                Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
-              </p>
+              {/* Keepers Blurb Card - Ensuring it has mt-3 */}
+              {!blurbGone && (
+                <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3">
+                    <p className="text-gray-400 text-xs leading-snug w-full text-left section-blurb">
+                    Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
+                    </p>
+                </div>
+              )}
             </section>
+
             {/* Keepers Cards */}
             {keepers.length > 0 && (
               <div className="flex flex-col items-center w-full pt-2 pb-2">

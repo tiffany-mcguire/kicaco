@@ -376,6 +376,30 @@ export default function ChatDefaults() {
     };
   }, [scrollRefReady, setChatScrollPosition]);
 
+  useEffect(() => {
+    const scrollEl = pageScrollRef.current;
+    if (!scrollEl) return;
+
+    const checkOverflow = () => {
+      // console.log(`[ChatDefaults checkOverflow] scrollH: ${scrollEl.scrollHeight}, clientH: ${scrollEl.clientHeight}`);
+      if (scrollEl.scrollHeight > scrollEl.clientHeight) {
+        setScrollOverflow('auto');
+      } else {
+        setScrollOverflow('hidden');
+      }
+    };
+
+    checkOverflow(); // Initial check
+    
+    const observerInstance = new ResizeObserver(checkOverflow);
+    observerInstance.observe(scrollEl);
+    // Array.from(scrollEl.children).forEach(child => observerInstance.observe(child)); // Commented out child observation
+
+    return () => {
+      observerInstance.disconnect();
+    };
+  }, [pageScrollRef.current, currentDrawerHeight]); // MODIFIED DEPENDENCY ARRAY
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
