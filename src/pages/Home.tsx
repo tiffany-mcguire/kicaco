@@ -726,19 +726,20 @@ export default function Home() {
         eventObj = { ...eventObj, ...updatedFields };
         addEvent(eventObj);        // Add event to store immediately
         console.log('Event added to store:', eventObj);
-        setTimeout(() => {
-          console.log('Current events array:', useKicacoStore.getState().events);
-        }, 100);
-        setPendingEvent(eventObj); // Show confirmation modal
-      }
-      // Remove thinking message before adding the real response
-      removeMessageById('thinking');
+        // setTimeout(() => { // This setTimeout for logging can be kept or removed, not critical for the fix
+        //   console.log('Current events array:', useKicacoStore.getState().events);
+        // }, 100);
+        // setPendingEvent(eventObj); // MODAL TRIGGER REMOVED
 
-      // Generate the confirmation message from the locally resolved event object
-      if (eventObj) {
+        setLatestEvent(eventObj); // Moved from modal's onConfirm logic
+        
+        // Remove thinking message before adding the real response
+        removeMessageById('thinking');
+
+        // Generate the confirmation message from the locally resolved event object
         const formattedDate = eventObj.date ? format(parse(eventObj.date, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy') : '';
         const formattedTime = formatTime(eventObj.time);
-        const confirmationMsg = `Okay! I've saved ${eventObj.childName}'s ${eventObj.eventName} for ${formattedDate} at ${formattedTime} in ${eventObj.location}.`;
+        const confirmationMsg = `Okay! I\'ve saved ${eventObj.childName}\'s ${eventObj.eventName} for ${formattedDate} at ${formattedTime} in ${eventObj.location}.`;
         const assistantMessage = {
           id: crypto.randomUUID(),
           sender: 'assistant' as const,
@@ -747,7 +748,18 @@ export default function Home() {
           event: eventObj
         };
         addMessage(assistantMessage);
+
+        // Add the "Got it!..." message (moved from modal confirm)
+        addMessage({
+          id: crypto.randomUUID(),
+          sender: 'assistant',
+          content: `Got it! "${eventObj.eventName || eventObj.name}" is now on your calendar.`
+        });
+
       } else {
+        // Remove thinking message before adding the real response
+        removeMessageById('thinking');
+
         const assistantMessage = {
           id: crypto.randomUUID(),
           sender: 'assistant' as const,

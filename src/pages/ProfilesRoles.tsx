@@ -341,9 +341,20 @@ export default function ProfilesRoles() {
   const firstEffectRunAfterLoadRef = useRef(true);
   // End of declarations for chat scroll management
 
-  const [children, setChildren] = useState<ChildProfile[]>([]);
-
-  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([
+    {
+      id: 'mockUser1',
+      name: 'Jamie Smith',
+      role: 'Co-Parent',
+      email: 'jamie@example.com',
+      permissions: {
+        canView: true,
+        canAdd: true,
+        canEdit: false,
+        canManage: false,
+      }
+    }
+  ]);
 
   const {
     messages,
@@ -354,6 +365,7 @@ export default function ProfilesRoles() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    children,
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -620,7 +632,7 @@ export default function ProfilesRoles() {
                         <p className="text-xs text-gray-400">School: {child.school}</p>
                       </div>
                       <div className="profiles-roles-child-actions flex flex-col gap-2 ml-4">
-                        <MiniActionButton label="Edit" onClick={() => console.log('Edit', child.id)} />
+                        <MiniActionButton label="Edit" onClick={() => navigate('/edit-child', { state: { child } })} />
                         <MiniActionButton label="Remove" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove', child.id)} />
                       </div>
                     </div>
@@ -641,7 +653,7 @@ export default function ProfilesRoles() {
                   {/* This section should be empty when no shared users, as per previous request */}
                 </>
               ) : (
-                sharedUsers.map(user => (
+                sharedUsers.map((user: SharedUser) => (
                   <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-start justify-between">
                     <div className="profiles-roles-shared-user-info min-w-0">
                       <p className="text-[#1a6e7e] font-semibold text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>

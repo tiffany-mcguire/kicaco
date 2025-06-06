@@ -4,7 +4,7 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
@@ -31,7 +31,7 @@ const EditChildIcon = () => {
   );
 };
 
-const UpdateChildButton = (props: { label?: string }) => {
+const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
@@ -71,7 +71,7 @@ const UpdateChildButton = (props: { label?: string }) => {
   };
 
   // No action yet
-  const handleClick = () => {};
+  const handleClick = props.onClick || (() => {});
 
   return (
     <button
@@ -150,6 +150,8 @@ export default function EditChild() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    addChild,
+    updateChild,
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -162,6 +164,70 @@ export default function EditChild() {
   const [splitTimeSchedulingEnabled, setSplitTimeSchedulingEnabled] = useState(false);
   const [generalSchedule, setGeneralSchedule] = useState("");
   const [firstDayOfCycle, setFirstDayOfCycle] = useState("");
+
+  const navigate = useNavigate();
+
+  const handleUpdate = () => {
+    const dobRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d\d$/;
+    if (!fullName || !dob) {
+      // Basic validation: ensure required fields are not empty
+      alert("Full name and date of birth are required.");
+      return;
+    }
+    if (!dobRegex.test(dob)) {
+      alert("Please enter the date of birth in MM/DD/YYYY format.");
+      return;
+    }
+
+    if (location.state && location.state.child) {
+      // Update existing child
+      const updatedChild = {
+        ...location.state.child,
+        name: fullName,
+        dob,
+        school,
+        // include other fields from your form state as needed
+      };
+      updateChild(updatedChild);
+    } else {
+      // Add new child
+      const newChild = {
+        id: crypto.randomUUID(),
+        name: fullName,
+        dob,
+        school,
+        // include other fields from your form state as needed
+      };
+      addChild(newChild);
+    }
+    navigate('/profiles-roles');
+  };
+
+  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+    if (value.length > 8) {
+      value = value.slice(0, 8);
+    }
+
+    if (value.length > 4) {
+      value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
+    } else if (value.length > 2) {
+      value = `${value.slice(0, 2)}/${value.slice(2)}`;
+    }
+    
+    setDob(value);
+  };
+
+  // Populate fields if editing an existing child
+  useEffect(() => {
+    if (location.state && location.state.child) {
+      const { child } = location.state;
+      setFullName(child.name || "");
+      setDob(child.dob || "");
+      setSchool(child.school || "");
+      // You can also populate other fields like nickname if they exist on the child object
+    }
+  }, [location.state]);
 
   // Focus states for input fields
   const [fullNameFocused, setFullNameFocused] = useState(false);
@@ -434,7 +500,7 @@ export default function EditChild() {
         title="Edit Child"
         frameColor="#2e8b57"
         frameOpacity={0.25}
-        action={<UpdateChildButton />}
+        action={<UpdateChildButton label="Update Child" onClick={handleUpdate} />}
       />
       <div
         ref={pageScrollRef}
@@ -482,7 +548,7 @@ export default function EditChild() {
                   style={inputElementStyle}
                   placeholder="MM/DD/YYYY" value={dob} 
                   className="placeholder-gray-400"
-                  onChange={(e) => setDob(e.target.value)}
+                  onChange={handleDobChange}
                   onFocus={() => setDobFocused(true)}
                   onBlur={() => setDobFocused(false)}
                 />

@@ -28,6 +28,13 @@ type Keeper = {
   noTimeYet?: boolean;
 };
 
+type ChildProfile = {
+  id: string;
+  name: string;
+  dob: string;
+  school: string;
+};
+
 type KicacoState = {
   threadId: string | null;
   setThreadId: (id: string) => void;
@@ -48,6 +55,10 @@ type KicacoState = {
 
   keepers: Keeper[];
   addKeeper: (keeper: Partial<Keeper>) => void;
+
+  children: ChildProfile[];
+  addChild: (child: ChildProfile) => void;
+  updateChild: (child: ChildProfile) => void;
 
   drawerHeight: number | null;
   setDrawerHeight: (height: number) => void;
@@ -87,6 +98,18 @@ export const useKicacoStore = create<KicacoState>((set) => ({
   keepers: [],
   addKeeper: (keeper) =>
     set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] })),
+
+  children: [
+    { id: 'mockChild1', name: 'Alex Doe', dob: '05/15/2018', school: 'Sunshine Elementary' }
+  ],
+  addChild: (child) =>
+    set((state) => ({ children: [...state.children, child] })),
+  updateChild: (updatedChild) =>
+    set((state) => ({
+      children: state.children.map((child) =>
+        child.id === updatedChild.id ? updatedChild : child
+      ),
+    })),
 
   drawerHeight: null,
   setDrawerHeight: (height) => set({ drawerHeight: height }),
