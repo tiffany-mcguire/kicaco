@@ -13,6 +13,7 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { BellPlus } from "lucide-react";
 
 // Notebook/Binder Icon (Lucide style, simple)
 const AddKeeperIcon = () => {
@@ -264,10 +265,8 @@ export default function AddKeeper() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<AddKeeperIcon />}
+        icon={<BellPlus />}
         title="Add Keeper"
-        frameColor="#f8b6c2"
-        frameOpacity={0.75}
       />
       <div
         ref={pageScrollRef}

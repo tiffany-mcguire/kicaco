@@ -3,7 +3,7 @@ import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatBubble from '../components/ChatBubble';
 import IconButton from '../components/IconButton';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalChatDrawer from '../components/GlobalChatDrawer';
@@ -17,9 +17,11 @@ import { ParsedFields } from '../utils/kicacoFlow';
 import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
-import { parse, format } from 'date-fns';
+import { parse, format, addDays, startOfDay, isSameDay, parseISO } from 'date-fns';
 import PasswordModal from '../components/PasswordModal';
 import PostSignupOptions from '../components/PostSignupOptions';
+import { Home as HomeIcon } from "lucide-react";
+import GlobalSubheader from '../components/GlobalSubheader';
 
 // Add NodeJS type definition
 declare global {
@@ -53,6 +55,19 @@ function formatTimeAMPM(date: Date) {
 function toTitleCase(str: string) {
   return str.replace(/\b\w+/g, txt => txt[0].toUpperCase() + txt.slice(1).toLowerCase());
 }
+
+// Helper → get next 7 days
+const generateNext7Days = () => {
+  const today = startOfDay(new Date());
+  return Array.from({ length: 7 }).map((_, i) => {
+    const date = addDays(today, i);
+    return {
+      date,
+      label: format(date, 'EEE'), // 'Mon', 'Tue', etc.
+      number: format(date, 'd'), // '9', '10', etc.
+    };
+  });
+};
 
 // Add formatTime helper from EventCard
 function formatTime(time?: string) {
@@ -110,7 +125,7 @@ export default function Home() {
   } = useKicacoStore();
   const headerRef = useRef<HTMLDivElement>(null);
   const pageContentRef = useRef<HTMLDivElement>(null); // Renamed from subheaderRef
-  const upcomingEventsTitleRef = useRef<HTMLElement>(null); // New ref for the fixed title section
+  const upcomingEventsTitleRef = useRef<HTMLDivElement>(null); // New ref for the fixed title section
   const footerRef = useRef<HTMLDivElement>(null);
   const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
@@ -129,6 +144,14 @@ export default function Home() {
   });
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
+
+  const next7Days = useMemo(() => generateNext7Days(), []);
+  const [selectedDate, setSelectedDate] = useState(next7Days[0].date);
+
+  // Filter events for selected day
+  const eventsForSelectedDay = events.filter(event =>
+    event.date && isSameDay(parseISO(event.date), selectedDate)
+  );
 
   useEffect(() => {
     console.log('Events:', events);
@@ -588,13 +611,10 @@ export default function Home() {
       'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
       'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
     ];
-    let isNewEvent = false;
-    if (
-      eventKeywords.some(kw => userText.toLowerCase().includes(kw)) &&
-      (!eventCreationMessage || eventCreationMessage.length === 0)
-    ) {
+    const isNewEvent = eventKeywords.some(kw => userText.toLowerCase().includes(kw)) && !eventCreationMessage;
+
+    if (isNewEvent) {
       setEventCreationMessage(userText);
-      isNewEvent = true;
     }
 
     // Add user message
@@ -614,12 +634,13 @@ export default function Home() {
     };
     addMessage(thinkingMessage);
 
-    // Update current event fields
-    let updatedFields = { ...currentEventFields };
-    const extractedFields = extractKnownFields(userText, currentEventFields);
-    console.log('Extracted fields:', extractedFields);
-    // Merge all extracted fields into updatedFields
-    Object.assign(updatedFields, extractedFields);
+    // Determine the base fields for the current operation.
+    // If it's a new event, start with a blank slate. Otherwise, use the existing fields.
+    const baseFields = isNewEvent ? {} : currentEventFields;
+    const extractedFields = extractKnownFields(userText, baseFields);
+    const updatedFields = { ...baseFields, ...extractedFields };
+
+    // Update state for the NEXT turn.
     setCurrentEventFields(updatedFields);
 
     // Process message with kicacoFlow
@@ -659,29 +680,25 @@ export default function Home() {
       }
       if (eventObj) {
         // Overwrite eventObj fields with locally tracked currentEventFields
-        eventObj = { ...eventObj, ...updatedFields };
-        addEvent(eventObj);        // Add event to store immediately
-        console.log('Event added to store:', eventObj);
-        // setTimeout(() => { // This setTimeout for logging can be kept or removed, not critical for the fix
-        //   console.log('Current events array:', useKicacoStore.getState().events);
-        // }, 100);
-        // setPendingEvent(eventObj); // MODAL TRIGGER REMOVED
+        const finalEvent = { ...eventObj, ...updatedFields };
+        addEvent(finalEvent);
+        console.log('Event added to store:', finalEvent);
 
-        setLatestEvent(eventObj); // Moved from modal's onConfirm logic
+        // Reset for the next conversation
+        setCurrentEventFields({});
+        setEventCreationMessage("");
+        setLatestEvent(finalEvent);
         
         // Remove thinking message before adding the real response
         removeMessageById('thinking');
 
         // Generate the confirmation message from the locally resolved event object
-        const formattedDate = eventObj.date ? format(parse(eventObj.date, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy') : '';
-        const formattedTime = formatTime(eventObj.time);
-        const confirmationMsg = `Okay! I\'ve saved ${eventObj.childName}\'s ${eventObj.eventName} for ${formattedDate} at ${formattedTime} in ${eventObj.location}.`;
         const assistantMessage = {
           id: crypto.randomUUID(),
           sender: 'assistant' as const,
           type: 'event_confirmation',
-          content: confirmationMsg,
-          event: eventObj
+          content: '',
+          event: finalEvent
         };
         addMessage(assistantMessage);
 
@@ -740,27 +757,11 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
 
-      {/* Fixed "Upcoming Events" Title Section */}
-      <section
+      <GlobalSubheader
         ref={upcomingEventsTitleRef}
-        className="px-4 pt-4 w-full bg-white z-20" // z-index to stay above scrollable content
-        style={{
-          position: 'absolute',
-          top: `${headerRef.current?.offsetHeight ?? 0}px`,
-          left: '0px',
-          right: '0px',
-          // backgroundColor: 'white', // Ensure it has a background
-        }}
-      >
-        <div style={{width:'180px'}}>
-          <div className="h-0.5 bg-[#E9D5FF] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
-          <div className="flex items-center space-x-2 pl-1">
-            <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
-            <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Home</h2>
-          </div>
-          <div className="h-0.5 bg-[#E9D5FF] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
-        </div>
-      </section>
+        icon={<HomeIcon size={16} className="text-gray-500" />}
+        title="Home"
+      />
       
       {/* Scrollable Page Content Area */}
       {(() => {
@@ -781,23 +782,59 @@ export default function Home() {
               paddingRight: '1rem', // px-4
             }}
           >
-            {/* Upcoming Events Cards */}
-            {events.length > 0 && (
-              <div className="flex flex-col w-full pt-2 pb-2"> {/* Removed px-4 as parent has it */}
-                {events.map((event, idx) => (
-                  <div key={event.eventName + event.date + idx}>
-                    <EventCard
-                      image={getKicacoEventPhoto(event.eventName)}
-                      name={event.eventName}
-                      childName={event.childName}
-                      date={event.date}
-                      time={event.time}
-                      location={event.location}
-                    />
+            <div className="relative w-full max-w-md mx-auto">
+              {/* Event Content */}
+              <div className="rounded-xl shadow-lg overflow-hidden">
+                {eventsForSelectedDay.length > 0 ? (
+                  <div className="flex flex-col w-full">
+                    {eventsForSelectedDay.map((event, idx) => (
+                      <div key={`${event.eventName}-${idx}`} className={idx !== 0 ? 'mt-4' : ''}>
+                        <EventCard
+                          image={getKicacoEventPhoto(event.eventName)}
+                          name={event.eventName}
+                          childName={event.childName}
+                          date={event.date}
+                          time={event.time}
+                          location={event.location}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="relative w-full h-[240px] rounded-xl overflow-hidden">
+                    <img
+                      src={getKicacoEventPhoto('default')}
+                      alt="No events"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
+                    <div className="absolute inset-x-0 bottom-0 px-4 py-3 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm flex items-center justify-center h-1/3">
+                      <p className="text-white font-semibold">No events scheduled.</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              
+              {/* Tabs overlay bar */}
+              <div className="absolute top-0 left-0 right-0 z-10">
+                <div className="flex divide-x divide-white/20 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm rounded-t-xl overflow-hidden">
+                  {next7Days.map(day => (
+                    <button
+                      key={day.label + day.number}
+                      onClick={() => setSelectedDate(day.date)}
+                      className={`flex-1 flex flex-col items-center py-2 text-xs sm:text-sm font-medium transition-colors ${
+                        isSameDay(day.date, selectedDate)
+                          ? 'bg-black/70 text-white font-bold'
+                          : 'text-white/70'
+                      }`}
+                    >
+                      <span>{day.label}</span>
+                      <span className="text-[10px]">{day.number}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -839,10 +876,7 @@ export default function Home() {
                             time={msg.event.time}
                             location={msg.event.location}
                           />
-                          <div className="mt-2 text-left w-full text-sm text-gray-900">{
-                            msg.content.replace(/Want to change anything\??/, '').trim()
-                          }</div>
-                          <div className="mt-3 text-xs text-gray-500 font-inter">
+                          <div className="mt-2 text-left w-full text-sm text-gray-900">
                             Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
                           </div>
                           <button

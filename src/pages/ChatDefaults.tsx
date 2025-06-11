@@ -14,6 +14,7 @@ import GlobalSubheader from '../components/GlobalSubheader.tsx';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Settings } from "lucide-react";
 
 const ChatDefaultsIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 24 24">
@@ -406,10 +407,9 @@ export default function ChatDefaults() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<ChatDefaultsIcon />}
+        icon={<Settings />}
         title="Chat Defaults"
         action={<UpdateDefaultsButton />}
-        frameColor="#2e8b57"
       />
       <div
         ref={pageScrollRef}

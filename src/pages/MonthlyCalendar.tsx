@@ -13,6 +13,8 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format as dateFormat, addMonths, subMonths } from 'date-fns';
 
 const CalendarIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -115,6 +117,7 @@ export default function MonthlyCalendar() {
     chatScrollPosition,
     setChatScrollPosition,
   } = useKicacoStore();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const handleGlobalDrawerHeightChange = (height: number) => {
@@ -303,16 +306,22 @@ export default function MonthlyCalendar() {
     }
   };
 
+  const goToPreviousMonth = () => {
+    setCurrentMonth(subMonths(currentMonth, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth(addMonths(currentMonth, 1));
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<CalendarIcon />}
+        icon={<Calendar />}
         title="Monthly Calendar"
         action={<AddByDateButton />}
-        frameColor="#E9D5FF"
-        frameOpacity={0.75}
       />
       <div
         ref={pageScrollRef}

@@ -16,6 +16,7 @@ import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Calendar } from "lucide-react";
 
 // Add CalendarIcon definition
 const CalendarIcon = () => (
@@ -386,16 +387,9 @@ export default function UpcomingEvents() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={
-          <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24">
-            <path fill="none" d="M0 0h24v24H0z"/>
-            <path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/>
-          </svg>
-        }
+        icon={<Calendar />}
         title="Upcoming Events"
         action={<AddEventButton />}
-        frameColor="#c0e2e7"
-        frameOpacity={0.75}
       />
       <GlobalChatDrawer 
         drawerHeight={currentDrawerHeight}

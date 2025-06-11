@@ -5,14 +5,10 @@ interface GlobalSubheaderProps {
   title: string;
   action?: ReactNode;
   className?: string;
-  frameColor?: string; // Optional, for custom frame color per page
-  frameOpacity?: number; // Optional, for custom frame opacity per page
 }
 
 const GlobalSubheader = forwardRef<HTMLDivElement, GlobalSubheaderProps>(
-  ({ icon, title, action, className = '', frameColor, frameOpacity }, ref) => {
-    const color = frameColor || '#2e8b57';
-    const opacity = typeof frameOpacity === 'number' ? frameOpacity : 0.25;
+  ({ icon, title, action, className = '' }, ref) => {
     return (
       <div
         ref={ref}
@@ -20,13 +16,11 @@ const GlobalSubheader = forwardRef<HTMLDivElement, GlobalSubheaderProps>(
       >
         <section className="mb-2 px-4 pt-4">
           <div className="flex items-start justify-between w-full">
-            <div style={{ width: '180px' }}>
-              <div className="h-0.5 rounded w-full mb-0" style={{ backgroundColor: color, opacity }}></div>
+            <div style={{ width: '180px' }} className="py-1">
               <div className="flex items-center space-x-2 pl-1">
-                {icon}
-                <h2 className="text-[#b91142] text-lg font-medium tracking-tight">{title}</h2>
+                {React.cloneElement(icon as React.ReactElement, { size: 16, strokeWidth: 2, className: 'text-[#00647a] opacity-80' })}
+                <h2 className="text-[#00647a] text-lg font-semibold tracking-tight">{title}</h2>
               </div>
-              <div className="h-0.5 rounded w-full mt-0" style={{ backgroundColor: color, opacity }}></div>
             </div>
             {action && (
               <div className="flex items-center" style={{ height: '30px', marginTop: '0px' }}>
@@ -40,4 +34,4 @@ const GlobalSubheader = forwardRef<HTMLDivElement, GlobalSubheaderProps>(
   }
 );
 
-export default GlobalSubheader; 
+export default GlobalSubheader;

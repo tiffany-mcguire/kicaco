@@ -13,6 +13,8 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, addDays, subDays } from 'date-fns';
 
 const DailyViewIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '18px', width: '18px', height: '18px', strokeWidth: '1.5' }} viewBox="0 0 90 90">
@@ -55,7 +57,17 @@ export default function DailyView() {
     chatScrollPosition,
     setChatScrollPosition,
   } = useKicacoStore();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
+
+  const goToPreviousDay = () => {
+    setCurrentDate(subDays(currentDate, 1));
+  };
+
+  const goToNextDay = () => {
+    setCurrentDate(addDays(currentDate, 1));
+  };
+
   const handleGlobalDrawerHeightChange = (height: number) => {
     const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
@@ -245,10 +257,8 @@ export default function DailyView() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<DailyViewIcon />}
+        icon={<Calendar />}
         title="Daily View"
-        frameColor="#E9D5FF"
-        frameOpacity={0.75}
       />
       <div
         ref={pageScrollRef}

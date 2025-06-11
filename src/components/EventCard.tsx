@@ -57,11 +57,7 @@ const EventCard: React.FC<EventCardProps> = ({
 }) => {
   return (
     <div
-      className="
-        relative w-full max-w-md rounded-xl shadow-lg overflow-hidden mb-4 font-nunito
-        transition-transform duration-300 hover:scale-[1.01] hover:shadow-xl
-        min-h-[200px] md:min-h-[240px]
-      "
+      className="relative w-full font-nunito transition-transform duration-300 hover:scale-[1.01] min-h-[240px]"
     >
       {/* Background image */}
       <img
@@ -79,7 +75,7 @@ const EventCard: React.FC<EventCardProps> = ({
           absolute inset-x-0 bottom-0
           h-1/3
           bg-black/25 backdrop-blur-sm
-          rounded-b-xl px-4 py-3
+          px-4 py-3
           text-white
           flex flex-row justify-between items-center
         "

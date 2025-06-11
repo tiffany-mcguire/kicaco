@@ -13,6 +13,7 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { CalendarPlus } from "lucide-react";
 
 const AddEventIcon = () => {
   const styles = {
@@ -252,10 +253,8 @@ export default function AddEvent() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<AddEventIcon />}
+        icon={<CalendarPlus />}
         title="Add Event"
-        frameColor="#c0e2e7"
-        frameOpacity={0.75}
       />
       <div
         ref={pageScrollRef}

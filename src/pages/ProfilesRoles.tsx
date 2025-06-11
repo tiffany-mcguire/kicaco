@@ -13,6 +13,7 @@ import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Users } from "lucide-react";
 
 // Styles and function copied from EditChild.tsx for consistent input styling
 
@@ -588,10 +589,9 @@ export default function ProfilesRoles() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<ProfilesRolesIcon />}
+        icon={<Users />}
         title="Profiles & Roles"
         action={<UpdateProfilesButton />}
-        frameColor="#2e8b57"
       />
       <div
         ref={pageScrollRef}

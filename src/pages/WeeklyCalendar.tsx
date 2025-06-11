@@ -13,6 +13,8 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, addWeeks, subWeeks } from 'date-fns';
 
 const WeeklyIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -113,6 +115,16 @@ export default function WeeklyCalendar() {
     chatScrollPosition,
     setChatScrollPosition,
   } = useKicacoStore();
+
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+
+  const goToPreviousWeek = () => {
+    setCurrentWeek(subWeeks(currentWeek, 1));
+  };
+
+  const goToNextWeek = () => {
+    setCurrentWeek(addWeeks(currentWeek, 1));
+  };
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -307,11 +319,9 @@ export default function WeeklyCalendar() {
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<WeeklyIcon />}
+        icon={<Calendar />}
         title="Weekly Calendar"
         action={<AddByDayButton />}
-        frameColor="#E9D5FF"
-        frameOpacity={0.75}
       />
       <div
         ref={pageScrollRef}

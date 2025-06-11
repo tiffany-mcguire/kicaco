@@ -34,23 +34,41 @@ const GENERIC_EVENT_NAMES = [
 // Minimum length for a meaningful event name
 const MIN_EVENT_NAME_LENGTH = 3;
 
+// Day of the week mapping for date logic
+const dayOfWeekMapping: { [key: string]: number } = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
 // Relative date patterns
-const RELATIVE_DATE_PATTERNS = {
-  'tomorrow': () => addDays(new Date(), 1),
-  'tonight': () => new Date(),
+const RELATIVE_DATE_PATTERNS: { [key: string]: () => Date } = {
+  tomorrow: () => addDays(new Date(), 1),
+  tonight: () => new Date(),
   'tomorrow night': () => addDays(new Date(), 1),
   'next week': () => addWeeks(new Date(), 1),
-  'next friday': () => {
-    const today = new Date();
-    const daysUntilFriday = (5 - today.getDay() + 7) % 7;
-    return addDays(today, daysUntilFriday);
-  },
-  'this friday': () => {
-    const today = new Date();
-    const daysUntilFriday = (5 - today.getDay() + 7) % 7;
-    return addDays(today, daysUntilFriday);
-  }
 };
+
+// Dynamically add day-of-week patterns (e.g., "this Monday", "next Tuesday")
+Object.keys(dayOfWeekMapping).forEach(dayName => {
+  const targetDay = dayOfWeekMapping[dayName];
+  const handler = () => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil <= 0) { // If it's today or a past day of this week, go to next week
+      daysUntil += 7;
+    }
+    return addDays(today, daysUntil);
+  };
+  RELATIVE_DATE_PATTERNS[`this ${dayName}`] = handler;
+  RELATIVE_DATE_PATTERNS[`next ${dayName}`] = handler;
+  RELATIVE_DATE_PATTERNS[dayName] = handler; // Also handle just the day name
+});
 
 // Time patterns
 const TIME_PATTERNS = {
@@ -147,11 +165,14 @@ export function extractKnownFields(
   }
 
   // Extract location patterns
-  // Only set location if time is present and not vague
-  if (fields.time && !fields.timeVague) {
-    const locationPattern = /\b(?:at|in|on)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/i;
-    const locationMatch = message.match(locationPattern);
-    if (locationMatch) fields.location = locationMatch[1];
+  const locationPattern = /\b(?:at|in|on)\s+((?:[A-Z][a-z_']+\s*)+)/;
+  const locationMatch = message.match(locationPattern);
+  if (locationMatch && locationMatch[1]) {
+    // Further check to ensure we didn't just grab a day of the week
+    const potentialLocation = locationMatch[1].trim().toLowerCase();
+    if (!dayOfWeekMapping.hasOwnProperty(potentialLocation)) {
+      fields.location = locationMatch[1].trim();
+    }
   }
 
   // 4) Only set eventName if none collected yet
