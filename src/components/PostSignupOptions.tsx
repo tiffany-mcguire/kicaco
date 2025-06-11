@@ -42,7 +42,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
     console.log('Voice input clicked');
   };
 
-  const buttonClass = "h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]";
+  const buttonClass = "h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]";
   const descriptionClass = "text-gray-500 font-inter text-xs sm:text-sm";
 
   return (
@@ -51,7 +51,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onFinishProfile} className={buttonClass + " w-[140px]"}>
+            <button onClick={onFinishProfile} className={buttonClass}>
               Finish profile
             </button>
           </div>
@@ -59,7 +59,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onAddChild} className={buttonClass + " w-[140px]"}>
+            <button onClick={onAddChild} className={buttonClass}>
               Add a child
             </button>
           </div>
@@ -67,7 +67,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onAddGuardian} className={buttonClass + " w-[140px]"}>
+            <button onClick={onAddGuardian} className={buttonClass}>
               Add guardian
             </button>
           </div>
@@ -75,7 +75,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onSetPreferences} className={buttonClass + " w-[140px]"}>
+            <button onClick={onSetPreferences} className={buttonClass}>
               Set chat defaults
             </button>
           </div>
@@ -83,7 +83,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onAddEvent} className={buttonClass + " w-[140px]"}>
+            <button onClick={onAddEvent} className={buttonClass}>
               Add an event
             </button>
           </div>
@@ -91,7 +91,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onAddKeeper} className={buttonClass + " w-[140px]"}>
+            <button onClick={onAddKeeper} className={buttonClass}>
               Add a keeper
             </button>
           </div>
@@ -99,7 +99,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onChatWithKicaco} className={buttonClass + " w-[140px]"}>
+            <button onClick={onChatWithKicaco} className={buttonClass}>
               Chat with Kicaco
             </button>
           </div>
@@ -107,7 +107,7 @@ const PostSignupOptions: React.FC<PostSignupOptionsProps> = ({ onRemindLater }) 
         </div>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-6 items-center">
           <div className="w-full sm:w-[140px] flex-shrink-0">
-            <button onClick={onTryVoice} className={buttonClass + " w-[140px]"}>
+            <button onClick={onTryVoice} className={buttonClass}>
               Try voice input
             </button>
           </div>

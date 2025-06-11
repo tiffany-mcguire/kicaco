@@ -57,7 +57,7 @@ const EventCard: React.FC<EventCardProps> = ({
 }) => {
   return (
     <div
-      className="relative w-full font-nunito transition-transform duration-300 hover:scale-[1.01] min-h-[240px]"
+      className="relative w-full transition-transform duration-300 hover:scale-[1.01] min-h-[240px]"
     >
       {/* Background image */}
       <img

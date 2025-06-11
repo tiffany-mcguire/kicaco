@@ -809,7 +809,7 @@ export default function Home() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
                     <div className="absolute inset-x-0 bottom-0 px-4 py-3 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm flex items-center justify-center h-1/3">
-                      <p className="text-white font-semibold">No events scheduled.</p>
+                      <p className="text-white font-normal">No events scheduled.</p>
                     </div>
                   </div>
                 )}
@@ -880,7 +880,7 @@ export default function Home() {
                             Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
                           </div>
                           <button
-                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-nunito font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
                             onClick={() => {
                               setShowSignup(true);
                               setSignupStep(0);

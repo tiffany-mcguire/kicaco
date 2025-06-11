@@ -609,7 +609,7 @@ export default function ProfilesRoles() {
         <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
 
           <div className="profiles-roles-section-children">
-            <h3 className="text-lg font-semibold text-[#1a6e7e]">Your Children</h3>
+            <h3 className="text-lg font-medium text-[#1a6e7e]">Your Children</h3>
             <div className="profiles-roles-children-list">
               {children.length === 0 ? (
                 <>
@@ -627,7 +627,7 @@ export default function ProfilesRoles() {
                   {children.map(child => (
                     <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-center justify-between">
                       <div className="profiles-roles-child-info">
-                        <p className="text-[#1a6e7e] font-semibold text-sm">{child.name}</p>
+                        <p className="text-[#1a6e7e] font-medium text-sm">{child.name}</p>
                         <p className="text-xs text-gray-400 mt-1">DOB: {child.dob}</p>
                         <p className="text-xs text-gray-400">School: {child.school}</p>
                       </div>
@@ -646,7 +646,7 @@ export default function ProfilesRoles() {
           </div>
 
           <div className="profiles-roles-section-shared-users">
-            <h3 className="text-lg font-semibold text-[#1a6e7e]">Shared Access & Permissions</h3>
+            <h3 className="text-lg font-medium text-[#1a6e7e]">Shared Access & Permissions</h3>
             <div className="profiles-roles-shared-users-list">
               {sharedUsers.length === 0 ? (
                 <>
@@ -656,10 +656,10 @@ export default function ProfilesRoles() {
                 sharedUsers.map((user: SharedUser) => (
                   <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-start justify-between">
                     <div className="profiles-roles-shared-user-info min-w-0">
-                      <p className="text-[#1a6e7e] font-semibold text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
+                      <p className="text-[#1a6e7e] font-medium text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
                       <p className="text-xs text-gray-400">{user.email}</p>
                       <div className="text-sm text-gray-700 mt-3">
-                        <span className="text-[#1a6e7e] font-semibold">Permissions:</span>
+                        <span className="text-[#1a6e7e] font-medium">Permissions:</span>
                         <div className="profiles-roles-shared-user-permissions md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
                           <span className="flex items-center gap-1">
                             <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>

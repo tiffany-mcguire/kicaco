@@ -427,7 +427,7 @@ export default function ChatDefaults() {
         <div className="relative flex-1 flex flex-col overflow-hidden">
           <div className="overflow-y-auto" style={{ paddingBottom: 40 }}>
             <div className="px-4 pt-4 pb-2">
-              <h3 className="text-[16px] font-semibold text-[#00647a]">Follow-up prompts</h3>
+              <h3 className="text-[16px] font-medium text-[#00647a]">Follow-up prompts</h3>
             </div>
             <div className="px-4 pt-2 pb-3">
               <div className="flex items-end justify-between mb-1">
@@ -494,7 +494,7 @@ export default function ChatDefaults() {
             </div>
             <div className="px-4 pt-4 pb-6">
               <div className="mb-1">
-                <span className="text-[#b91142] font-medium text-[14px] leading-none">Child Profile Distinction</span>
+                <span className="text-[#b91142] text-[14px] leading-none">Child Profile Distinction</span>
               </div>
               <p 
                 className="text-xs text-gray-400 leading-snug"
