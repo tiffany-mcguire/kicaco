@@ -13,6 +13,7 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
+import { UserCog } from 'lucide-react';
 
 const EditChildIcon = () => {
   const styles = {
@@ -489,17 +490,15 @@ export default function EditChild() {
   
   const labelClass = "block text-sm font-medium text-teal-700";
   const helperTextClass = "mt-1 text-xs text-gray-500";
-  const sectionTitleClass = "text-lg font-medium text-teal-700";
+  const sectionTitleClass = "text-lg font-medium text-[#00647a]";
 
   return (
     <div className="flex flex-col h-screen bg-white">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
-        icon={<EditChildIcon />}
+        icon={<UserCog />}
         title="Edit Child"
-        frameColor="#2e8b57"
-        frameOpacity={0.25}
         action={<UpdateChildButton label="Update Child" onClick={handleUpdate} />}
       />
       <div
