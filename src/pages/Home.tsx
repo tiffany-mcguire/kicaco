@@ -261,107 +261,43 @@ export default function Home() {
 
   // --- Page-specific Max Drawer Height & Initial Homepage Drawer Height ---
   useLayoutEffect(() => {
-    console.log(`[Home DrawerCalcEffect] START. stored: ${storedDrawerHeight}, initialCalc: ${initialHomePageDrawerHeightCalculated}, blurbGone: ${blurbGone}, contentLoaded: ${pageContentLoadedAndMeasured}, winH: ${currentWindowHeight}`);
-    
     const globalHeaderH = headerRef.current?.offsetHeight ?? 0;
     const upcomingTitleH = upcomingEventsTitleRef.current?.offsetHeight ?? 0;
 
     if (globalHeaderH === 0 || upcomingTitleH === 0) {
-      console.warn(`[Home DrawerCalcEffect] Deferred: Header/UpcomingTitle not ready. GH: ${globalHeaderH}, UTH: ${upcomingTitleH}`);
       return;
     }
 
     const newContentAreaTop = globalHeaderH + upcomingTitleH;
     if (contentAreaTop !== newContentAreaTop) {
         setContentAreaTop(newContentAreaTop);
-        console.log(`[Home DrawerCalcEffect] ContentAreaTop updated: ${newContentAreaTop.toFixed(2)}`);
     }
 
     const globalFooterH = footerRef.current?.offsetHeight ?? 0;
     
-    if (globalFooterH === 0 && !initialHomePageDrawerHeightCalculated) {
-      console.warn(`[Home DrawerCalcEffect] Deferred: Footer not ready for initial calc. GFH: ${globalFooterH}`);
-      return;
-    }
-
     let calculatedMaxDrawerHeight = currentWindowHeight - newContentAreaTop - globalFooterH - 12; // 12px buffer
     calculatedMaxDrawerHeight = Math.max(calculatedMaxDrawerHeight, 32); 
     setMaxDrawerHeight(calculatedMaxDrawerHeight);
-    console.log(`[Home DrawerCalcEffect] MaxDrawerHeight: ${calculatedMaxDrawerHeight.toFixed(2)} (NCA_Top: ${newContentAreaTop.toFixed(2)}, GFH: ${globalFooterH})`);
 
-    if (!initialHomePageDrawerHeightCalculated) {
-      let heightToSetInStore = null;
-      let calculationPath = "deferred_initial";
-
-      if (storedDrawerHeight !== null && storedDrawerHeight !== undefined) {
-        if (globalFooterH > 0) { 
-          heightToSetInStore = Math.min(storedDrawerHeight, calculatedMaxDrawerHeight);
-          calculationPath = `StoredPreference (Val: ${storedDrawerHeight} constrained to ${heightToSetInStore?.toFixed(2)})`;
-        } else {
-          calculationPath = "StoredPreference_WaitingForFooter";
-        }
-      }
-      else if (!blurbGone && pageContentLoadedAndMeasured) { // Key check: pageContentLoadedAndMeasured is true
-        const keepersBlurbElement = keepersBlurbRef.current;
-        // Re-fetch rect here as it might be more stable now
-        const keepersBlurbRect = keepersBlurbElement?.getBoundingClientRect(); 
-
-        if (keepersBlurbElement && keepersBlurbRect && globalFooterH > 0 && newContentAreaTop > 0) {
-          const footerTopEdge = currentWindowHeight - globalFooterH;
-          if (keepersBlurbRect.bottom > newContentAreaTop && keepersBlurbRect.bottom < footerTopEdge) {
-            const buffer = 16; 
-            // Use currentWindowHeight for the top reference of the calculation space
-            const spaceBelowKeepers = currentWindowHeight - keepersBlurbRect.bottom - globalFooterH - buffer;
-            heightToSetInStore = Math.max(spaceBelowKeepers, 32);
-            heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
-            calculationPath = `KeepersBlurb (KB_Bot: ${keepersBlurbRect.bottom.toFixed(2)}, GFH: ${globalFooterH}, Calc_H: ${heightToSetInStore?.toFixed(2)})`;
-          } else {
-            calculationPath = `KeepersBlurb_RectNotPlausible (KB_Bot: ${keepersBlurbRect?.bottom?.toFixed(2)}, NCA_Top: ${newContentAreaTop.toFixed(2)}, Foot_Top: ${footerTopEdge.toFixed(2)})`;
-          }
-        } else {
-          calculationPath = `KeepersBlurb_DepsNotReady (KBElem: ${!!keepersBlurbElement}, KBRect: ${!!keepersBlurbRect}, GFH: ${globalFooterH}, NCATop: ${newContentAreaTop})`;
-        }
-      }
-       else if (blurbGone && pageContentLoadedAndMeasured && globalFooterH > 0) { // Fallback if blurbs hidden, but content is measured
-        heightToSetInStore = calculatedMaxDrawerHeight * 0.6;
-        heightToSetInStore = Math.max(heightToSetInStore, 32);
-        heightToSetInStore = Math.min(heightToSetInStore, calculatedMaxDrawerHeight);
-        calculationPath = `Fallback_BlurbGone (Calc_H: ${heightToSetInStore?.toFixed(2)})`;
-      } else if (!pageContentLoadedAndMeasured) {
-        calculationPath = "Awaiting_PageContentLoadedAndMeasured";
-      }
-
-      console.log(`[Home DrawerCalcEffect] Initial Height Path: ${calculationPath}`);
-
-      if (heightToSetInStore !== null && 
-          calculationPath !== "StoredPreference_WaitingForFooter" && 
-          !calculationPath.startsWith("KeepersBlurb_DepsNotReady") && 
-          !calculationPath.startsWith("KeepersBlurb_RectNotPlausible") &&
-          calculationPath !== "Awaiting_PageContentLoadedAndMeasured" &&
-          calculationPath !== "deferred_initial") {
-        setStoredDrawerHeight(heightToSetInStore);
-        setInitialHomePageDrawerHeightCalculated(true);
-        console.log(`[Home DrawerCalcEffect] Initial Drawer Height SET: ${heightToSetInStore.toFixed(2)}`);
-      } else {
-        console.log("[Home DrawerCalcEffect] Initial height calc deferred or prerequisites not met.");
-      }
-    } else { 
-      if (globalFooterH > 0 && storedDrawerHeight !== null && storedDrawerHeight !== undefined && storedDrawerHeight > calculatedMaxDrawerHeight) {
+    if (!initialHomePageDrawerHeightCalculated && globalFooterH > 0) {
+      // If there's no height stored from another session, default to max height on homepage.
+      if (storedDrawerHeight === null || storedDrawerHeight === undefined) {
         setStoredDrawerHeight(calculatedMaxDrawerHeight);
-        console.log(`[Home DrawerCalcEffect] Clamped storedDrawerHeight on update: ${calculatedMaxDrawerHeight.toFixed(2)}`);
       }
+      setInitialHomePageDrawerHeightCalculated(true);
+    } else if (storedDrawerHeight && storedDrawerHeight > calculatedMaxDrawerHeight) {
+      // On subsequent resizes, clamp the height if it exceeds the new max.
+      setStoredDrawerHeight(calculatedMaxDrawerHeight);
     }
   }, [
     currentWindowHeight,
     storedDrawerHeight,
     initialHomePageDrawerHeightCalculated,
-    blurbGone,
-    pageContentLoadedAndMeasured, // Added new state to dependency array
+    pageContentLoadedAndMeasured,
     contentAreaTop, 
     headerRef.current?.offsetHeight, 
     upcomingEventsTitleRef.current?.offsetHeight,
     footerRef.current?.offsetHeight,
-    // keepersBlurbRef.current?.offsetHeight, // Intentionally removing this direct dependency for this effect, relying on pageContentLoadedAndMeasured
     setStoredDrawerHeight, 
     setMaxDrawerHeight, 
     setContentAreaTop
@@ -749,13 +685,6 @@ export default function Home() {
         };
         addMessage(assistantMessage);
 
-        // Add the "Got it!..." message (moved from modal confirm)
-        addMessage({
-          id: crypto.randomUUID(),
-          sender: 'assistant',
-          content: `Got it! "${eventObj.eventName || eventObj.name}" is now on your calendar.`
-        });
-
       } else {
         // Remove thinking message before adding the real response
         removeMessageById('thinking');
@@ -803,7 +732,6 @@ export default function Home() {
     threadId,
     eventsLength: events.length,
     keepersLength: keepers.length,
-    blurbGone,
     currentDrawerHeight,
     storedDrawerHeight
   });
@@ -825,12 +753,12 @@ export default function Home() {
         }}
       >
         <div style={{width:'180px'}}>
-          <div className="h-0.5 bg-[#c0e2e7] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
+          <div className="h-0.5 bg-[#E9D5FF] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
           <div className="flex items-center space-x-2 pl-1">
-            <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
-            <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Upcoming Events</h2>
+            <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+            <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Home</h2>
           </div>
-          <div className="h-0.5 bg-[#c0e2e7] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
+          <div className="h-0.5 bg-[#E9D5FF] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
         </div>
       </section>
       
@@ -853,15 +781,6 @@ export default function Home() {
               paddingRight: '1rem', // px-4
             }}
           >
-            {/* "Upcoming Events" Blurb - MOVED HERE */}
-            {!blurbGone && (
-                <div className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3"> {/* RESTORED mt-3 */}
-                    <p className="text-gray-400 text-xs leading-snug w-full text-left section-blurb">
-                    Kicaco gives you a clear and up-to-date view of what's next, so you never miss a practice, recital, or class party.
-                    </p>
-                </div>
-            )}
-
             {/* Upcoming Events Cards */}
             {events.length > 0 && (
               <div className="flex flex-col w-full pt-2 pb-2"> {/* Removed px-4 as parent has it */}
@@ -870,49 +789,11 @@ export default function Home() {
                     <EventCard
                       image={getKicacoEventPhoto(event.eventName)}
                       name={event.eventName}
+                      childName={event.childName}
                       date={event.date}
                       time={event.time}
                       location={event.location}
                     />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Keepers Section - Title and Blurb */}
-            <section className="mb-2 pt-2"> {/* MODIFIED: Reduced pt-4 to pt-2 for less space above Keepers title */}
-              <div className="mt-2" style={{width:'180px'}}>
-                <div className="h-0.5 bg-[#f8b6c2] rounded w-full mb-0" style={{ opacity: 0.75 }}></div>
-                <div className="flex items-center space-x-2 pl-1">
-                  <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
-                  <h2 className="text-[#b91142] text-lg font-medium tracking-tight">Keepers</h2>
-                </div>
-                <div className="h-0.5 bg-[#f8b6c2] rounded w-full mt-0" style={{ opacity: 0.75 }}></div>
-              </div>
-              {/* Keepers Blurb Card - Ensuring it has mt-3 */}
-              {!blurbGone && (
-                <div ref={keepersBlurbRef} className="w-full max-w-md bg-white rounded-xl shadow-md border border-[#c0e2e799] p-4 mb-3 transition hover:shadow-lg font-nunito mt-3">
-                    <p className="text-gray-400 text-xs leading-snug w-full text-left section-blurb">
-                    Kicaco keeps all of your child's due dates, deadlines, and time-sensitive tasks visible, so nothing slips through the cracks.
-                    </p>
-                </div>
-              )}
-            </section>
-
-            {/* Keepers Cards */}
-            {keepers.length > 0 && (
-              <div className="flex flex-col items-center w-full pt-2 pb-2">
-                {keepers.map((keeper, idx) => (
-                  <div key={keeper.keeperName + keeper.date + idx} className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-pink-200 flex items-center p-3 mb-4 transition hover:shadow-2xl">
-                    <div className="w-14 h-14 flex-shrink-0 rounded-full overflow-hidden border border-pink-200 mr-4 bg-pink-100 flex items-center justify-center">
-                      <span role="img" aria-label="keeper" style={{fontSize: 32}}>📒</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center min-w-0">
-                      <h3 className="text-base font-bold text-pink-900 truncate mb-0.5">{keeper.keeperName}</h3>
-                      {keeper.date && <div className="text-sm text-pink-600 mb-0.5 truncate">Date: {keeper.date}</div>}
-                      {keeper.time && <div className="text-sm text-pink-600 mb-0.5 truncate">Time: {keeper.time}</div>}
-                      {keeper.location && <div className="text-sm text-pink-600 truncate">Location: {keeper.location}</div>}
-                    </div>
                   </div>
                 ))}
               </div>
@@ -953,6 +834,7 @@ export default function Home() {
                           <EventCard
                             image={getKicacoEventPhoto(msg.event.eventName)}
                             name={msg.event.eventName}
+                            childName={msg.event.childName}
                             date={msg.event.date}
                             time={msg.event.time}
                             location={msg.event.location}

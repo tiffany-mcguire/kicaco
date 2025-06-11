@@ -1,16 +1,43 @@
-// Utility to get a Kicaco event photo by event type/name
-const KICACO_EVENT_PHOTOS: Record<string, string> = {
-  concert: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=facearea&w=80&h=80',
-  soccer: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=facearea&w=80&h=80',
-  default: 'https://images.unsplash.com/photo-1465101178521-c1a9136a3b99?auto=format&fit=facearea&w=80&h=80',
-  // ...add more as needed
+const IMAGE_PATH = '/event-images/';
+
+const KEYWORD_TO_IMAGE_MAP: Record<string, string> = {
+  'art': 'art.jpg',
+  'school supplies': 'school supplies.jpg',
+  'concert': 'concert.jpg',
+  'deadline': 'deadline.jpg',
+  'vaccine': 'vaccine.jpg',
+  'karate': 'karate.jpg',
+  'baseball': 'baseball.jpg',
+  'ballet': 'ballet.jpg',
+  'scout': 'scouts.jpg',
+  'cheerleading': 'cheerleading.jpg',
+  'american football': 'americanfootball.jpg',
+  'basketball': 'basketball.jpg',
+  'dentist': 'dentist.jpg',
+  'permission slip': 'permission slip.jpg',
+  'doctor': 'doctor.jpg',
+  'tennis': 'tennis.jpg',
+  'birthday': 'birthdaycupcake.jpg',
+  'soccer': 'soccer.jpg',
 };
 
-export function getKicacoEventPhoto(eventName: string) {
-  if (!eventName) return KICACO_EVENT_PHOTOS.default;
-  const name = eventName.toLowerCase();
-  if (name.includes('concert')) return KICACO_EVENT_PHOTOS.concert;
-  if (name.includes('soccer')) return KICACO_EVENT_PHOTOS.soccer;
-  // ...add more mappings as needed
-  return KICACO_EVENT_PHOTOS.default;
+const DEFAULT_IMAGE = 'default.jpg';
+
+export function getKicacoEventPhoto(eventName: string): string {
+  if (!eventName) {
+    return `${IMAGE_PATH}${DEFAULT_IMAGE}`;
+  }
+
+  const lowerCaseEventName = eventName.toLowerCase();
+  
+  // Sort keywords by length descending to match longer phrases first
+  const sortedKeywords = Object.keys(KEYWORD_TO_IMAGE_MAP).sort((a, b) => b.length - a.length);
+
+  for (const keyword of sortedKeywords) {
+    if (lowerCaseEventName.includes(keyword)) {
+      return `${IMAGE_PATH}${KEYWORD_TO_IMAGE_MAP[keyword]}`;
+    }
+  }
+
+  return `${IMAGE_PATH}${DEFAULT_IMAGE}`;
 } 
