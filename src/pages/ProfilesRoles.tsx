@@ -705,7 +705,7 @@ export default function ProfilesRoles() {
                             {Object.entries(user.permissions).map(([key, value]) => (
                               <span 
                                 key={key} 
-                                className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}
+                                className={`w-2 h-2 rounded-full ${value ? 'bg-[#217e8f]' : 'bg-gray-300'}`}
                                 title={key.replace('can', '')}
                               />
                             ))}
