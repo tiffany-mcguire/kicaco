@@ -261,7 +261,7 @@ export default function AddKeeper() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -270,7 +270,7 @@ export default function AddKeeper() {
       />
       <div
         ref={pageScrollRef}
-        className="add-keeper-content-scroll bg-white"
+        className="add-keeper-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,

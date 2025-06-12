@@ -12,7 +12,7 @@ import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Users } from "lucide-react";
 
 // Styles and function copied from EditChild.tsx for consistent input styling
@@ -111,61 +111,11 @@ const ProfilesRolesIcon = () => (
 );
 
 const UpdateProfilesButton = (props: { label?: string }) => {
-  const [hovered, setHovered] = React.useState(false);
-  const [pressed, setPressed] = React.useState(false);
-  const [focused, setFocused] = React.useState(false);
-
-  const getButtonStyle = () => {
-    let s = {
-      width: '140px',
-      height: '30px',
-      padding: '0px 8px',
-      border: '1px solid #c0e2e7',
-      boxSizing: 'border-box' as const,
-      borderRadius: '6px',
-      fontWeight: 400,
-      fontSize: '14px',
-      lineHeight: '20px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
-      background: '#fff',
-      color: '#217e8f',
-      outline: 'none',
-      borderColor: '#c0e2e7',
-      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
-    } as React.CSSProperties;
-    if (hovered || focused) {
-      s = {
-        ...s,
-        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
-        borderColor: '#c0e2e7',
-        outline: 'none',
-      };
-    }
-    if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
-    }
-    s.outline = 'none';
-    return s;
-  };
-
-  // No action yet
-  const handleClick = () => {};
-
   return (
     <button
-      style={getButtonStyle()}
-      tabIndex={0}
       type="button"
-      onClick={handleClick}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
-      onMouseLeave={() => { setPressed(false); setHovered(false); }}
-      onMouseOver={() => setHovered(true)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); setPressed(false); }}
-      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
-      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
-      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+      onClick={() => console.log('Update profiles')}
+      className="px-4 py-1.5 bg-[#217e8f] text-white text-sm font-medium rounded-md hover:bg-[#1a6e7e] active:scale-95 transition-all"
     >
       {props.label ?? 'Update Profiles'}
     </button>
@@ -248,40 +198,33 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
 
   const getButtonStyle = () => {
     let s = {
-      width: '140px',
-      height: '30px',
-      padding: '0px 8px',
+      padding: '6px 16px',
       border: `1px solid ${borderColor}`,
       boxSizing: 'border-box' as const,
-      borderRadius: '6px',
+      borderRadius: '4px',
       fontWeight: 400,
-      fontSize: '14px',
+      fontSize: '13px',
       lineHeight: 'normal',
-      boxShadow: `${baseShadow}, ${liftShadow}`,
-      background: '#fff',
+      background: '#ffffff',
       color: props.color ?? '#217e8f',
       outline: 'none',
-      borderColor: borderColor,
-      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+      transition: 'all 0.2s ease',
       cursor: 'pointer',
-      display: 'flex',
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
     } as React.CSSProperties;
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: `0 0 8px 2px ${glowColor}, 0 2px 4px rgba(0,0,0,0.12), ${liftShadow}`,
-        borderColor: borderColor,
-        outline: 'none',
+        background: isRemove ? 'rgba(251,182,206,0.10)' : 'rgba(192,226,231,0.15)',
+        borderColor: isRemove ? 'rgba(185,17,66,0.3)' : 'rgba(33,126,143,0.3)',
       };
     }
     if (pressed) {
       s = {
         ...s,
-        transform: 'scale(0.95)',
-        boxShadow: `0 0 6px 1px ${glowColor}, 0 1px 2px rgba(0,0,0,0.08)`,
-        borderColor: borderColor,
+        transform: 'scale(0.98)',
       };
     }
     s.outline = 'none';
@@ -315,6 +258,8 @@ export default function ProfilesRoles() {
   const location = useLocation();
   const navigate = useNavigate();
   const [chatInput, setChatInput] = useState("");
+  const [expandedChild, setExpandedChild] = useState<string | null>(null);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
@@ -348,6 +293,30 @@ export default function ProfilesRoles() {
       permissions: {
         canView: true,
         canAdd: true,
+        canEdit: false,
+        canManage: false,
+      }
+    },
+    {
+      id: 'mockUser2',
+      name: 'Sarah Johnson',
+      role: 'Nanny',
+      email: 'sarah.j@childcare.com',
+      permissions: {
+        canView: true,
+        canAdd: true,
+        canEdit: true,
+        canManage: false,
+      }
+    },
+    {
+      id: 'mockUser3',
+      name: 'Michael Chen',
+      role: 'Grandparent',
+      email: 'mchen@email.com',
+      permissions: {
+        canView: true,
+        canAdd: false,
         canEdit: false,
         canManage: false,
       }
@@ -592,121 +561,258 @@ export default function ProfilesRoles() {
       />
       <div
         ref={pageScrollRef}
-        className="profiles-roles-content-scroll bg-white"
+        className="profiles-roles-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
+          top: subheaderBottom,
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0),
           left: 0,
           right: 0,
           overflowY: oldScrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
-
-          <div className="profiles-roles-section-children">
-            <h3 className="text-base font-normal text-[#1a6e7e]">Your Children</h3>
-            <div className="profiles-roles-children-list">
-              {children.length === 0 ? (
-                <>
-                  <div className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs text-gray-400 font-light leading-snug">
-                      You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
-                    </p>
-                  </div>
-                  <div className="flex justify-start">
-                    <MiniActionButton label="+ Add Child" onClick={handleAddChild} extraClassName="mt-3" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  {children.map(child => (
-                    <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] flex items-center justify-between">
-                      <div className="profiles-roles-child-info">
-                        <p className="text-[#1a6e7e] font-medium text-sm">{child.name}</p>
-                        <p className="text-xs text-gray-400 mt-1">DOB: {child.dob}</p>
-                        <p className="text-xs text-gray-400">School: {child.school}</p>
-                      </div>
-                      <div className="profiles-roles-child-actions flex flex-col gap-2 ml-4">
-                        <MiniActionButton label="Edit" onClick={() => navigate('/edit-child', { state: { child } })} />
-                        <MiniActionButton label="Remove" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove', child.id)} />
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex justify-start">
-                    <MiniActionButton label="+ Add Child" onClick={handleAddChild} extraClassName="mt-3" />
-                  </div>
-                </>
-              )}
+        <div className="profiles-roles-content-inner px-6 pt-6 pb-24 max-w-2xl mx-auto">
+          
+          {/* Children Section */}
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-gray-600">Children</h2>
+              <button 
+                onClick={handleAddChild}
+                className="text-sm text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all flex items-center gap-1 active:scale-95"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                </svg>
+                <span>Add</span>
+              </button>
             </div>
-          </div>
+            
+            {children.length === 0 ? (
+              <div className="bg-white rounded-lg border border-dashed border-gray-300 p-8 text-center">
+                <div className="text-gray-400 mb-3">
+                  <svg className="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-500 mb-3">No children added yet</p>
+                <button 
+                  onClick={handleAddChild}
+                  className="text-sm text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors"
+                >
+                  Add your first child
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {children.map(child => (
+                  <div 
+                    key={child.id} 
+                    className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => setExpandedChild(expandedChild === child.id ? null : child.id)}
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-8 h-8 bg-[#217e8f] rounded-full flex items-center justify-center text-white text-xs font-medium">
+                            {child.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-medium text-gray-900 truncate">{child.name}</h3>
+                            <p className="text-xs text-gray-500">{child.dob} • {child.school}</p>
+                          </div>
+                        </div>
+                        <svg 
+                          className={`w-4 h-4 text-gray-400 transition-transform ${expandedChild === child.id ? 'rotate-180' : ''}`} 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      
+                      <AnimatePresence>
+                        {expandedChild === child.id && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/edit-child', { state: { child } });
+                              }}
+                              className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium"
+                            >
+                              Edit Profile
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('Remove', child.id);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-700 font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
-          <div className="profiles-roles-section-shared-users">
-            <h3 className="text-base font-normal text-[#1a6e7e]">Shared Access & Permissions</h3>
-            <div className="profiles-roles-shared-users-list">
-              {sharedUsers.length === 0 ? (
-                <>
-                  {/* This section should be empty when no shared users, as per previous request */}
-                </>
-              ) : (
-                sharedUsers.map((user: SharedUser) => (
-                  <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] flex items-start justify-between">
-                    <div className="profiles-roles-shared-user-info min-w-0">
-                      <p className="text-[#1a6e7e] font-medium text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
-                      <div className="text-sm text-gray-700 mt-3">
-                        <span className="text-[#1a6e7e] font-medium">Permissions:</span>
-                        <div className="profiles-roles-shared-user-permissions md:flex md:flex-row md:gap-x-4 grid grid-cols-2 gap-x-4 gap-y-1 mt-1 ml-2">
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canView ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canView ? '✓' : '✗'}</span>
-                            <span className="text-xs text-gray-400">View</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canAdd ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canAdd ? '✓' : '✗'}</span>
-                            <span className="text-xs text-gray-400">Add</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canEdit ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canEdit ? '✓' : '✗'}</span>
-                            <span className="text-xs text-gray-400">Edit</span>
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={user.permissions.canManage ? 'text-[#1a6e7e]' : 'text-gray-400'}>{user.permissions.canManage ? '✓' : '✗'}</span>
-                            <span className="text-xs text-gray-400">Manage</span>
-                          </span>
+          {/* Shared Access Section */}
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-medium text-gray-600">Shared Access</h2>
+            </div>
+            
+            {sharedUsers.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {sharedUsers.map((user: SharedUser) => (
+                  <div 
+                    key={user.id} 
+                    className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 text-xs font-medium">
+                            {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <h3 className="text-sm font-medium text-gray-900">{user.name}</h3>
+                              <span className="text-xs text-gray-500">{user.role}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            {Object.entries(user.permissions).map(([key, value]) => (
+                              <span 
+                                key={key} 
+                                className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-gray-300'}`}
+                                title={key.replace('can', '')}
+                              />
+                            ))}
+                          </div>
+                          <svg 
+                            className={`w-4 h-4 text-gray-400 transition-transform ${expandedUser === user.id ? 'rotate-180' : ''}`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                         </div>
                       </div>
-                    </div>
-                    <div className="profiles-roles-shared-user-actions flex flex-col gap-2 ml-4 self-start">
-                      <MiniActionButton label="Edit Permissions" onClick={() => console.log('Edit permissions', user.id)} extraClassName="whitespace-nowrap" />
-                      <MiniActionButton label="Remove Access" color="#b91142" borderColor="#e7c0c0" onClick={() => console.log('Remove access', user.id)} />
+                      
+                      <AnimatePresence>
+                        {expandedUser === user.id && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-medium text-gray-700">Permissions</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('Edit permissions', user.id);
+                                }}
+                                className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(user.permissions).map(([key, value]) => (
+                                <label key={key} className="flex items-center gap-2 text-xs">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={value} 
+                                    readOnly
+                                    className="w-3 h-3 text-[#217e8f] rounded border-gray-300"
+                                  />
+                                  <span className="text-gray-600 capitalize">{key.replace('can', '')}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('Remove access', user.id);
+                              }}
+                              className="mt-3 text-xs text-red-600 hover:text-red-700 font-medium"
+                            >
+                              Remove Access
+                            </button>
+                          </div>
+                        </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className="profiles-roles-invite mt-2">
-              <div 
-                style={{...inputWrapperBaseStyle, ...getFocusStyle(isInviteInputFocused, false)}} 
-                className="mt-1"
+            <div className="mt-4">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (inviteInput.trim()) {
+                    console.log('Send invite to', inviteInput);
+                    setInviteInput('');
+                  }
+                }}
+                noValidate
               >
                 <input
                   type="email"
-                  placeholder="Invite by email (e.g. someone@example.com)"
-                  style={inputElementStyle}
-                  className="w-full placeholder-gray-400"
+                  placeholder="Enter email to invite"
+                  className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#217e8f] focus:ring-opacity-20 focus:border-[#217e8f] transition-all placeholder-gray-400"
                   value={inviteInput}
                   onChange={e => setInviteInput(e.target.value)}
-                  onFocus={() => setIsInviteInputFocused(true)}
-                  onBlur={() => setIsInviteInputFocused(false)}
                 />
-              </div>
-              <div className="flex justify-start">
-                <MiniActionButton label="+ Send Invite" onClick={() => console.log('Send invite to', inviteInput)} extraClassName="mt-3" />
-              </div>
+                <div className="flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inviteInput.trim()) {
+                        console.log('Send invite to', inviteInput);
+                        setInviteInput('');
+                      }
+                    }}
+                    className="text-sm text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all flex items-center gap-1 active:scale-95"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                    </svg>
+                    <span>Send Invite</span>
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
+          </section>
 
         </div>
       </div>

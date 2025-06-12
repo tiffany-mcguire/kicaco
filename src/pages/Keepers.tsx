@@ -326,7 +326,7 @@ export default function Keepers() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -336,7 +336,7 @@ export default function Keepers() {
       />
       <div
         ref={scrollRef}
-        className="keepers-content-scroll bg-white"
+        className="keepers-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,

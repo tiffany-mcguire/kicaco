@@ -37,29 +37,27 @@ const AddEventButton = (props: { label?: string }) => {
       width: '140px',
       height: '30px',
       padding: '0px 8px',
-      border: '1px solid #c0e2e7',
+      border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontWeight: 400,
+      fontWeight: 500,
       fontSize: '14px',
       lineHeight: '20px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
-      background: '#fff',
-      color: '#217e8f',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+      background: '#217e8f',
+      color: '#ffffff',
       outline: 'none',
-      borderColor: '#c0e2e7',
-      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+      transition: 'all 0.2s ease',
     } as React.CSSProperties;
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
-        borderColor: '#c0e2e7',
-        outline: 'none',
+        background: '#1a6e7e',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)' };
     }
     s.outline = 'none';
     return s;
@@ -81,7 +79,7 @@ const AddEventButton = (props: { label?: string }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
-      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
       onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
@@ -382,7 +380,7 @@ export default function UpcomingEvents() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -457,7 +455,7 @@ export default function UpcomingEvents() {
         })()}
       </GlobalChatDrawer>
       <div
-        className="upcoming-events-content-scroll bg-white"
+        className="upcoming-events-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
           top: subheaderRef.current ? subheaderRef.current.getBoundingClientRect().bottom + 8 : 0,

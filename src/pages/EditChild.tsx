@@ -85,7 +85,7 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
-      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+      className="transition-all focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
       onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
@@ -492,7 +492,7 @@ export default function EditChild() {
   const sectionTitleClass = "text-lg font-medium text-[#00647a]";
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -502,7 +502,7 @@ export default function EditChild() {
       />
       <div
         ref={pageScrollRef}
-        className="edit-child-content-scroll bg-white"
+        className="edit-child-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,

@@ -253,7 +253,7 @@ export default function DailyView() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -262,7 +262,7 @@ export default function DailyView() {
       />
       <div
         ref={pageScrollRef}
-        className="daily-view-content-scroll bg-white"
+        className="daily-view-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,

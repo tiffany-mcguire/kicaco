@@ -24,6 +24,7 @@ type Keeper = {
   date: string;
   time?: string;
   location?: string;
+  description?: string;
   isAllDay?: boolean;
   noTimeYet?: boolean;
 };

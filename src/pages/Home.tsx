@@ -16,8 +16,9 @@ import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../uti
 import { ParsedFields } from '../utils/kicacoFlow';
 import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
+import KeeperCard from '../components/KeeperCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
-import { parse, format, addDays, startOfDay, isSameDay, parseISO } from 'date-fns';
+import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay } from 'date-fns';
 import PasswordModal from '../components/PasswordModal';
 import PostSignupOptions from '../components/PostSignupOptions';
 import { Home as HomeIcon } from "lucide-react";
@@ -754,7 +755,7 @@ export default function Home() {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
 
       <GlobalSubheader
@@ -770,7 +771,7 @@ export default function Home() {
         return (
           <div 
             ref={pageContentRef} // This was 'subheaderRef' from your restored version
-            className="w-full bg-white" // Removed z-10 and profiles-roles-subheader
+            className="w-full bg-gray-50" // Removed z-10 and profiles-roles-subheader
             style={{
               position: 'absolute',
               top: `${contentAreaTop}px`, // Dynamically set below fixed title section
@@ -835,6 +836,26 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* Keepers Section - No header, cards speak for themselves */}
+            <div className="mt-8 mb-4">
+              <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">
+                {/* Background image */}
+                <img
+                  src={getKicacoEventPhoto('keeper')}
+                  alt="No keepers"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                
+                {/* Glass panel at bottom - matching EventCard exactly */}
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-black/25 backdrop-blur-sm px-4 py-3 text-white flex items-center justify-center">
+                  <p className="text-base font-normal">No keepers in the next 30 days.</p>
+                </div>
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -880,7 +901,7 @@ export default function Home() {
                             Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
                           </div>
                           <button
-                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[-2px_2px_0px_rgba(0,0,0,0.25)] hover:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.25)] transition-all duration-200 focus:outline-none w-[140px] active:scale-95 active:shadow-[0_0_16px_4px_#c0e2e7aa,-2px_2px_0px_rgba(0,0,0,0.15)]"
+                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)] hover:shadow-[0_0_12px_2px_rgba(192,226,231,0.4),0_4px_6px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.12)] active:scale-95 active:shadow-[0_0_8px_1px_rgba(192,226,231,0.3),0_1px_2px_rgba(0,0,0,0.12)] transition-all duration-200 focus:outline-none w-[140px]"
                             onClick={() => {
                               setShowSignup(true);
                               setSignupStep(0);

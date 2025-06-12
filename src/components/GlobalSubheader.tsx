@@ -12,18 +12,16 @@ const GlobalSubheader = forwardRef<HTMLDivElement, GlobalSubheaderProps>(
     return (
       <div
         ref={ref}
-        className={`profiles-roles-subheader w-full bg-white subheader-z-index ${className}`}
+        className={`profiles-roles-subheader w-full bg-gray-50 ${className}`}
       >
-        <section className="mb-2 px-4 pt-4">
-          <div className="flex items-start justify-between w-full">
-            <div style={{ width: '180px' }} className="py-1">
-              <div className="flex items-center space-x-2 pl-1">
-                {React.cloneElement(icon as React.ReactElement, { size: 16, strokeWidth: 2, className: 'text-[#00647a] opacity-80' })}
-                <h2 className="text-[#00647a] text-base font-normal tracking-normal">{title}</h2>
-              </div>
+        <section className="px-6 pt-4 pb-3">
+          <div className="flex items-end justify-between w-full">
+            <div className="flex items-center space-x-2">
+              {React.cloneElement(icon as React.ReactElement, { size: 16, strokeWidth: 1.5, className: 'text-[#217e8f]' })}
+              <h2 className="text-gray-700 text-base font-normal">{title}</h2>
             </div>
             {action && (
-              <div className="flex items-center" style={{ height: '30px', marginTop: '0px' }}>
+              <div className="flex items-center">
                 {action}
               </div>
             )}
