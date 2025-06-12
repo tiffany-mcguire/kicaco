@@ -430,7 +430,7 @@ export default function ChatDefaults() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700 mb-1">Always ask for time if not provided</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         When toggled off, Kicaco will not prompt you for an event time, even if not shared in the chat.
                       </p>
                     </div>
@@ -449,7 +449,7 @@ export default function ChatDefaults() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700 mb-1">Always ask for location if not provided</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         When toggled off, Kicaco will not prompt you for an event location, even if no location is shared or parsed from context.
                       </p>
                     </div>
@@ -468,7 +468,7 @@ export default function ChatDefaults() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700 mb-1">Always ask for reminder settings</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         When toggled off, Kicaco will not follow up by asking whether you want a reminder for an event.
                       </p>
                     </div>
@@ -495,7 +495,7 @@ export default function ChatDefaults() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 In multi-child households, Kicaco will always ask which child an event or task is for if the name isn't included in or parsed from your message.
               </p>
             </div>
