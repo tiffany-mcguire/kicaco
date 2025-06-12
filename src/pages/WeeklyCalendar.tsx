@@ -14,7 +14,9 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addWeeks, subWeeks } from 'date-fns';
+import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse } from 'date-fns';
+import EventCard from '../components/EventCard';
+import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 const WeeklyIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -35,7 +37,7 @@ const AddByDayButton = (props: { label?: string }) => {
       border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontWeight: 500,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
@@ -73,9 +75,22 @@ const AddByDayButton = (props: { label?: string }) => {
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
       onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
-      {props.label ?? 'Add by Day'}
+      {props.label ?? 'Add Event'}
     </button>
   );
+};
+
+
+
+// Day accent colors - rainbow palette for side borders only
+const dayAccents: { [key: number]: string } = {
+  0: '#f8b6c2', // Sunday - pink
+  1: '#ffd8b5', // Monday - orange
+  2: '#fef9c3', // Tuesday - yellow
+  3: '#bbf7d0', // Wednesday - green
+  4: '#c0e2e7', // Thursday - blue
+  5: '#d1d5fa', // Friday - indigo
+  6: '#e9d5ff', // Saturday - purple
 };
 
 export default function WeeklyCalendar() {
@@ -111,9 +126,11 @@ export default function WeeklyCalendar() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    events,
   } = useKicacoStore();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 }); // Start on Sunday
 
   const goToPreviousWeek = () => {
     setCurrentWeek(subWeeks(currentWeek, 1));
@@ -121,6 +138,24 @@ export default function WeeklyCalendar() {
 
   const goToNextWeek = () => {
     setCurrentWeek(addWeeks(currentWeek, 1));
+  };
+
+  // Generate the 7 days of the current week
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    return {
+      date,
+      dayName: format(date, 'EEEE'),
+      dayNumber: format(date, 'd'),
+      monthName: format(date, 'MMMM'),
+      fullDate: format(date, 'yyyy-MM-dd'),
+      isToday: isToday(date),
+    };
+  });
+
+  // Get events for a specific day
+  const getEventsForDay = (dateString: string) => {
+    return events.filter(event => event.date === dateString);
   };
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -335,35 +370,112 @@ export default function WeeklyCalendar() {
       >
         <div className="relative flex-1 flex flex-col overflow-hidden">
           <div className="overflow-y-auto px-4 pb-2 pt-4" style={{ paddingBottom: 32 }}>
-            <div className="flex flex-col gap-3">
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #f8b6c2', boxShadow: '0 0 16px 8px #f8b6c233, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#f8b6c2', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#b91142]">Sunday May 11, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #ffd8b5', boxShadow: '0 0 16px 8px #ffd8b533, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#ffd8b5', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#e67c1a]">Monday May 12, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #fef9c3', boxShadow: '0 0 16px 8px #fef9c333, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#fef9c3', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#eab308]">Tuesday May 13, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #bbf7d0', boxShadow: '0 0 16px 8px #bbf7d033, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#bbf7d0', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#16a34a]">Wednesday May 14, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #c0e2e7', boxShadow: '0 0 16px 8px #c0e2e733, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#c0e2e7', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#217e8f]">Thursday May 15, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #d1d5fa', boxShadow: '0 0 16px 8px #d1d5fa33, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#d1d5fa', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#6366f1]">Friday May 16, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
-              <div className="rounded-xl bg-white px-4 py-2 shadow-md" style={{border: '1.5px solid #e9d5ff', boxShadow: '0 0 16px 8px #e9d5ff33, 0 2px 8px rgba(0,0,0,0.08)', borderColor: '#e9d5ff', opacity: 1}}>
-                <div className="font-medium text-[16px] text-[#a21caf]">Saturday May 17, 2025</div>
-                <div className="text-gray-400 text-[15px]">No activities or events</div>
-              </div>
+            {/* Week Navigation */}
+            <div className="flex items-center justify-center mb-4 max-w-2xl mx-auto">
+              <button
+                onClick={goToPreviousWeek}
+                className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-500" />
+              </button>
+              
+              <h2 className="text-base font-normal text-gray-700 mx-3">
+                {format(weekStart, 'MMMM d')} - {format(addDays(weekStart, 6), 'MMMM d')} ({format(addDays(weekStart, 6), 'yyyy')})
+              </h2>
+              
+              <button
+                onClick={goToNextWeek}
+                className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Week Grid */}
+            <div className="space-y-3 max-w-2xl mx-auto">
+              {weekDays.map((day, index) => {
+                const dayEvents = getEventsForDay(day.fullDate);
+                const accentColor = dayAccents[index];
+                
+                return (
+                  <div
+                    key={day.fullDate}
+                    className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all ${
+                      day.isToday ? 'ring-2 ring-[#217e8f] ring-opacity-50' : ''
+                    }`}
+                  >
+                    {/* Day Header */}
+                    <div 
+                      className="px-4 py-2 border-b border-gray-100"
+                      style={{ borderLeftWidth: '4px', borderLeftColor: accentColor }}
+                    >
+                      <div className="flex items-baseline justify-between">
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="text-sm font-medium text-gray-700">
+                            {day.dayName}
+                          </h3>
+                          <span className="text-xs text-gray-500">
+                            {day.monthName} {day.dayNumber}
+                          </span>
+                          {day.isToday && (
+                            <span className="text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                        <button className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all active:scale-95">
+                          + Add
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Day Events */}
+                    <div className="p-3">
+                      {dayEvents.length > 0 ? (
+                        <div className="space-y-2">
+                          {dayEvents.map((event, eventIndex) => (
+                            <div key={`${day.fullDate}-${eventIndex}`} className="group">
+                              {/* Compact event card inspired by EventCard glassmorphism */}
+                              <div className="relative h-32 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+                                <img
+                                  src={getKicacoEventPhoto(event.eventName)}
+                                  alt={event.eventName}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                                
+                                {/* Glass panel with event info */}
+                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-black/25 backdrop-blur-sm px-3 py-2 text-white">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <h4 className="text-sm font-medium leading-tight">
+                                        {event.eventName}
+                                        {event.childName && (
+                                          <span className="text-xs font-normal text-gray-300 ml-1">
+                                            ({event.childName})
+                                          </span>
+                                        )}
+                                      </h4>
+                                      {event.location && (
+                                        <p className="text-xs text-gray-200 mt-0.5">{event.location}</p>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-gray-100 text-right ml-2">
+                                      {event.time}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 text-center py-2">No events scheduled</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
