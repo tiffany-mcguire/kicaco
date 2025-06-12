@@ -35,11 +35,10 @@ const AddByDayButton = (props: { label?: string }) => {
       border: '1px solid #c0e2e7',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontFamily: 'Nunito',
-      fontWeight: 600,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: '20px',
-      boxShadow: '-2px 2px 0px rgba(0,0,0,0.25)',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
       background: '#fff',
       color: '#217e8f',
       outline: 'none',
@@ -49,13 +48,13 @@ const AddByDayButton = (props: { label?: string }) => {
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)',
+        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
         borderColor: '#c0e2e7',
         outline: 'none',
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;

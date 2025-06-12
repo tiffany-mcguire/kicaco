@@ -123,11 +123,10 @@ const UpdateProfilesButton = (props: { label?: string }) => {
       border: '1px solid #c0e2e7',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontFamily: 'Nunito',
-      fontWeight: 600,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: '20px',
-      boxShadow: '-2px 2px 0px rgba(0,0,0,0.25)',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
       background: '#fff',
       color: '#217e8f',
       outline: 'none',
@@ -137,13 +136,13 @@ const UpdateProfilesButton = (props: { label?: string }) => {
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)',
+        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
         borderColor: '#c0e2e7',
         outline: 'none',
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -185,8 +184,7 @@ const BigActionButton = (props: { children: React.ReactNode; onClick?: () => voi
       margin: '12px auto 0 auto',
       padding: '0px 8px',
       boxSizing: 'border-box' as const,
-      fontFamily: 'Nunito',
-      fontWeight: 600,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: '20px',
       background: '#fff',
@@ -196,19 +194,19 @@ const BigActionButton = (props: { children: React.ReactNode; onClick?: () => voi
       display: 'block',
       borderRadius: '6px',
       border: '1px solid #c0e2e7',
-      boxShadow: '-2px 2px 0px rgba(0,0,0,0.25)',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
       borderColor: '#c0e2e7',
     } as React.CSSProperties;
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.15)',
+        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
         borderColor: '#c0e2e7',
         outline: 'none',
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 16px 4px #c0e2e7aa, -2px 2px 0px rgba(0,0,0,0.25)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
     }
     s.outline = 'none';
     return s;
@@ -245,19 +243,18 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
   // Softer pink for glow and border, lower opacity for shadow
   const glowColor = isRemove ? 'rgba(251,182,206,0.45)' : '#c0e2e7aa';
   const borderColor = isRemove ? 'rgba(251,182,206,0.55)' : (props.borderColor ?? '#c0e2e7');
-  const baseShadow = '-2px 2px 0px rgba(0,0,0,0.10)';
-  const liftShadow = isRemove ? '-2px 2px 8px 0px rgba(185,17,66,0.06)' : '-2px 2px 8px 0px rgba(33,126,143,0.06)';
+  const baseShadow = '0 1px 2px rgba(0,0,0,0.08)';
+  const liftShadow = isRemove ? '0 2px 4px rgba(185,17,66,0.06)' : '0 2px 4px rgba(33,126,143,0.06)';
 
   const getButtonStyle = () => {
     let s = {
       width: '140px',
-      height: '28px',
-      padding: '0px 12px',
-      border: `1.2px solid ${borderColor}`,
+      height: '30px',
+      padding: '0px 8px',
+      border: `1px solid ${borderColor}`,
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontFamily: 'Nunito',
-      fontWeight: 600,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: 'normal',
       boxShadow: `${baseShadow}, ${liftShadow}`,
@@ -274,7 +271,7 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: `0 0 12px 3px ${glowColor}, ${baseShadow}, ${liftShadow}`,
+        boxShadow: `0 0 8px 2px ${glowColor}, 0 2px 4px rgba(0,0,0,0.12), ${liftShadow}`,
         borderColor: borderColor,
         outline: 'none',
       };
@@ -283,7 +280,7 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
       s = {
         ...s,
         transform: 'scale(0.95)',
-        boxShadow: `0 0 12px 3px ${glowColor}, ${baseShadow}, ${liftShadow}`,
+        boxShadow: `0 0 6px 1px ${glowColor}, 0 1px 2px rgba(0,0,0,0.08)`,
         borderColor: borderColor,
       };
     }
@@ -609,11 +606,11 @@ export default function ProfilesRoles() {
         <div className="profiles-roles-content-inner px-4 pt-2 pb-24 max-w-md mx-auto space-y-8">
 
           <div className="profiles-roles-section-children">
-            <h3 className="text-lg font-medium text-[#1a6e7e]">Your Children</h3>
+            <h3 className="text-base font-normal text-[#1a6e7e]">Your Children</h3>
             <div className="profiles-roles-children-list">
               {children.length === 0 ? (
                 <>
-                  <div className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg">
+                  <div className="bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)]">
                     <p className="text-xs text-gray-400 font-light leading-snug">
                       You haven't added any child profiles yet. Start by creating a profile for your child to begin organizing events and reminders.
                     </p>
@@ -625,7 +622,7 @@ export default function ProfilesRoles() {
               ) : (
                 <>
                   {children.map(child => (
-                    <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-center justify-between">
+                    <div key={child.id} className="profiles-roles-child bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] flex items-center justify-between">
                       <div className="profiles-roles-child-info">
                         <p className="text-[#1a6e7e] font-medium text-sm">{child.name}</p>
                         <p className="text-xs text-gray-400 mt-1">DOB: {child.dob}</p>
@@ -646,7 +643,7 @@ export default function ProfilesRoles() {
           </div>
 
           <div className="profiles-roles-section-shared-users">
-            <h3 className="text-lg font-medium text-[#1a6e7e]">Shared Access & Permissions</h3>
+            <h3 className="text-base font-normal text-[#1a6e7e]">Shared Access & Permissions</h3>
             <div className="profiles-roles-shared-users-list">
               {sharedUsers.length === 0 ? (
                 <>
@@ -654,7 +651,7 @@ export default function ProfilesRoles() {
                 </>
               ) : (
                 sharedUsers.map((user: SharedUser) => (
-                  <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-md transition hover:shadow-lg flex items-start justify-between">
+                  <div key={user.id} className="profiles-roles-shared-user bg-white border border-[#c0e2e799] rounded-lg p-4 mt-2 shadow-[0_2px_4px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition hover:shadow-[0_4px_8px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.08)] flex items-start justify-between">
                     <div className="profiles-roles-shared-user-info min-w-0">
                       <p className="text-[#1a6e7e] font-medium text-sm">{user.name} <span className="text-xs text-gray-400 font-normal">{user.role}</span></p>
                       <p className="text-xs text-gray-400">{user.email}</p>

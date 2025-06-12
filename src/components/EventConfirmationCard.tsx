@@ -51,14 +51,17 @@ export default function EventConfirmationCard({ eventName, childName, date, time
           style={{
             background: '#217e8f',
             color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            padding: '10px 24px',
-            fontWeight: 600,
-            fontSize: 16,
+            border: '1px solid #217e8f',
+            borderRadius: '6px',
+            padding: '8px 16px',
+            fontWeight: 400,
+            fontSize: '14px',
             cursor: 'pointer',
             marginBottom: 8,
             width: '100%',
+            height: '36px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
+            transition: 'all 0.2s ease',
           }}
           onClick={onConfirm}
         >
@@ -66,14 +69,17 @@ export default function EventConfirmationCard({ eventName, childName, date, time
         </button>
         <button
           style={{
-            background: 'none',
+            background: '#fff',
             color: '#b91142',
-            border: 'none',
-            borderRadius: 8,
-            padding: '6px 12px',
-            fontWeight: 500,
-            fontSize: 14,
+            border: '1px solid #e7c0c0',
+            borderRadius: '6px',
+            padding: '0px 8px',
+            fontWeight: 400,
+            fontSize: '14px',
             cursor: 'pointer',
+            height: '30px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            transition: 'all 0.2s ease',
           }}
           onClick={onCancel}
         >
