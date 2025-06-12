@@ -176,10 +176,8 @@ export default function ChatDefaults() {
     padding: '2px',
     cursor: 'pointer',
     transition: 'all 0.2s ease-in-out',
-    backgroundColor: isOn ? '#c0e2e7' : '#e0e0e0',
-    boxShadow: isOn 
-      ? 'inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.1)'
-      : 'inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.1)',
+    backgroundColor: isOn ? '#217e8f' : '#4b5563',  // Darker teal for on, dark gray for off
+    boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06)',
   });
 
   const toggleKnobStyle = (isOn: boolean) => ({
@@ -413,7 +411,7 @@ export default function ChatDefaults() {
         className="chat-defaults-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
-          top: subheaderBottom + 8,
+          top: subheaderBottom > 0 ? subheaderBottom : 'auto',
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
@@ -421,85 +419,87 @@ export default function ChatDefaults() {
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        <div className="relative flex-1 flex flex-col overflow-hidden">
-          <div className="overflow-y-auto" style={{ paddingBottom: 40 }}>
-            <div className="px-4 pt-4 pb-2">
-                              <h3 className="text-[16px] font-normal text-[#00647a]">Follow-up prompts</h3>
-            </div>
-            <div className="px-4 pt-2 pb-3">
-              <div className="flex items-end justify-between mb-1">
-                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for time if not provided</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={timeToggle}
-                  aria-label="Always ask for time if not provided"
-                  onClick={() => setTimeToggle(!timeToggle)}
-                  style={toggleStyle(timeToggle)}
-                >
-                  <span style={toggleKnobStyle(timeToggle)} />
-                </button>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-6">
+            
+            {/* Follow-up Prompts Section */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-600 mb-4">Follow-up prompts</h3>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Always ask for time if not provided</p>
+                      <p className="text-sm text-gray-500">
+                        When toggled off, Kicaco will not prompt you for an event time, even if not shared in the chat.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={timeToggle}
+                      aria-label="Always ask for time if not provided"
+                      onClick={() => setTimeToggle(!timeToggle)}
+                      style={toggleStyle(timeToggle)}
+                    >
+                      <span style={toggleKnobStyle(timeToggle)} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Always ask for location if not provided</p>
+                      <p className="text-sm text-gray-500">
+                        When toggled off, Kicaco will not prompt you for an event location, even if no location is shared or parsed from context.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={locationToggle}
+                      aria-label="Always ask for location if not provided"
+                      onClick={() => setLocationToggle(!locationToggle)}
+                      style={toggleStyle(locationToggle)}
+                    >
+                      <span style={toggleKnobStyle(locationToggle)} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Always ask for reminder settings</p>
+                      <p className="text-sm text-gray-500">
+                        When toggled off, Kicaco will not follow up by asking whether you want a reminder for an event.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={reminderToggle}
+                      aria-label="Always ask for reminder settings"
+                      onClick={() => setReminderToggle(!reminderToggle)}
+                      style={toggleStyle(reminderToggle)}
+                    >
+                      <span style={toggleKnobStyle(reminderToggle)} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p 
-                className="text-xs text-gray-400 font-light leading-snug"
-                style={{ maxWidth: 'calc(100% - 52px)' }}
-              >
-                Be advised: When toggled off, Kicaco will not prompt you for an event time, even if not shared in the chat.
+            </div>
+
+            {/* Child Profile Distinction Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-medium text-gray-700">Child Profile Distinction</p>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-500">
+                In multi-child households, Kicaco will always ask which child an event or task is for if the name isn't included in or parsed from your message.
               </p>
             </div>
-            <div className="px-4 pt-4 pb-3">
-              <div className="flex items-end justify-between mb-1">
-                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for location if not provided</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={locationToggle}
-                  aria-label="Always ask for location if not provided"
-                  onClick={() => setLocationToggle(!locationToggle)}
-                  style={toggleStyle(locationToggle)}
-                >
-                  <span style={toggleKnobStyle(locationToggle)} />
-                </button>
-              </div>
-              <p 
-                className="text-xs text-gray-400 font-light leading-snug"
-                style={{ maxWidth: 'calc(100% - 52px)' }}
-              >
-                Be advised: When toggled off, Kicaco will not prompt you for an event location, even if no location is shared or parsed from context.
-              </p>
-            </div>
-            <div className="px-4 pt-4 pb-3">
-              <div className="flex items-end justify-between mb-1">
-                <span className="text-[14px] text-[#1a6e7e] leading-none">Always ask for reminder settings</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={reminderToggle}
-                  aria-label="Always ask for reminder settings"
-                  onClick={() => setReminderToggle(!reminderToggle)}
-                  style={toggleStyle(reminderToggle)}
-                >
-                  <span style={toggleKnobStyle(reminderToggle)} />
-                </button>
-              </div>
-              <p 
-                className="text-xs text-gray-400 font-light leading-snug"
-                style={{ maxWidth: 'calc(100% - 52px)' }}
-              >
-                Be advised: When toggled off, Kicaco will not follow up by asking whether you want a reminder for an event.
-              </p>
-            </div>
-            <div className="px-4 pt-4 pb-6">
-              <div className="mb-1">
-                <span className="text-[#b91142] text-[14px] leading-none">Child Profile Distinction</span>
-              </div>
-              <p 
-                className="text-xs text-gray-400 leading-snug"
-                style={{ maxWidth: 'calc(100% - 52px)' }}
-              >
-                In multi-child households, Kicaco will always ask which child an event or task is for if the name isn't included in your message.
-              </p>
-            </div>
+
           </div>
         </div>
       </div>

@@ -254,7 +254,7 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
 
 export default function ProfilesRoles() {
   const [inviteInput, setInviteInput] = useState("");
-  const [isInviteInputFocused, setIsInviteInputFocused] = useState(false);
+  const [inviteInputFocused, setInviteInputFocused] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [chatInput, setChatInput] = useState("");
@@ -550,6 +550,68 @@ export default function ProfilesRoles() {
     return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
   }, [scrollRefReady, setChatScrollPosition]);
 
+  // Input field styling from EditChild
+  const inputWrapperBaseStyle: React.CSSProperties = {
+    borderWidth: '1px',
+    borderColor: '#c0e2e799',
+    borderRadius: '0.5rem',
+    boxShadow: '0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)',
+    transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+    backgroundColor: 'white',
+  };
+
+  const inputElementStyle: React.CSSProperties = {
+    width: '100%',
+    paddingTop: '0.375rem',
+    paddingBottom: '0.375rem',
+    paddingLeft: '0.75rem',
+    paddingRight: '0.75rem',
+    border: 'none',
+    outline: 'none',
+    backgroundColor: 'transparent',
+    fontSize: '0.75rem',
+    color: '#111827',
+  };
+
+  const getInputFocusStyle = (isFocused: boolean): React.CSSProperties => {
+    const nonFocusedBorderColor = '#c0e2e799';
+    const nonFocusedBlurColor = 'rgba(192, 226, 231, 0.6)';
+    const baseBorderWidth = '1px';
+    const baseBorderStyle = 'solid';
+    const nonFocusedBoxShadow = `0 0 2px 0 ${nonFocusedBlurColor}, 0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)`;
+
+    if (isFocused) {
+      const bottomBorderColorOnFocus = '#c0e2e7';
+      const bottomGlowColor = 'rgba(192, 226, 231, 0.5)';
+      
+      return {
+        borderTopColor: nonFocusedBorderColor,
+        borderRightColor: nonFocusedBorderColor,
+        borderLeftColor: nonFocusedBorderColor,
+        borderBottomColor: bottomBorderColorOnFocus,
+        borderTopWidth: baseBorderWidth,
+        borderRightWidth: baseBorderWidth,
+        borderLeftWidth: baseBorderWidth,
+        borderBottomWidth: '2px',
+        borderStyle: baseBorderStyle,
+        boxShadow: `${nonFocusedBoxShadow}, 0 2px 5px -1px ${bottomGlowColor}`,
+      };
+    }
+    
+    return {
+      borderTopColor: nonFocusedBorderColor,
+      borderRightColor: nonFocusedBorderColor,
+      borderBottomColor: nonFocusedBorderColor,
+      borderLeftColor: nonFocusedBorderColor,
+      borderTopWidth: baseBorderWidth,
+      borderRightWidth: baseBorderWidth,
+      borderBottomWidth: baseBorderWidth,
+      borderLeftWidth: baseBorderWidth,
+      borderStyle: baseBorderStyle,
+      boxShadow: nonFocusedBoxShadow,
+    };
+  };
+
   return (
     <div className="profiles-roles-page flex flex-col min-h-screen bg-white">
       <GlobalHeader ref={headerRef} />
@@ -648,18 +710,21 @@ export default function ProfilesRoles() {
                                 e.stopPropagation();
                                 navigate('/edit-child', { state: { child } });
                               }}
-                              className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium"
+                              className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors active:scale-95"
                             >
                               Edit Profile
                             </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('Remove', child.id);
+                                if (window.confirm(`Are you sure you want to remove ${child.name}?`)) {
+                                  // TODO: Implement remove child functionality
+                                  console.log('Remove child:', child.id);
+                                }
                               }}
-                              className="text-xs text-red-600 hover:text-red-700 font-medium"
+                              className="text-xs text-[#b91142] hover:text-[#a01038] font-medium transition-colors active:scale-95"
                             >
-                              Remove
+                              Remove Profile
                             </button>
                           </div>
                           </motion.div>
@@ -733,15 +798,6 @@ export default function ProfilesRoles() {
                           <div className="mt-3 pt-3 border-t border-gray-100">
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs font-medium text-gray-700">Permissions</span>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Edit permissions', user.id);
-                                }}
-                                className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium"
-                              >
-                                Edit
-                              </button>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               {Object.entries(user.permissions).map(([key, value]) => (
@@ -756,15 +812,29 @@ export default function ProfilesRoles() {
                                 </label>
                               ))}
                             </div>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('Remove access', user.id);
-                              }}
-                              className="mt-3 text-xs text-red-600 hover:text-red-700 font-medium"
-                            >
-                              Remove Access
-                            </button>
+                            <div className="mt-3 flex items-center gap-3">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Implement edit permissions functionality
+                                  console.log('Edit permissions for:', user.id);
+                                }}
+                                className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors active:scale-95"
+                              >
+                                Edit Access
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Are you sure you want to remove access for ${user.name}?`)) {
+                                    setSharedUsers(sharedUsers.filter(u => u.id !== user.id));
+                                  }
+                                }}
+                                className="text-xs text-[#b91142] hover:text-[#a01038] font-medium transition-colors active:scale-95"
+                              >
+                                Remove Access
+                              </button>
+                            </div>
                           </div>
                         </motion.div>
                         )}
@@ -786,13 +856,18 @@ export default function ProfilesRoles() {
                 }}
                 noValidate
               >
-                <input
-                  type="email"
-                  placeholder="Enter email to invite"
-                  className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#217e8f] focus:ring-opacity-20 focus:border-[#217e8f] transition-all placeholder-gray-400"
-                  value={inviteInput}
-                  onChange={e => setInviteInput(e.target.value)}
-                />
+                <div style={{...inputWrapperBaseStyle, ...getInputFocusStyle(inviteInputFocused)}}>
+                  <input
+                    type="email"
+                    placeholder="Enter email to invite"
+                    style={inputElementStyle}
+                    className="placeholder-gray-400"
+                    value={inviteInput}
+                    onChange={e => setInviteInput(e.target.value)}
+                    onFocus={() => setInviteInputFocused(true)}
+                    onBlur={() => setInviteInputFocused(false)}
+                  />
+                </div>
                 <div className="flex justify-end mt-2">
                   <button
                     type="button"

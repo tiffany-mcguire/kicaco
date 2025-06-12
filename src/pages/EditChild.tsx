@@ -39,38 +39,35 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
 
   const getButtonStyle = () => {
     let s = {
-      width: '140px', // Match all other custom buttons
+      width: '140px',
       height: '30px',
       padding: '0px 8px',
-      border: '1px solid #c0e2e7',
+      border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontWeight: 400,
+      fontWeight: 500,
       fontSize: '14px',
       lineHeight: '20px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
-      background: '#fff',
-      color: '#217e8f',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+      background: '#217e8f',
+      color: '#ffffff',
       outline: 'none',
-      borderColor: '#c0e2e7',
-      transition: 'transform 0.08s cubic-bezier(.4,1,.3,1), box-shadow 0.18s cubic-bezier(.4,1,.3,1), border-color 0.18s cubic-bezier(.4,1,.3,1)',
+      transition: 'all 0.2s ease',
     } as React.CSSProperties;
     if (hovered || focused) {
       s = {
         ...s,
-        boxShadow: '0 0 12px 2px rgba(192,226,231,0.4), 0 4px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12)',
-        borderColor: '#c0e2e7',
-        outline: 'none',
+        background: '#1a6e7e',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
       };
     }
     if (pressed) {
-      s = { ...s, transform: 'scale(0.95)', boxShadow: '0 0 8px 1px rgba(192,226,231,0.3), 0 1px 2px rgba(0,0,0,0.12)', borderColor: '#c0e2e7' };
+      s = { ...s, transform: 'scale(0.95)' };
     }
     s.outline = 'none';
     return s;
   };
 
-  // No action yet
   const handleClick = props.onClick || (() => {});
 
   return (
@@ -85,7 +82,7 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
       onBlur={() => { setFocused(false); setPressed(false); }}
-      className="transition-all focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
       onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
     >
@@ -94,7 +91,7 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
   );
 };
 
-// Copied from ChatDefaults.tsx for the toggle button styling
+// Updated toggle styles to match ChatDefaults
 const toggleStyle = (isOn: boolean) => ({
   width: '44px',
   height: '24px',
@@ -104,10 +101,8 @@ const toggleStyle = (isOn: boolean) => ({
   padding: '2px',
   cursor: 'pointer',
   transition: 'all 0.2s ease-in-out',
-  backgroundColor: isOn ? '#c0e2e7' : '#e0e0e0', // Kicaco blue for ON state
-  boxShadow: isOn 
-    ? 'inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.1)'
-    : 'inset 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.1)',
+  backgroundColor: isOn ? '#217e8f' : '#4b5563',  // Darker teal for on, dark gray for off
+  boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06)',
 });
 
 const toggleKnobStyle = (isOn: boolean) => ({
@@ -430,6 +425,7 @@ export default function EditChild() {
     borderRadius: '0.5rem', // Tailwind rounded-lg
     boxShadow: '0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)', // Lift shadow
     transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+    backgroundColor: 'white',
   };
   // Style for the inner INPUT element
   const inputElementStyle: React.CSSProperties = {
@@ -487,9 +483,9 @@ export default function EditChild() {
     };
   };
   
-  const labelClass = "block text-sm font-medium text-teal-700";
+  const labelClass = "block text-sm font-medium text-gray-700";
   const helperTextClass = "mt-1 text-xs text-gray-500";
-  const sectionTitleClass = "text-lg font-medium text-[#00647a]";
+  const sectionTitleClass = "text-sm font-medium text-gray-600";
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -505,91 +501,86 @@ export default function EditChild() {
         className="edit-child-content-scroll bg-gray-50"
         style={{
           position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
+          top: subheaderBottom > 0 ? subheaderBottom : 'auto',
+          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0),
           left: 0,
           right: 0,
           overflowY: mainContentScrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
-          paddingTop: '0.5rem',
-          paddingLeft: '1.5rem',
-          paddingRight: '1.5rem',
-          paddingBottom: '1.5rem',
         }}
       >
-        <div className="max-w-xl mx-auto">
-          <div className="mb-8">
-            <h2 className={sectionTitleClass}>Child Profile</h2>
-          </div>
+        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Child Profile Section */}
+          <section className="mb-10">
+            <h2 className={sectionTitleClass + " mb-4"}>Child Profile</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+              <div>
+                <label htmlFor="fullName" className={labelClass}>Full name</label>
+                <div style={{...inputWrapperBaseStyle, ...getFocusStyle(fullNameFocused, true)}} className="mt-1">
+                  <input 
+                    type="text" name="fullName" id="fullName" 
+                    style={inputElementStyle}
+                    placeholder="e.g. Olivia Martin" value={fullName} 
+                    className="placeholder-gray-400"
+                    onChange={(e) => setFullName(e.target.value)}
+                    onFocus={() => setFullNameFocused(true)}
+                    onBlur={() => setFullNameFocused(false)}
+                  />
+                </div>
+              </div>
 
-          <div className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="fullName" className={labelClass}>Full name</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(fullNameFocused, true)}} className="mt-1">
-                <input 
-                  type="text" name="fullName" id="fullName" 
-                  style={inputElementStyle}
-                  placeholder="e.g. Olivia Martin" value={fullName} 
-                  className="placeholder-gray-400"
-                  onChange={(e) => setFullName(e.target.value)}
-                  onFocus={() => setFullNameFocused(true)}
-                  onBlur={() => setFullNameFocused(false)}
-                />
+              <div>
+                <label htmlFor="dob" className={labelClass}>Date of birth</label>
+                <div style={{...inputWrapperBaseStyle, ...getFocusStyle(dobFocused, true)}} className="mt-1">
+                  <input 
+                    type="text" name="dob" id="dob" 
+                    style={inputElementStyle}
+                    placeholder="MM/DD/YYYY" value={dob} 
+                    className="placeholder-gray-400"
+                    onChange={handleDobChange}
+                    onFocus={() => setDobFocused(true)}
+                    onBlur={() => setDobFocused(false)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="nickname" className={labelClass}>Nickname (optional)</label>
+                <div style={{...inputWrapperBaseStyle, ...getFocusStyle(nicknameFocused, false)}} className="mt-1">
+                  <input 
+                    type="text" name="nickname" id="nickname" 
+                    style={inputElementStyle}
+                    placeholder="e.g. Liv, Ollie" value={nickname} 
+                    className="placeholder-gray-400"
+                    onChange={(e) => setNickname(e.target.value)}
+                    onFocus={() => setNicknameFocused(true)}
+                    onBlur={() => setNicknameFocused(false)}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Used in chat to understand references to your child.</p>
+              </div>
+
+              <div>
+                <label htmlFor="school" className={labelClass}>School (optional)</label>
+                <div style={{...inputWrapperBaseStyle, ...getFocusStyle(schoolFocused, false)}} className="mt-1">
+                  <input 
+                    type="text" name="school" id="school" 
+                    style={inputElementStyle}
+                    placeholder="e.g. Sunrise Elementary" value={school} 
+                    className="placeholder-gray-400"
+                    onChange={(e) => setSchool(e.target.value)}
+                    onFocus={() => setSchoolFocused(true)}
+                    onBlur={() => setSchoolFocused(false)}
+                  />
+                </div>
               </div>
             </div>
+          </section>
 
-            <div>
-              <label htmlFor="dob" className={labelClass}>Date of birth</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(dobFocused, true)}} className="mt-1">
-                <input 
-                  type="text" name="dob" id="dob" 
-                  style={inputElementStyle}
-                  placeholder="MM/DD/YYYY" value={dob} 
-                  className="placeholder-gray-400"
-                  onChange={handleDobChange}
-                  onFocus={() => setDobFocused(true)}
-                  onBlur={() => setDobFocused(false)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="nickname" className={labelClass}>Nickname (optional)</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(nicknameFocused, false)}} className="mt-1">
-                <input 
-                  type="text" name="nickname" id="nickname" 
-                  style={inputElementStyle}
-                  placeholder="e.g. Liv, Ollie" value={nickname} 
-                  className="placeholder-gray-400"
-                  onChange={(e) => setNickname(e.target.value)}
-                  onFocus={() => setNicknameFocused(true)}
-                  onBlur={() => setNicknameFocused(false)}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-400">Used in chat to understand references to your child.</p>
-            </div>
-
-            <div>
-              <label htmlFor="school" className={labelClass}>School (optional)</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(schoolFocused, false)}} className="mt-1">
-                <input 
-                  type="text" name="school" id="school" 
-                  style={inputElementStyle}
-                  placeholder="e.g. Sunrise Elementary" value={school} 
-                  className="placeholder-gray-400"
-                  onChange={(e) => setSchool(e.target.value)}
-                  onFocus={() => setSchoolFocused(true)}
-                  onBlur={() => setSchoolFocused(false)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <hr className="my-10 border-gray-200" />
-
-          <div>
-            <h2 className={`${sectionTitleClass} mb-2`}>Split-Time Household</h2>
-            <div className="mt-3 flex flex-col">
+          {/* Split-Time Household Section */}
+          <section>
+            <h2 className={sectionTitleClass + " mb-4"}>Split-Time Household</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center">
                 <button
                   type="button"
@@ -604,43 +595,43 @@ export default function EditChild() {
                 </button>
                 <span className={`${labelClass} cursor-pointer`} onClick={() => setSplitTimeSchedulingEnabled(!splitTimeSchedulingEnabled)}>Enable split-time scheduling</span>
               </div>
-              <p className="mt-0 text-xs text-gray-400 ml-[56px]">Toggle on if your child spends time across multiple homes on a repeating schedule.</p>
-            </div>
+              <p className="mt-2 text-xs text-gray-500 ml-[56px]">Toggle on if your child spends time across multiple homes on a repeating schedule.</p>
 
-            {splitTimeSchedulingEnabled && (
-              <div className="mt-8 space-y-4">
-                <div>
-                  <label htmlFor="generalSchedule" className={labelClass}>General schedule</label>
-                  <div style={{...inputWrapperBaseStyle, ...getFocusStyle(generalScheduleFocused, false)}} className="mt-1">
-                    <input 
-                      type="text" name="generalSchedule" id="generalSchedule" 
-                      style={inputElementStyle}
-                      placeholder="One week on / one week off" value={generalSchedule} 
-                      className="placeholder-gray-400"
-                      onChange={(e) => setGeneralSchedule(e.target.value)}
-                      onFocus={() => setGeneralScheduleFocused(true)}
-                      onBlur={() => setGeneralScheduleFocused(false)}
-                    />
+              {splitTimeSchedulingEnabled && (
+                <div className="mt-6 pt-6 border-t border-gray-100 space-y-4">
+                  <div>
+                    <label htmlFor="generalSchedule" className={labelClass}>General schedule</label>
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(generalScheduleFocused, false)}} className="mt-1">
+                      <input 
+                        type="text" name="generalSchedule" id="generalSchedule" 
+                        style={inputElementStyle}
+                        placeholder="One week on / one week off" value={generalSchedule} 
+                        className="placeholder-gray-400"
+                        onChange={(e) => setGeneralSchedule(e.target.value)}
+                        onFocus={() => setGeneralScheduleFocused(true)}
+                        onBlur={() => setGeneralScheduleFocused(false)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="firstDayOfCycle" className={labelClass}>First day of current schedule cycle</label>
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(firstDayOfCycleFocused, false)}} className="mt-1">
+                      <input 
+                        type="text" name="firstDayOfCycle" id="firstDayOfCycle" 
+                        style={inputElementStyle}
+                        placeholder="e.g. 01/08/2025" value={firstDayOfCycle} 
+                        className="placeholder-gray-400"
+                        onChange={(e) => setFirstDayOfCycle(e.target.value)}
+                        onFocus={() => setFirstDayOfCycleFocused(true)}
+                        onBlur={() => setFirstDayOfCycleFocused(false)}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Kicaco will use this schedule to determine which parent or home an event belongs to. You can override or adjust at any time.</p>
                   </div>
                 </div>
-                <div>
-                  <label htmlFor="firstDayOfCycle" className={labelClass}>First day of current schedule cycle</label>
-                  <div style={{...inputWrapperBaseStyle, ...getFocusStyle(firstDayOfCycleFocused, false)}} className="mt-1">
-                    <input 
-                      type="text" name="firstDayOfCycle" id="firstDayOfCycle" 
-                      style={inputElementStyle}
-                      placeholder="e.g. 01/08/2025" value={firstDayOfCycle} 
-                      className="placeholder-gray-400"
-                      onChange={(e) => setFirstDayOfCycle(e.target.value)}
-                      onFocus={() => setFirstDayOfCycleFocused(true)}
-                      onBlur={() => setFirstDayOfCycleFocused(false)}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-400">Kicaco will use this schedule to determine which parent or home an event belongs to. You can override or adjust at any time.</p>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </section>
         </div>
       </div>
       <GlobalChatDrawer 
