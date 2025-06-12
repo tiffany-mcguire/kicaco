@@ -101,7 +101,8 @@ export const useKicacoStore = create<KicacoState>((set) => ({
     set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] })),
 
   children: [
-    { id: 'mockChild1', name: 'Alex Doe', dob: '05/15/2018', school: 'Sunshine Elementary' }
+    { id: 'mockChild1', name: 'Alex Doe', dob: '05/15/2018', school: 'Sunshine Elementary' },
+    { id: 'mockChild2', name: 'Emma Doe', dob: '03/22/2020', school: 'Sunshine Elementary' }
   ],
   addChild: (child) =>
     set((state) => ({ children: [...state.children, child] })),
