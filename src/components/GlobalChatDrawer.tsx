@@ -199,7 +199,22 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
             onMouseDown={onDragStart}
             onTouchStart={onDragStart}
           >
-            <div className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full bg-gray-300 opacity-60" />
+            <div 
+              className="chat-drawer-handle-bar mt-1 mb-1 w-8 h-1.5 rounded-full relative overflow-hidden"
+            >
+              <div 
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #f8b6c2 0%, #ffd8b5 14%, #fde68a 28%, #bbf7d0 42%, #c0e2e7 57%, #d1d5fa 71%, #e9d5ff 85%, #f8b6c2 100%)',
+                  filter: 'blur(2px)',
+                  opacity: 0.7
+                }}
+              />
+              <div 
+                className="absolute inset-0 rounded-full bg-gray-300"
+                style={{ opacity: 0.3 }}
+              />
+            </div>
             <div className="chat-drawer-handle-text text-sm text-gray-400 font-medium text-center" style={{ lineHeight: 1, minHeight: 18 }}>
               {drawerHeight <= MIN_HEIGHT ? 'Slide up to chat with Kicaco' : 'Slide down to see more'}
             </div>

@@ -29,11 +29,13 @@ type Keeper = {
   noTimeYet?: boolean;
 };
 
-type ChildProfile = {
+export type ChildProfile = {
   id: string;
   name: string;
   dob: string;
   school: string;
+  nickname?: string;
+  color?: string;
 };
 
 type KicacoState = {
@@ -97,12 +99,18 @@ export const useKicacoStore = create<KicacoState>((set) => ({
     })),
 
   keepers: [],
-  addKeeper: (keeper) =>
-    set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] })),
+  addKeeper: (keeper) => {
+    console.log('Store: Adding keeper:', keeper);
+    set((state) => {
+      const newKeepers = [keeper as Keeper, ...state.keepers];
+      console.log('Store: New keepers array:', newKeepers);
+      return { keepers: newKeepers };
+    });
+  },
 
   children: [
-    { id: 'mockChild1', name: 'Alex Doe', dob: '05/15/2018', school: 'Sunshine Elementary' },
-    { id: 'mockChild2', name: 'Emma Doe', dob: '03/22/2020', school: 'Sunshine Elementary' }
+    { id: 'mockChild1', name: 'Alex Doe', dob: '05/15/2018', school: 'Sunshine Elementary', color: '#f8b6c2' },
+    { id: 'mockChild2', name: 'Emma Doe', dob: '03/22/2020', school: 'Sunshine Elementary', color: '#ffd8b5' }
   ],
   addChild: (child) =>
     set((state) => ({ children: [...state.children, child] })),

@@ -11,6 +11,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Bell } from "lucide-react";
+import KeeperCard from '../components/KeeperCard';
 
 const KeepersIcon = () => (
   <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
@@ -50,6 +51,7 @@ export default function Keepers() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    keepers,
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -347,7 +349,29 @@ export default function Keepers() {
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        {/* Main content goes here */}
+        {keepers && keepers.length > 0 ? (
+          <div className="max-w-md mx-auto px-4">
+            {keepers.map((keeper, index) => (
+              <div key={`${keeper.keeperName}-${index}`} className="relative h-[240px] mb-4">
+                <KeeperCard
+                  keeperName={keeper.keeperName}
+                  date={keeper.date}
+                  childName={keeper.childName}
+                  description={keeper.description}
+                  time={keeper.time}
+                  index={index}
+                  stackPosition={0}
+                  totalInStack={1}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-gray-500">You don't have any keepers yet.</p>
+            <p className="text-gray-400 text-sm mt-1">Click the button above to add one.</p>
+          </div>
+        )}
       </div>
       <GlobalChatDrawer
         drawerHeight={currentDrawerHeight}

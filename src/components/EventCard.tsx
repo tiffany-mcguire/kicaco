@@ -47,6 +47,17 @@ const formatTime = (time?: string) => {
   return time;
 };
 
+// Rainbow colors fallback
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange (updated from #ffd8b5)
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
+
 const EventCard: React.FC<EventCardProps> = ({
   image,
   name,

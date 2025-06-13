@@ -202,7 +202,7 @@ export default function AddEvent() {
 
   useEffect(() => {
     // Always enable scrolling - let the browser handle whether it's needed
-    setMainContentScrollOverflow('auto');
+      setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
   // Watch for content height changes and update scroll overflow
@@ -515,14 +515,15 @@ export default function AddEvent() {
       />
       <div
         ref={pageScrollRef}
-        className="add-event-content-scroll bg-gray-50"
+        className="add-event-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: mainContentScrollOverflow,
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto',
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
@@ -556,7 +557,9 @@ export default function AddEvent() {
                 id="eventDate" 
                 style={{
                   ...inputElementStyle,
-                  color: eventDate ? '#111827' : '#9ca3af'
+                  color: eventDate ? '#111827' : '#6b7280',
+                  WebkitTextFillColor: eventDate ? '#111827' : '#6b7280',
+                  opacity: 1,
                 }}
                 placeholder="mm/dd/yyyy"
                 value={eventDate} 
@@ -600,7 +603,9 @@ export default function AddEvent() {
                           id="startTime" 
                           style={{
                             ...inputElementStyle,
-                            color: startTime ? '#111827' : '#9ca3af'
+                            color: startTime ? '#111827' : '#6b7280',
+                            WebkitTextFillColor: startTime ? '#111827' : '#6b7280',
+                            opacity: 1,
                           }}
                           placeholder="9:00 AM"
                           value={startTime} 
@@ -619,7 +624,9 @@ export default function AddEvent() {
                           id="endTime" 
                           style={{
                             ...inputElementStyle,
-                            color: endTime ? '#111827' : '#9ca3af'
+                            color: endTime ? '#111827' : '#6b7280',
+                            WebkitTextFillColor: endTime ? '#111827' : '#6b7280',
+                            opacity: 1,
                           }}
                           placeholder="10:00 AM"
                           value={endTime} 
@@ -690,7 +697,9 @@ export default function AddEvent() {
                               id="reminderDate" 
                               style={{
                                 ...inputElementStyle,
-                                color: reminderDate ? '#111827' : '#9ca3af'
+                                color: reminderDate ? '#111827' : '#6b7280',
+                                WebkitTextFillColor: reminderDate ? '#111827' : '#6b7280',
+                                opacity: 1,
                               }}
                               value={reminderDate} 
                               onChange={(e) => setReminderDate(e.target.value)}

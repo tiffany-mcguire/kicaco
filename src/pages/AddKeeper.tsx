@@ -205,7 +205,7 @@ export default function AddKeeper() {
 
   useEffect(() => {
     // Always enable scrolling - let the browser handle whether it's needed
-    setMainContentScrollOverflow('auto');
+      setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
   // Watch for content height changes and update scroll overflow
@@ -404,6 +404,15 @@ export default function AddKeeper() {
     color: '#111827',
   };
 
+  // Add date picker styling
+  const dateInputStyle: React.CSSProperties = {
+    ...inputElementStyle,
+    color: dueDate ? '#111827' : '#6b7280',
+    WebkitTextFillColor: dueDate ? '#111827' : '#6b7280',
+    opacity: 1,
+    colorScheme: 'light',
+  };
+
   const textareaElementStyle: React.CSSProperties = {
     ...inputElementStyle,
     minHeight: '80px',
@@ -491,8 +500,14 @@ export default function AddKeeper() {
       description: description.trim() || undefined,
     };
 
-    addKeeper(newKeeper);
-    navigate(-1); // Go back to previous page
+    console.log('Adding keeper:', newKeeper);
+    if (addKeeper) {
+      addKeeper(newKeeper);
+      console.log('Keeper added, navigating to /keepers');
+      navigate('/keepers');
+    } else {
+      console.error("addKeeper function is not defined");
+    }
   };
 
   const toggleChildSelection = (childName: string) => {
@@ -501,21 +516,6 @@ export default function AddKeeper() {
         ? prev.filter(name => name !== childName)
         : [...prev, childName]
     );
-  };
-
-  const getPriorityStyle = (priorityLevel: 'high' | 'medium' | 'low', isSelected: boolean) => {
-    const baseStyle = "px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer";
-    if (isSelected) {
-      switch (priorityLevel) {
-        case 'high':
-          return `${baseStyle} bg-red-100 text-red-700 ring-2 ring-red-300`;
-        case 'medium':
-          return `${baseStyle} bg-yellow-100 text-yellow-700 ring-2 ring-yellow-300`;
-        case 'low':
-          return `${baseStyle} bg-green-100 text-green-700 ring-2 ring-green-300`;
-      }
-    }
-    return `${baseStyle} bg-gray-100 text-gray-600 hover:bg-gray-200`;
   };
 
   return (
@@ -529,14 +529,15 @@ export default function AddKeeper() {
       />
       <div
         ref={pageScrollRef}
-        className="add-keeper-content-scroll bg-gray-50"
+        className="add-keeper-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: mainContentScrollOverflow,
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto',
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
@@ -602,10 +603,7 @@ export default function AddKeeper() {
                   type="date" 
                   name="dueDate" 
                   id="dueDate" 
-                  style={{
-                    ...inputElementStyle,
-                    color: dueDate ? '#111827' : '#9ca3af'
-                  }}
+                  style={dateInputStyle}
                   placeholder="mm/dd/yyyy"
                   value={dueDate} 
                   onChange={(e) => setDueDate(e.target.value)}
@@ -635,33 +633,43 @@ export default function AddKeeper() {
             </div>
           )}
 
-          {/* Priority */}
-          <div className="mb-6">
-            <label className="text-sm font-medium text-gray-600 mb-2 block">Priority level</label>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPriority('high')}
-                  className={getPriorityStyle('high', priority === 'high')}
-                >
-                  High
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPriority('medium')}
-                  className={getPriorityStyle('medium', priority === 'medium')}
-                >
-                  Medium
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPriority('low')}
-                  className={getPriorityStyle('low', priority === 'low')}
-                >
-                  Low
-                </button>
-              </div>
+          {/* Priority Selection */}
+          <div className="bg-white rounded-lg p-4 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
+            <h3 className="text-sm font-medium text-gray-600 mb-3">Priority</h3>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPriority('high')}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  priority === 'high'
+                    ? 'bg-red-100 text-red-700 ring-2 ring-red-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                High
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriority('medium')}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  priority === 'medium'
+                    ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriority('low')}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  priority === 'low'
+                    ? 'bg-green-100 text-green-700 ring-2 ring-green-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Low
+              </button>
             </div>
           </div>
 
@@ -696,7 +704,9 @@ export default function AddKeeper() {
                         id="dueTime" 
                         style={{
                           ...inputElementStyle,
-                          color: dueTime ? '#111827' : '#9ca3af'
+                          color: dueTime ? '#111827' : '#6b7280',
+                          WebkitTextFillColor: dueTime ? '#111827' : '#6b7280',
+                          opacity: 1,
                         }}
                         placeholder="12:00 PM"
                         value={dueTime} 

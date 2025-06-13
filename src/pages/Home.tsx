@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import KeeperCard from '../components/KeeperCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
-import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay } from 'date-fns';
+import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay, differenceInDays } from 'date-fns';
 import PasswordModal from '../components/PasswordModal';
 import PostSignupOptions from '../components/PostSignupOptions';
 import { Home as HomeIcon } from "lucide-react";
@@ -59,15 +59,42 @@ function toTitleCase(str: string) {
 
 // Helper → get next 7 days
 const generateNext7Days = () => {
-  const today = startOfDay(new Date());
-  return Array.from({ length: 7 }).map((_, i) => {
-    const date = addDays(today, i);
-    return {
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    days.push({
       date,
-      label: format(date, 'EEE'), // 'Mon', 'Tue', etc.
-      number: format(date, 'd'), // '9', '10', etc.
-    };
-  });
+      label: format(date, 'EEE'),
+      number: format(date, 'd'),
+      dayOfWeek: date.getDay(), // Add day of week for color mapping
+      isToday: i === 0, // Track if this is today
+    });
+  }
+  return days;
+};
+
+// Rainbow colors for days of the week
+const dayColors: { [key: number]: string } = {
+  0: '#f8b6c2', // Sunday - pink
+  1: '#ffd8b5', // Monday - orange
+  2: '#fde68a', // Tuesday - yellow
+  3: '#bbf7d0', // Wednesday - green
+  4: '#c0e2e7', // Thursday - blue
+  5: '#d1d5fa', // Friday - indigo
+  6: '#e9d5ff', // Saturday - purple
+};
+
+// Darker rainbow colors for selected state
+const dayColorsDark: { [key: number]: string } = {
+  0: '#ec4899', // Sunday - pink
+  1: '#f97316', // Monday - orange
+  2: '#eab308', // Tuesday - yellow
+  3: '#22c55e', // Wednesday - green
+  4: '#06b6d4', // Thursday - blue
+  5: '#6366f1', // Friday - indigo
+  6: '#a855f7', // Saturday - purple
 };
 
 // Add formatTime helper from EventCard
@@ -153,6 +180,41 @@ export default function Home() {
   const eventsForSelectedDay = events.filter(event =>
     event.date && isSameDay(parseISO(event.date), selectedDate)
   );
+
+  // Filter keepers for next 30 days
+  const keepersNext30Days = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    const thirtyDaysFromNow = addDays(today, 30);
+    
+    console.log('Filtering keepers. Today:', today, 'Thirty days from now:', thirtyDaysFromNow);
+    console.log('All keepers:', keepers);
+    
+    const filtered = keepers.filter(keeper => {
+      if (!keeper.date) return false;
+      try {
+        const keeperDate = parseISO(keeper.date);
+        keeperDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        const isInRange = keeperDate >= today && keeperDate <= thirtyDaysFromNow;
+        console.log('Keeper:', keeper.keeperName, 'Date:', keeper.date, 'Parsed:', keeperDate, 'In range:', isInRange);
+        return isInRange;
+      } catch (e) {
+        console.error('Error parsing date for keeper:', keeper, e);
+        return false;
+      }
+    }).sort((a, b) => {
+      // Sort by date
+      const dateA = parseISO(a.date);
+      const dateB = parseISO(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    console.log('Filtered keepers:', filtered);
+    return filtered;
+  }, [keepers]);
+
+  // State for keeper card interactions
+  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number>(0);
 
   useEffect(() => {
     console.log('Events:', events);
@@ -823,14 +885,32 @@ export default function Home() {
                     <button
                       key={day.label + day.number}
                       onClick={() => setSelectedDate(day.date)}
-                      className={`flex-1 flex flex-col items-center py-2 text-xs sm:text-sm font-medium transition-colors ${
+                      className={`flex-1 flex flex-col items-center py-2 text-xs sm:text-sm font-medium transition-all relative overflow-hidden ${
                         isSameDay(day.date, selectedDate)
-                          ? 'bg-black/70 text-white font-bold'
+                          ? 'text-white font-bold'
                           : 'text-white/70'
                       }`}
                     >
-                      <span>{day.label}</span>
-                      <span className="text-[10px]">{day.number}</span>
+                      {/* Rainbow background for selected tab */}
+                      {isSameDay(day.date, selectedDate) && (
+                        <div 
+                          className="absolute inset-0"
+                          style={{ 
+                            background: `linear-gradient(180deg, ${dayColorsDark[day.dayOfWeek]}30 0%, ${dayColorsDark[day.dayOfWeek]}25 50%, ${dayColorsDark[day.dayOfWeek]}20 100%)`,
+                            filter: 'blur(4px)'
+                          }}
+                        />
+                      )}
+                      <span className="relative z-10">{day.label}</span>
+                      <span className="relative z-10 text-[10px]">{day.number}</span>
+                      {/* Rainbow accent at bottom */}
+                      <div 
+                        className="absolute bottom-0 left-0 right-0 h-[2px] transition-all z-10"
+                        style={{ 
+                          backgroundColor: dayColors[day.dayOfWeek],
+                          opacity: day.isToday ? 0.9 : (isSameDay(day.date, selectedDate) ? 0.9 : 0.4)
+                        }}
+                      />
                     </button>
                   ))}
                 </div>
@@ -839,22 +919,51 @@ export default function Home() {
 
             {/* Keepers Section - No header, cards speak for themselves */}
             <div className="mt-8 mb-4">
-              <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">
-                {/* Background image */}
-                <img
-                  src={getKicacoEventPhoto('keeper')}
-                  alt="No keepers"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                
-                {/* Glass panel at bottom - matching EventCard exactly */}
-                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-black/25 backdrop-blur-sm px-4 py-3 text-white flex items-center justify-center">
-                  <p className="text-base font-normal">No keepers in the next 30 days.</p>
+              {keepersNext30Days.length > 0 ? (
+                <div 
+                  className="relative w-full max-w-md mx-auto"
+                  style={{
+                    height: `${240 + ((keepersNext30Days.length - 1) * 64)}px`,
+                    marginBottom: '20px',
+                  }}
+                >
+                  {keepersNext30Days.slice().reverse().map((keeper, index) => {
+                    const stackPosition = keepersNext30Days.length - 1 - index;
+                    return (
+                      <KeeperCard
+                        key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
+                        keeperName={keeper.keeperName}
+                        childName={keeper.childName}
+                        date={keeper.date}
+                        time={keeper.time}
+                        description={keeper.description}
+                        index={stackPosition}
+                        stackPosition={stackPosition}
+                        totalInStack={keepersNext30Days.length}
+                        isActive={activeKeeperIndex === stackPosition}
+                        onTabClick={() => setActiveKeeperIndex(stackPosition)}
+                      />
+                    );
+                  })}
                 </div>
-              </div>
+              ) : (
+                <div className="relative w-full max-w-md mx-auto h-[240px] rounded-xl overflow-hidden shadow-lg">
+                  {/* Background image */}
+                  <img
+                    src={getKicacoEventPhoto('keeper')}
+                    alt="No keepers"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  
+                  {/* Glass panel at bottom - matching EventCard exactly */}
+                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-black/25 backdrop-blur-sm px-4 py-3 text-white flex items-center justify-center">
+                    <p className="text-base font-normal">No keepers in the next 30 days.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );

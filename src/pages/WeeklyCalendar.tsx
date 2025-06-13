@@ -83,10 +83,10 @@ const AddByDayButton = (props: { label?: string }) => {
 
 
 // Day accent colors - rainbow palette for side borders only
-const dayAccents: { [key: number]: string } = {
+const dayAccentColors: { [key: number]: string } = {
   0: '#f8b6c2', // Sunday - pink
   1: '#ffd8b5', // Monday - orange
-  2: '#fef9c3', // Tuesday - yellow
+  2: '#fde68a', // Tuesday - yellow
   3: '#bbf7d0', // Wednesday - green
   4: '#c0e2e7', // Thursday - blue
   5: '#d1d5fa', // Friday - indigo
@@ -168,6 +168,15 @@ export default function WeeklyCalendar() {
     setMainContentTopClearance(window.innerHeight - height);
   };
 
+  // Initialize scroll overflow based on initial drawer height
+  useEffect(() => {
+    // Set initial drawer offset and scroll overflow
+    setMainContentDrawerOffset(currentDrawerHeight);
+    setMainContentTopClearance(window.innerHeight - currentDrawerHeight);
+    // Always enable scrolling
+    setMainContentScrollOverflow('auto');
+  }, []); // Run only on mount
+
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
       if (subheaderRef.current) {
@@ -199,11 +208,41 @@ export default function WeeklyCalendar() {
   }, []);
 
   useEffect(() => {
-    if (mainContentDrawerOffset > 44 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
+    // Always enable scrolling - let the browser handle whether it's needed
+    setMainContentScrollOverflow('auto');
+  }, [mainContentDrawerOffset]);
+
+  // Watch for content height changes
+  useEffect(() => {
+    const contentElement = pageScrollRef.current;
+    if (!contentElement) return;
+
+    const checkScrollNeeded = () => {
+      // Force a reflow to ensure scroll calculations are correct
+      if (contentElement) {
+        contentElement.style.overflow = 'hidden';
+        void contentElement.offsetHeight; // Force reflow
+        contentElement.style.overflow = 'auto';
+      }
+    };
+
+    // Check immediately after a small delay to ensure DOM is ready
+    setTimeout(checkScrollNeeded, 100);
+
+    // Set up ResizeObserver to watch for content changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollNeeded();
+    });
+
+    // Observe the inner content div
+    const innerContent = contentElement.querySelector('.overflow-y-auto');
+    if (innerContent) {
+      resizeObserver.observe(innerContent);
     }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [mainContentDrawerOffset]);
 
   // Chat Scroll Management Logic
@@ -357,14 +396,15 @@ export default function WeeklyCalendar() {
       />
       <div
         ref={pageScrollRef}
-        className="weekly-calendar-content-scroll bg-gray-50"
+        className="weekly-calendar-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: mainContentScrollOverflow,
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto',
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
@@ -395,14 +435,12 @@ export default function WeeklyCalendar() {
             <div className="space-y-3 max-w-2xl mx-auto">
               {weekDays.map((day, index) => {
                 const dayEvents = getEventsForDay(day.fullDate);
-                const accentColor = dayAccents[index];
+                const accentColor = dayAccentColors[index];
                 
                 return (
                   <div
                     key={day.fullDate}
-                    className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all ${
-                      day.isToday ? 'ring-2 ring-[#217e8f] ring-opacity-50' : ''
-                    }`}
+                    className="bg-white rounded-xl shadow-sm overflow-hidden transition-all"
                   >
                     {/* Day Header */}
                     <div 

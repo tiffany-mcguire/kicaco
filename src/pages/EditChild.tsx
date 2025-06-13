@@ -15,6 +15,17 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { UserCog } from 'lucide-react';
 
+// Rainbow colors palette
+const rainbowColors = [
+  { name: 'Pink', value: '#f8b6c2', dark: '#f48fb1' },
+  { name: 'Orange', value: '#fbd3a2', dark: '#ffb380' },
+  { name: 'Yellow', value: '#fde68a', dark: '#fbbf24' },
+  { name: 'Green', value: '#bbf7d0', dark: '#81c784' },
+  { name: 'Blue', value: '#c0e2e7', dark: '#90cad1' },
+  { name: 'Indigo', value: '#d1d5fa', dark: '#9fa8da' },
+  { name: 'Purple', value: '#e9d5ff', dark: '#ce93d8' },
+];
+
 const EditChildIcon = () => {
   const styles = {
     Icon: {
@@ -32,7 +43,7 @@ const EditChildIcon = () => {
   );
 };
 
-const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
+const UpdateChildButton = (props: { label?: string; onClick?: () => void; disabled?: boolean }) => {
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
@@ -54,7 +65,12 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
       outline: 'none',
       transition: 'all 0.2s ease',
     } as React.CSSProperties;
-    if (hovered || focused) {
+
+    if (props.disabled) {
+      s.background = '#9ca3af';
+      s.cursor = 'not-allowed';
+      s.color = '#e5e7eb';
+    } else if (hovered || focused) {
       s = {
         ...s,
         background: '#1a6e7e',
@@ -85,6 +101,7 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void }) => {
       className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
       onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+      disabled={props.disabled}
     >
       {props.label ?? 'Update Child'}
     </button>
@@ -147,9 +164,16 @@ export default function EditChild() {
     setChatScrollPosition,
     addChild,
     updateChild,
+    children,
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
+
+  // Get taken colors from other children
+  const takenColors = children
+    .filter(child => location.state?.child ? child.id !== location.state.child.id : true)
+    .map(child => child.color)
+    .filter(Boolean);
 
   // New state for EditChild form fields
   const [fullName, setFullName] = useState("");
@@ -159,10 +183,13 @@ export default function EditChild() {
   const [splitTimeSchedulingEnabled, setSplitTimeSchedulingEnabled] = useState(false);
   const [generalSchedule, setGeneralSchedule] = useState("");
   const [firstDayOfCycle, setFirstDayOfCycle] = useState("");
+  const [color, setColor] = useState(rainbowColors[0].value);
+  const [isDirty, setIsDirty] = useState(false);
 
   const navigate = useNavigate();
+  const isEditing = !!(location.state && location.state.child);
 
-  const handleUpdate = () => {
+  const handleSave = () => {
     const dobRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/(19|20)\d\d$/;
     if (!fullName || !dob) {
       // Basic validation: ensure required fields are not empty
@@ -174,14 +201,20 @@ export default function EditChild() {
       return;
     }
 
-    if (location.state && location.state.child) {
+    if (!isDirty && isEditing) {
+      navigate('/profiles-roles');
+      return;
+    }
+
+    if (isEditing) {
       // Update existing child
       const updatedChild = {
         ...location.state.child,
         name: fullName,
         dob,
         school,
-        // include other fields from your form state as needed
+        color,
+        nickname,
       };
       updateChild(updatedChild);
     } else {
@@ -191,7 +224,8 @@ export default function EditChild() {
         name: fullName,
         dob,
         school,
-        // include other fields from your form state as needed
+        color,
+        nickname,
       };
       addChild(newChild);
     }
@@ -220,9 +254,28 @@ export default function EditChild() {
       setFullName(child.name || "");
       setDob(child.dob || "");
       setSchool(child.school || "");
-      // You can also populate other fields like nickname if they exist on the child object
+      setColor(child.color || rainbowColors[0].value);
+      setNickname(child.nickname || "");
+      setIsDirty(false); // Reset dirty state on initial load
     }
   }, [location.state]);
+
+  // Track if form is "dirty"
+  useEffect(() => {
+    if (isEditing) {
+        const { child } = location.state;
+        const hasChanged =
+            fullName !== (child.name || "") ||
+            dob !== (child.dob || "") ||
+            nickname !== (child.nickname || "") ||
+            school !== (child.school || "") ||
+            color !== (child.color || rainbowColors[0].value);
+        setIsDirty(hasChanged);
+    } else {
+        // For new children, it's always "dirty" if there's a name
+        setIsDirty(!!fullName);
+    }
+}, [fullName, dob, nickname, school, color, location.state, isEditing]);
 
   // Focus states for input fields
   const [fullNameFocused, setFullNameFocused] = useState(false);
@@ -493,8 +546,14 @@ export default function EditChild() {
       <GlobalSubheader
         ref={subheaderRef}
         icon={<UserCog />}
-        title="Edit Child"
-        action={<UpdateChildButton label="Update Child" onClick={handleUpdate} />}
+        title={isEditing ? "Edit Child" : "Add Child"}
+        action={
+          <UpdateChildButton 
+            label={isEditing ? "Update Child" : "Add Child"} 
+            onClick={handleSave} 
+            disabled={!isDirty && isEditing}
+          />
+        }
       />
       <div
         ref={pageScrollRef}
@@ -572,6 +631,39 @@ export default function EditChild() {
                     onFocus={() => setSchoolFocused(true)}
                     onBlur={() => setSchoolFocused(false)}
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>At-a-glance color</label>
+                <div className="flex gap-2 mt-2 justify-center">
+                  {rainbowColors.map((colorOption) => {
+                    const isTaken = takenColors.includes(colorOption.value);
+                    const isSelected = color === colorOption.value;
+                    
+                    return (
+                      <button
+                        key={colorOption.value}
+                        type="button"
+                        onClick={() => !isTaken && setColor(colorOption.value)}
+                        disabled={isTaken}
+                        className={`w-5 h-5 rounded-sm transition-all ${
+                          isSelected
+                            ? 'scale-110'
+                            : isTaken
+                            ? 'opacity-20 cursor-not-allowed'
+                            : 'opacity-60 hover:opacity-100 cursor-pointer'
+                        }`}
+                        style={{ 
+                          backgroundColor: colorOption.value,
+                          ...(isSelected && { 
+                            boxShadow: `0 0 0 2px ${colorOption.dark}, 0 0 6px 1px ${colorOption.dark}30` 
+                          })
+                        }}
+                        aria-label={`${colorOption.name} color${isTaken ? ' (taken)' : ''}`}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>

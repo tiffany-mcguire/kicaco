@@ -10,7 +10,7 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
-import { useKicacoStore } from '../store/kicacoStore';
+import { useKicacoStore, ChildProfile } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users } from "lucide-react";
@@ -81,13 +81,6 @@ const getFocusStyle = (isFocused: boolean, isRequired: boolean): React.CSSProper
     boxShadow: nonFocusedBoxShadow, 
     borderRadius: '0.5rem', 
   };
-};
-
-type ChildProfile = {
-  id: string;
-  name: string;
-  dob: string;
-  school: string;
 };
 
 type SharedUser = {
@@ -251,6 +244,17 @@ const MiniActionButton = (props: { label: string; color?: string; borderColor?: 
     </button>
   );
 };
+
+// Rainbow colors for child profiles
+const childColors = [
+  '#f8b6c2', // Pink
+  '#ffd8b5', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
 
 export default function ProfilesRoles() {
   const [inviteInput, setInviteInput] = useState("");
@@ -668,16 +672,24 @@ export default function ProfilesRoles() {
               </div>
             ) : (
               <div className="space-y-2">
-                {children.map(child => (
+                {children.map((child, index) => (
                   <div 
                     key={child.id} 
-                    className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+                    className="group bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer relative overflow-hidden"
                     onClick={() => setExpandedChild(expandedChild === child.id ? null : child.id)}
                   >
-                    <div className="px-4 py-3">
+                    {/* Subtle rainbow left border */}
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-1"
+                      style={{ backgroundColor: child.color || childColors[index % childColors.length] }}
+                    />
+                    <div className="px-4 py-3 pl-5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-8 h-8 bg-[#217e8f] rounded-full flex items-center justify-center text-white text-xs font-medium">
+                          <div 
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                            style={{ backgroundColor: child.color || childColors[index % childColors.length] }}
+                          >
                             {child.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
