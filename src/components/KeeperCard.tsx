@@ -15,6 +15,7 @@ interface KeeperCardProps {
   onTabClick?: () => void;
   priority?: 'high' | 'medium' | 'low';
   index?: number;
+  activeIndex?: number | null;
 }
 
 const darkRainbowColors = [
@@ -51,7 +52,7 @@ const formatTime = (time?: string) => {
 
 const KeeperCard: React.FC<KeeperCardProps> = ({
   keeperName, childName, date, time, description,
-  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0
+  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex
 }) => {
   const children = useKicacoStore(state => state.children);
   const childProfile = children.find(c => c.name === childName);
@@ -69,14 +70,23 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
     const visibleTabHeight = 64;
     const activeTransformOffset = 16; // The translateY offset for active cards
     
-    // Calculate base position
-    let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
+    // Calculate the card's vertical offset
+    // Cards stack from bottom to top with 64px visible for each tab
+    // When a card is active, cards above it need to move up to make room
+    let cardOffset = (totalInStack - 1 - stackPosition) * 64;
     
-    // Compensate for active card transform
-    if (isActive) {
-      cardOffset += activeTransformOffset;
+    // If there's an active card below this one, push this card up
+    if (activeIndex !== null && activeIndex !== undefined && activeIndex > stackPosition) {
+      cardOffset += 176; // Push up by the amount the active card pops up (240 - 64)
     }
-
+    
+    // If this card is active, compensate for its transform
+    if (isActive) {
+      cardOffset += 176;
+    }
+    
+    console.log(`Card ${stackPosition}: offset=${cardOffset}px, active=${isActive}, activeIndex=${activeIndex}`);
+    
     return (
       <div
         className="absolute left-0 right-0 h-[240px]"
@@ -89,8 +99,11 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         <div
           className="relative w-full h-full rounded-2xl shadow-lg overflow-hidden bg-black"
           style={{
-            transform: isActive ? 'translateY(-16px)' : 'translateY(0)',
+            transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
             transition: 'all 300ms ease-in-out',
+            boxShadow: isActive 
+              ? '0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)' 
+              : '0 4px 12px rgba(0, 0, 0, 0.15)',
           }}
         >
           <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -99,14 +112,16 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
           <div 
             className="absolute inset-x-0 top-0 h-[80px] backdrop-blur-sm rounded-t-2xl"
             style={{
-              background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.4) 64px, rgba(0, 0, 0, 0.2) 80px)',
+              background: isActive 
+                ? 'linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 64px, rgba(0, 0, 0, 0.1) 80px)'
+                : 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.4) 64px, rgba(0, 0, 0, 0.2) 80px)',
             }}
           />
           
           {/* Tab header */}
           <div
             className="absolute inset-x-0 top-0 h-[64px] flex items-center justify-between px-4 text-white cursor-pointer"
-            onClick={!isActive ? onTabClick : undefined}
+            onClick={onTabClick}
           >
             <div className="flex flex-col justify-center">
               <span className="font-semibold text-sm">{keeperName}</span>

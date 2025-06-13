@@ -214,7 +214,7 @@ export default function Home() {
   }, [keepers]);
 
   // State for keeper card interactions
-  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number>(0);
+  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number | null>(null);
 
   useEffect(() => {
     console.log('Events:', events);
@@ -941,7 +941,8 @@ export default function Home() {
                         stackPosition={stackPosition}
                         totalInStack={keepersNext30Days.length}
                         isActive={activeKeeperIndex === stackPosition}
-                        onTabClick={() => setActiveKeeperIndex(stackPosition)}
+                        activeIndex={activeKeeperIndex}
+                        onTabClick={() => setActiveKeeperIndex(activeKeeperIndex === stackPosition ? null : stackPosition)}
                       />
                     );
                   })}
