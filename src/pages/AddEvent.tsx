@@ -152,6 +152,7 @@ export default function AddEvent() {
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
+
   const handleGlobalDrawerHeightChange = (height: number) => {
     const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
@@ -159,6 +160,16 @@ export default function AddEvent() {
     setMainContentDrawerOffset(height);
     setMainContentTopClearance(window.innerHeight - height);
   };
+
+  // Initialize scroll overflow based on initial drawer height
+  useEffect(() => {
+    // Set initial drawer offset and scroll overflow
+    setMainContentDrawerOffset(currentDrawerHeight);
+    setMainContentTopClearance(window.innerHeight - currentDrawerHeight);
+    // Always enable scrolling when drawer is minimized
+    setMainContentScrollOverflow('auto');
+  }, []); // Run only on mount
+
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
       if (subheaderRef.current) {
@@ -188,13 +199,44 @@ export default function AddEvent() {
       window.removeEventListener('resize', calculateMaxDrawerHeight);
     };
   }, []);
+
   useEffect(() => {
-    if (mainContentDrawerOffset > 44 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
-    }
+    // Always enable scrolling - let the browser handle whether it's needed
+    setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
+
+  // Watch for content height changes and update scroll overflow
+  useEffect(() => {
+    const contentElement = pageScrollRef.current;
+    if (!contentElement) return;
+
+    const checkScrollNeeded = () => {
+      // Force a reflow to ensure scroll calculations are correct
+      if (contentElement) {
+        contentElement.style.overflow = 'hidden';
+        void contentElement.offsetHeight; // Force reflow
+        contentElement.style.overflow = 'auto';
+      }
+    };
+
+    // Check immediately after a small delay to ensure DOM is ready
+    setTimeout(checkScrollNeeded, 100);
+
+    // Set up ResizeObserver to watch for content changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollNeeded();
+    });
+
+    // Observe the inner content div that contains all the form fields
+    const innerContent = contentElement.querySelector('.max-w-xl');
+    if (innerContent) {
+      resizeObserver.observe(innerContent);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [mainContentDrawerOffset, addTime, addReminder, addLocation, specifyChild]);
 
   // Chat Scroll Management Logic
   const executeScrollToBottom = useCallback(() => {
@@ -427,9 +469,6 @@ export default function AddEvent() {
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
   });
 
-  const labelClass = "block text-sm font-medium text-gray-700";
-  const helperTextClass = "mt-1 text-xs text-gray-500";
-
   const handleSave = () => {
     if (!eventName.trim()) {
       alert("Please enter an event name");
@@ -489,9 +528,9 @@ export default function AddEvent() {
       >
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Event Name */}
-          <div className="mb-4">
-            <label htmlFor="eventName" className={labelClass}>Event Name</label>
-            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventNameFocused, true)}} className="mt-1">
+          <div className="mb-6">
+            <label htmlFor="eventName" className="text-sm font-medium text-gray-600 mb-2 block">Event Name</label>
+            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventNameFocused, true)}}>
               <input 
                 type="text" 
                 name="eventName" 
@@ -509,8 +548,8 @@ export default function AddEvent() {
 
           {/* Date */}
           <div className="mb-6">
-            <label htmlFor="eventDate" className={labelClass}>Date</label>
-            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventDateFocused, true)}} className="mt-1">
+            <label htmlFor="eventDate" className="text-sm font-medium text-gray-600 mb-2 block">Date</label>
+            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventDateFocused, true)}}>
               <input 
                 type="date" 
                 name="eventDate" 
@@ -528,243 +567,243 @@ export default function AddEvent() {
             </div>
           </div>
 
-          {/* Add Time Toggle */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addTime}
-                aria-label="Add event time"
-                onClick={() => setAddTime(!addTime)}
-                style={toggleStyle(addTime)}
-              >
-                <span style={toggleKnobStyle(addTime)} />
-              </button>
-              <span className={`${labelClass} cursor-pointer flex-1 ml-3`} onClick={() => setAddTime(!addTime)}>
-                Add event time?
-              </span>
-            </div>
-            
-            {addTime && (
-              <div className="mt-2 ml-[56px] flex gap-3">
-                <div className="flex-1">
-                  <label htmlFor="startTime" className="text-xs font-medium text-gray-600">Start Time</label>
-                  <div style={{...inputWrapperBaseStyle, ...getFocusStyle(startTimeFocused, false)}} className="mt-1">
-                    <input 
-                      type="time" 
-                      name="startTime" 
-                      id="startTime" 
-                      style={{
-                        ...inputElementStyle,
-                        color: startTime ? '#111827' : '#9ca3af'
-                      }}
-                      placeholder="9:00 AM"
-                      value={startTime} 
-                      onChange={(e) => setStartTime(e.target.value)}
-                      onFocus={() => setStartTimeFocused(true)}
-                      onBlur={() => setStartTimeFocused(false)}
-                    />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="endTime" className="text-xs font-medium text-gray-600">End Time</label>
-                  <div style={{...inputWrapperBaseStyle, ...getFocusStyle(endTimeFocused, false)}} className="mt-1">
-                    <input 
-                      type="time" 
-                      name="endTime" 
-                      id="endTime" 
-                      style={{
-                        ...inputElementStyle,
-                        color: endTime ? '#111827' : '#9ca3af'
-                      }}
-                      placeholder="10:00 AM"
-                      value={endTime} 
-                      onChange={(e) => setEndTime(e.target.value)}
-                      onFocus={() => setEndTimeFocused(true)}
-                      onBlur={() => setEndTimeFocused(false)}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Add Reminder Toggle */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addReminder}
-                aria-label="Add a reminder"
-                onClick={() => setAddReminder(!addReminder)}
-                style={toggleStyle(addReminder)}
-              >
-                <span style={toggleKnobStyle(addReminder)} />
-              </button>
-              <span className={`${labelClass} cursor-pointer flex-1 ml-3`} onClick={() => setAddReminder(!addReminder)}>
-                Add a reminder?
-              </span>
-            </div>
-            
-            {addReminder && (
-              <div className="mt-2 ml-[56px]">
-                <div className="flex gap-3 mb-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="reminderType"
-                      value="dueDate"
-                      checked={reminderType === 'dueDate'}
-                      onChange={(e) => setReminderType('dueDate')}
-                      className="mr-1.5 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                      style={{
-                        accentColor: '#217e8f'
-                      }}
-                    />
-                    <span className="text-xs text-gray-700">Due date</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="reminderType"
-                      value="alertBefore"
-                      checked={reminderType === 'alertBefore'}
-                      onChange={(e) => setReminderType('alertBefore')}
-                      className="mr-1.5 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                      style={{
-                        accentColor: '#217e8f'
-                      }}
-                    />
-                    <span className="text-xs text-gray-700">Alert before</span>
-                  </label>
+          {/* Optional Settings */}
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Optional settings</label>
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+              {/* Add Time Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addTime}
+                    aria-label="Add event time"
+                    onClick={() => setAddTime(!addTime)}
+                    style={toggleStyle(addTime)}
+                  >
+                    <span style={toggleKnobStyle(addTime)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddTime(!addTime)}>
+                    Add event time?
+                  </span>
                 </div>
                 
-                <div>
-                  {reminderType === 'dueDate' ? (
-                    <div>
-                      <div style={{...inputWrapperBaseStyle, ...getFocusStyle(reminderDateFocused, false)}}>
+                {addTime && (
+                  <div className="mt-3 ml-[56px] flex gap-3">
+                    <div className="flex-1">
+                      <label htmlFor="startTime" className="text-xs font-medium text-gray-600">Start Time</label>
+                      <div style={{...inputWrapperBaseStyle, ...getFocusStyle(startTimeFocused, false)}} className="mt-1">
                         <input 
-                          type="date" 
-                          name="reminderDate" 
-                          id="reminderDate" 
+                          type="time" 
+                          name="startTime" 
+                          id="startTime" 
                           style={{
                             ...inputElementStyle,
-                            color: reminderDate ? '#111827' : '#9ca3af'
+                            color: startTime ? '#111827' : '#9ca3af'
                           }}
-                          value={reminderDate} 
-                          onChange={(e) => setReminderDate(e.target.value)}
-                          onFocus={() => setReminderDateFocused(true)}
-                          onBlur={() => setReminderDateFocused(false)}
+                          placeholder="9:00 AM"
+                          value={startTime} 
+                          onChange={(e) => setStartTime(e.target.value)}
+                          onFocus={() => setStartTimeFocused(true)}
+                          onBlur={() => setStartTimeFocused(false)}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">e.g. Return form by 10/25</p>
                     </div>
-                  ) : (
-                    <select 
-                      value={alertBefore} 
-                      onChange={(e) => setAlertBefore(e.target.value)}
-                      style={{...inputElementStyle, ...inputWrapperBaseStyle}}
-                      className="text-gray-700"
-                    >
-                      <option value="15 minutes before">15 minutes before</option>
-                      <option value="30 minutes before">30 minutes before</option>
-                      <option value="1 hour before">1 hour before</option>
-                      <option value="1 day before">1 day before</option>
-                      <option value="2 days before">2 days before</option>
-                      <option value="1 week before">1 week before</option>
-                    </select>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Add Location Toggle */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={addLocation}
-                aria-label="Add a location"
-                onClick={() => setAddLocation(!addLocation)}
-                style={toggleStyle(addLocation)}
-              >
-                <span style={toggleKnobStyle(addLocation)} />
-              </button>
-              <span className={`${labelClass} cursor-pointer flex-1 ml-3`} onClick={() => setAddLocation(!addLocation)}>
-                Add a location?
-              </span>
-            </div>
-            
-            {addLocation && (
-              <div className="mt-2 ml-[56px]">
-                <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventLocationFocused, false)}}>
-                  <input 
-                    type="text" 
-                    name="eventLocation" 
-                    id="eventLocation" 
-                    style={inputElementStyle}
-                    placeholder="e.g. Heatherwood field, Dentist office" 
-                    value={eventLocation} 
-                    className="placeholder-gray-400"
-                    onChange={(e) => setEventLocation(e.target.value)}
-                    onFocus={() => setEventLocationFocused(true)}
-                    onBlur={() => setEventLocationFocused(false)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Specify Child Toggle */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={specifyChild}
-                aria-label="Specify which child"
-                onClick={() => setSpecifyChild(!specifyChild)}
-                style={toggleStyle(specifyChild)}
-              >
-                <span style={toggleKnobStyle(specifyChild)} />
-              </button>
-              <span className={`${labelClass} cursor-pointer flex-1 ml-3`} onClick={() => setSpecifyChild(!specifyChild)}>
-                Specify which child?
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 ml-[56px] mt-0.5">*Unnecessary for single child homes</p>
-            
-            {specifyChild && (
-              <div className="mt-2 ml-[56px] space-y-1">
-                {children.map(child => (
-                  <label key={child.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedChildren.includes(child.name)}
-                      onChange={() => toggleChildSelection(child.name)}
-                      className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0 rounded"
-                      style={{
-                        accentColor: '#217e8f'
-                      }}
-                    />
-                    <span className="text-xs text-gray-700">{child.name}</span>
-                  </label>
-                ))}
-                {children.length === 0 && (
-                  <p className="text-xs text-gray-500">No children profiles found. Add children in Profiles & Roles.</p>
+                    <div className="flex-1">
+                      <label htmlFor="endTime" className="text-xs font-medium text-gray-600">End Time</label>
+                      <div style={{...inputWrapperBaseStyle, ...getFocusStyle(endTimeFocused, false)}} className="mt-1">
+                        <input 
+                          type="time" 
+                          name="endTime" 
+                          id="endTime" 
+                          style={{
+                            ...inputElementStyle,
+                            color: endTime ? '#111827' : '#9ca3af'
+                          }}
+                          placeholder="10:00 AM"
+                          value={endTime} 
+                          onChange={(e) => setEndTime(e.target.value)}
+                          onFocus={() => setEndTimeFocused(true)}
+                          onBlur={() => setEndTimeFocused(false)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
+
+              {/* Add Reminder Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addReminder}
+                    aria-label="Add a reminder"
+                    onClick={() => setAddReminder(!addReminder)}
+                    style={toggleStyle(addReminder)}
+                  >
+                    <span style={toggleKnobStyle(addReminder)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddReminder(!addReminder)}>
+                    Add a reminder?
+                  </span>
+                </div>
+                
+                {addReminder && (
+                  <div className="mt-3 ml-[56px]">
+                    <div className="flex gap-3 mb-2">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="reminderType"
+                          value="dueDate"
+                          checked={reminderType === 'dueDate'}
+                          onChange={(e) => setReminderType('dueDate')}
+                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                          style={{ accentColor: '#217e8f' }}
+                        />
+                        <span className="text-sm text-gray-700">Due date</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="reminderType"
+                          value="alertBefore"
+                          checked={reminderType === 'alertBefore'}
+                          onChange={(e) => setReminderType('alertBefore')}
+                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                          style={{ accentColor: '#217e8f' }}
+                        />
+                        <span className="text-sm text-gray-700">Alert before</span>
+                      </label>
+                    </div>
+                    
+                    <div>
+                      {reminderType === 'dueDate' ? (
+                        <div>
+                          <div style={{...inputWrapperBaseStyle, ...getFocusStyle(reminderDateFocused, false)}}>
+                            <input 
+                              type="date" 
+                              name="reminderDate" 
+                              id="reminderDate" 
+                              style={{
+                                ...inputElementStyle,
+                                color: reminderDate ? '#111827' : '#9ca3af'
+                              }}
+                              value={reminderDate} 
+                              onChange={(e) => setReminderDate(e.target.value)}
+                              onFocus={() => setReminderDateFocused(true)}
+                              onBlur={() => setReminderDateFocused(false)}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">e.g. Return form by 10/25</p>
+                        </div>
+                      ) : (
+                        <select 
+                          value={alertBefore} 
+                          onChange={(e) => setAlertBefore(e.target.value)}
+                          style={{...inputElementStyle, ...inputWrapperBaseStyle}}
+                          className="text-gray-700"
+                        >
+                          <option value="15 minutes before">15 minutes before</option>
+                          <option value="30 minutes before">30 minutes before</option>
+                          <option value="1 hour before">1 hour before</option>
+                          <option value="1 day before">1 day before</option>
+                          <option value="2 days before">2 days before</option>
+                          <option value="1 week before">1 week before</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Location Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addLocation}
+                    aria-label="Add a location"
+                    onClick={() => setAddLocation(!addLocation)}
+                    style={toggleStyle(addLocation)}
+                  >
+                    <span style={toggleKnobStyle(addLocation)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddLocation(!addLocation)}>
+                    Add a location?
+                  </span>
+                </div>
+                
+                {addLocation && (
+                  <div className="mt-3 ml-[56px]">
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventLocationFocused, false)}}>
+                      <input 
+                        type="text" 
+                        name="eventLocation" 
+                        id="eventLocation" 
+                        style={inputElementStyle}
+                        placeholder="e.g. Heatherwood field, Dentist office" 
+                        value={eventLocation} 
+                        className="placeholder-gray-400"
+                        onChange={(e) => setEventLocation(e.target.value)}
+                        onFocus={() => setEventLocationFocused(true)}
+                        onBlur={() => setEventLocationFocused(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Specify Child Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={specifyChild}
+                    aria-label="Specify which child"
+                    onClick={() => setSpecifyChild(!specifyChild)}
+                    style={toggleStyle(specifyChild)}
+                  >
+                    <span style={toggleKnobStyle(specifyChild)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setSpecifyChild(!specifyChild)}>
+                    Specify which child?
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 ml-[56px] mt-1">*Unnecessary for single child homes</p>
+                
+                {specifyChild && (
+                  <div className="mt-3 ml-[56px] space-y-2">
+                    {children.map(child => (
+                      <label key={child.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedChildren.includes(child.name)}
+                          onChange={() => toggleChildSelection(child.name)}
+                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0 rounded"
+                          style={{ accentColor: '#217e8f' }}
+                        />
+                        <span className="text-sm text-gray-700">{child.name}</span>
+                      </label>
+                    ))}
+                    {children.length === 0 && (
+                      <p className="text-xs text-gray-500">No children profiles found. Add children in Profiles & Roles.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Notes */}
           <div className="mb-6">
-            <label htmlFor="notes" className={labelClass}>Add to notes (optional)</label>
-            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(notesFocused, false)}} className="mt-1">
+            <label htmlFor="notes" className="text-sm font-medium text-gray-600 mb-2 block">Add to notes (optional)</label>
+            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(notesFocused, false)}}>
               <textarea 
                 name="notes" 
                 id="notes" 
@@ -778,7 +817,6 @@ export default function AddEvent() {
               />
             </div>
           </div>
-
 
         </div>
       </div>

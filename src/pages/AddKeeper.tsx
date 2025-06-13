@@ -4,7 +4,7 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
@@ -13,7 +13,7 @@ import GlobalChatDrawer from '../components/GlobalChatDrawer';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
-import { BellPlus } from "lucide-react";
+import { BellPlus, Calendar, Clock, MapPin, AlertCircle } from "lucide-react";
 
 // Notebook/Binder Icon (Lucide style, simple)
 const AddKeeperIcon = () => {
@@ -37,7 +37,65 @@ const AddKeeperIcon = () => {
   );
 };
 
+const SaveButton = (props: { label?: string; onClick?: () => void }) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
+
+  const getButtonStyle = () => {
+    let s = {
+      width: '140px',
+      height: '30px',
+      padding: '0px 8px',
+      border: 'none',
+      boxSizing: 'border-box' as const,
+      borderRadius: '6px',
+      fontWeight: 400,
+      fontSize: '14px',
+      lineHeight: '20px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+      background: '#217e8f',
+      color: '#ffffff',
+      outline: 'none',
+      transition: 'all 0.2s ease',
+    } as React.CSSProperties;
+    if (hovered || focused) {
+      s = {
+        ...s,
+        background: '#1a6e7e',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
+      };
+    }
+    if (pressed) {
+      s = { ...s, transform: 'scale(0.95)' };
+    }
+    s.outline = 'none';
+    return s;
+  };
+
+  return (
+    <button
+      style={getButtonStyle()}
+      tabIndex={0}
+      type="button"
+      onClick={props.onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => { setPressed(false); setHovered(false); }}
+      onMouseOver={() => setHovered(true)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+    >
+      {props.label ?? 'Save'}
+    </button>
+  );
+};
+
 export default function AddKeeper() {
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
   const location = useLocation();
 
@@ -61,6 +119,28 @@ export default function AddKeeper() {
   const previousMessagesLengthRef = useRef(0);
   const firstEffectRunAfterLoadRef = useRef(true);
 
+  // Form state
+  const [keeperName, setKeeperName] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [reminderType, setReminderType] = useState<'deadline' | 'recurring'>('deadline');
+  const [recurringSchedule, setRecurringSchedule] = useState("");
+  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [addTime, setAddTime] = useState(false);
+  const [dueTime, setDueTime] = useState("");
+  const [addLocation, setAddLocation] = useState(false);
+  const [keeperLocation, setKeeperLocation] = useState("");
+  const [specifyChild, setSpecifyChild] = useState(false);
+  const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
+  const [description, setDescription] = useState("");
+
+  // Focus states
+  const [keeperNameFocused, setKeeperNameFocused] = useState(false);
+  const [dueDateFocused, setDueDateFocused] = useState(false);
+  const [recurringScheduleFocused, setRecurringScheduleFocused] = useState(false);
+  const [dueTimeFocused, setDueTimeFocused] = useState(false);
+  const [keeperLocationFocused, setKeeperLocationFocused] = useState(false);
+  const [descriptionFocused, setDescriptionFocused] = useState(false);
+
   const {
     messages,
     threadId,
@@ -70,6 +150,8 @@ export default function AddKeeper() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    addKeeper,
+    children,
   } = useKicacoStore();
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -81,6 +163,15 @@ export default function AddKeeper() {
     setMainContentDrawerOffset(height);
     setMainContentTopClearance(window.innerHeight - height);
   };
+
+  // Initialize scroll overflow based on initial drawer height
+  useEffect(() => {
+    // Set initial drawer offset and scroll overflow
+    setMainContentDrawerOffset(currentDrawerHeight);
+    setMainContentTopClearance(window.innerHeight - currentDrawerHeight);
+    // Always enable scrolling when drawer is minimized
+    setMainContentScrollOverflow('auto');
+  }, []); // Run only on mount
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
@@ -113,12 +204,42 @@ export default function AddKeeper() {
   }, []);
 
   useEffect(() => {
-    if (mainContentDrawerOffset > 44 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
-    }
+    // Always enable scrolling - let the browser handle whether it's needed
+    setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
+
+  // Watch for content height changes and update scroll overflow
+  useEffect(() => {
+    const contentElement = pageScrollRef.current;
+    if (!contentElement) return;
+
+    const checkScrollNeeded = () => {
+      // Force a reflow to ensure scroll calculations are correct
+      if (contentElement) {
+        contentElement.style.overflow = 'hidden';
+        void contentElement.offsetHeight; // Force reflow
+        contentElement.style.overflow = 'auto';
+      }
+    };
+
+    // Check immediately after a small delay to ensure DOM is ready
+    setTimeout(checkScrollNeeded, 100);
+
+    // Set up ResizeObserver to watch for content changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkScrollNeeded();
+    });
+
+    // Observe the inner content div that contains all the form fields
+    const innerContent = contentElement.querySelector('.max-w-xl');
+    if (innerContent) {
+      resizeObserver.observe(innerContent);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [mainContentDrawerOffset, addTime, addLocation, specifyChild, reminderType]);
 
   // Chat Scroll Management Logic
   const executeScrollToBottom = useCallback(() => {
@@ -260,6 +381,143 @@ export default function AddKeeper() {
     }
   };
 
+  // Input field styling
+  const inputWrapperBaseStyle: React.CSSProperties = {
+    borderWidth: '1px',
+    borderColor: '#c0e2e799',
+    borderRadius: '0.5rem',
+    boxShadow: '0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)',
+    transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+    backgroundColor: 'white',
+  };
+
+  const inputElementStyle: React.CSSProperties = {
+    width: '100%',
+    paddingTop: '0.375rem',
+    paddingBottom: '0.375rem',
+    paddingLeft: '0.75rem',
+    paddingRight: '0.75rem',
+    border: 'none',
+    outline: 'none',
+    backgroundColor: 'transparent',
+    fontSize: '0.75rem',
+    color: '#111827',
+  };
+
+  const textareaElementStyle: React.CSSProperties = {
+    ...inputElementStyle,
+    minHeight: '80px',
+    resize: 'vertical' as const,
+  };
+
+  const getFocusStyle = (isFocused: boolean, isRequired: boolean): React.CSSProperties => {
+    const nonFocusedBorderColor = '#c0e2e799';
+    const nonFocusedBlurColor = 'rgba(192, 226, 231, 0.6)';
+    const baseBorderWidth = '1px';
+    const baseBorderStyle = 'solid';
+    const nonFocusedBoxShadow = `0 0 2px 0 ${nonFocusedBlurColor}, 0 1px 3px 0 rgba(0,0,0,0.07), 0 1px 2px -1px rgba(0,0,0,0.07)`;
+
+    if (isFocused) {
+      const bottomBorderColorOnFocus = isRequired ? '#fbb6ce' : '#c0e2e7';
+      const bottomGlowColor = isRequired ? 'rgba(251, 182, 206, 0.5)' : 'rgba(192, 226, 231, 0.5)';
+      
+      return {
+        borderTopColor: nonFocusedBorderColor,
+        borderRightColor: nonFocusedBorderColor,
+        borderLeftColor: nonFocusedBorderColor,
+        borderBottomColor: bottomBorderColorOnFocus,
+        borderTopWidth: baseBorderWidth,
+        borderRightWidth: baseBorderWidth,
+        borderLeftWidth: baseBorderWidth,
+        borderBottomWidth: '2px',
+        borderStyle: baseBorderStyle,
+        boxShadow: `${nonFocusedBoxShadow}, 0 2px 5px -1px ${bottomGlowColor}`,
+      };
+    }
+    
+    return {
+      borderTopColor: nonFocusedBorderColor,
+      borderRightColor: nonFocusedBorderColor,
+      borderBottomColor: nonFocusedBorderColor,
+      borderLeftColor: nonFocusedBorderColor,
+      borderTopWidth: baseBorderWidth,
+      borderRightWidth: baseBorderWidth,
+      borderBottomWidth: baseBorderWidth,
+      borderLeftWidth: baseBorderWidth,
+      borderStyle: baseBorderStyle,
+      boxShadow: nonFocusedBoxShadow,
+    };
+  };
+
+  const toggleStyle = (isOn: boolean) => ({
+    width: '44px',
+    height: '24px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '2px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease-in-out',
+    backgroundColor: isOn ? '#217e8f' : '#4b5563',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06)',
+  });
+
+  const toggleKnobStyle = (isOn: boolean) => ({
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    backgroundColor: 'white',
+    transform: isOn ? 'translateX(20px)' : 'translateX(0)',
+    transition: 'transform 0.2s ease-in-out',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  });
+
+  const handleSave = () => {
+    if (!keeperName.trim()) {
+      alert("Please enter a keeper name");
+      return;
+    }
+    if (!dueDate && reminderType === 'deadline') {
+      alert("Please select a due date");
+      return;
+    }
+
+    const newKeeper = {
+      keeperName: keeperName.trim(),
+      date: dueDate,
+      time: addTime && dueTime ? dueTime : undefined,
+      location: addLocation && keeperLocation ? keeperLocation.trim() : undefined,
+      childName: specifyChild && selectedChildren.length > 0 ? selectedChildren.join(', ') : undefined,
+      description: description.trim() || undefined,
+    };
+
+    addKeeper(newKeeper);
+    navigate(-1); // Go back to previous page
+  };
+
+  const toggleChildSelection = (childName: string) => {
+    setSelectedChildren(prev => 
+      prev.includes(childName) 
+        ? prev.filter(name => name !== childName)
+        : [...prev, childName]
+    );
+  };
+
+  const getPriorityStyle = (priorityLevel: 'high' | 'medium' | 'low', isSelected: boolean) => {
+    const baseStyle = "px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer";
+    if (isSelected) {
+      switch (priorityLevel) {
+        case 'high':
+          return `${baseStyle} bg-red-100 text-red-700 ring-2 ring-red-300`;
+        case 'medium':
+          return `${baseStyle} bg-yellow-100 text-yellow-700 ring-2 ring-yellow-300`;
+        case 'low':
+          return `${baseStyle} bg-green-100 text-green-700 ring-2 ring-green-300`;
+      }
+    }
+    return `${baseStyle} bg-gray-100 text-gray-600 hover:bg-gray-200`;
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -267,6 +525,7 @@ export default function AddKeeper() {
         ref={subheaderRef}
         icon={<BellPlus />}
         title="Add Keeper"
+        action={<SaveButton onClick={handleSave} />}
       />
       <div
         ref={pageScrollRef}
@@ -281,7 +540,274 @@ export default function AddKeeper() {
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        {/* Content intentionally left empty for now */}
+        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Keeper Name */}
+          <div className="mb-6">
+            <label htmlFor="keeperName" className="text-sm font-medium text-gray-600 mb-2 block">What needs keeping track of?</label>
+            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(keeperNameFocused, true)}}>
+              <input 
+                type="text" 
+                name="keeperName" 
+                id="keeperName" 
+                style={inputElementStyle}
+                placeholder="e.g. Schedule dentist visit, Vaccine due, Return library books" 
+                value={keeperName} 
+                className="placeholder-gray-400"
+                onChange={(e) => setKeeperName(e.target.value)}
+                onFocus={() => setKeeperNameFocused(true)}
+                onBlur={() => setKeeperNameFocused(false)}
+              />
+            </div>
+          </div>
+
+          {/* Reminder Type */}
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Type of reminder</label>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="reminderType"
+                    value="deadline"
+                    checked={reminderType === 'deadline'}
+                    onChange={(e) => setReminderType('deadline')}
+                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                    style={{ accentColor: '#217e8f' }}
+                  />
+                  <span className="text-sm text-gray-700">One-time deadline</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="reminderType"
+                    value="recurring"
+                    checked={reminderType === 'recurring'}
+                    onChange={(e) => setReminderType('recurring')}
+                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                    style={{ accentColor: '#217e8f' }}
+                  />
+                  <span className="text-sm text-gray-700">Recurring schedule</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Due Date or Recurring Schedule */}
+          {reminderType === 'deadline' ? (
+            <div className="mb-6">
+              <label htmlFor="dueDate" className="text-sm font-medium text-gray-600 mb-2 block">Due date</label>
+              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(dueDateFocused, true)}}>
+                <input 
+                  type="date" 
+                  name="dueDate" 
+                  id="dueDate" 
+                  style={{
+                    ...inputElementStyle,
+                    color: dueDate ? '#111827' : '#9ca3af'
+                  }}
+                  placeholder="mm/dd/yyyy"
+                  value={dueDate} 
+                  onChange={(e) => setDueDate(e.target.value)}
+                  onFocus={() => setDueDateFocused(true)}
+                  onBlur={() => setDueDateFocused(false)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mb-6">
+              <label htmlFor="recurringSchedule" className="text-sm font-medium text-gray-600 mb-2 block">Recurring schedule</label>
+              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(recurringScheduleFocused, false)}}>
+                <input 
+                  type="text" 
+                  name="recurringSchedule" 
+                  id="recurringSchedule" 
+                  style={inputElementStyle}
+                  placeholder="e.g. Every 6 months, Every 3 weeks, Monthly" 
+                  value={recurringSchedule} 
+                  className="placeholder-gray-400"
+                  onChange={(e) => setRecurringSchedule(e.target.value)}
+                  onFocus={() => setRecurringScheduleFocused(true)}
+                  onBlur={() => setRecurringScheduleFocused(false)}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">We'll remind you based on this schedule</p>
+            </div>
+          )}
+
+          {/* Priority */}
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Priority level</label>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriority('high')}
+                  className={getPriorityStyle('high', priority === 'high')}
+                >
+                  High
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('medium')}
+                  className={getPriorityStyle('medium', priority === 'medium')}
+                >
+                  Medium
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('low')}
+                  className={getPriorityStyle('low', priority === 'low')}
+                >
+                  Low
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Optional Settings */}
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Optional settings</label>
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+              {/* Add Time Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addTime}
+                    aria-label="Add specific time"
+                    onClick={() => setAddTime(!addTime)}
+                    style={toggleStyle(addTime)}
+                  >
+                    <span style={toggleKnobStyle(addTime)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddTime(!addTime)}>
+                    Add specific time?
+                  </span>
+                </div>
+                
+                {addTime && (
+                  <div className="mt-3 ml-[56px]">
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(dueTimeFocused, false)}}>
+                      <input 
+                        type="time" 
+                        name="dueTime" 
+                        id="dueTime" 
+                        style={{
+                          ...inputElementStyle,
+                          color: dueTime ? '#111827' : '#9ca3af'
+                        }}
+                        placeholder="12:00 PM"
+                        value={dueTime} 
+                        onChange={(e) => setDueTime(e.target.value)}
+                        onFocus={() => setDueTimeFocused(true)}
+                        onBlur={() => setDueTimeFocused(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Location Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addLocation}
+                    aria-label="Add a location"
+                    onClick={() => setAddLocation(!addLocation)}
+                    style={toggleStyle(addLocation)}
+                  >
+                    <span style={toggleKnobStyle(addLocation)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddLocation(!addLocation)}>
+                    Add a location?
+                  </span>
+                </div>
+                
+                {addLocation && (
+                  <div className="mt-3 ml-[56px]">
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(keeperLocationFocused, false)}}>
+                      <input 
+                        type="text" 
+                        name="keeperLocation" 
+                        id="keeperLocation" 
+                        style={inputElementStyle}
+                        placeholder="e.g. Dr. Smith's office, Library, Pharmacy" 
+                        value={keeperLocation} 
+                        className="placeholder-gray-400"
+                        onChange={(e) => setKeeperLocation(e.target.value)}
+                        onFocus={() => setKeeperLocationFocused(true)}
+                        onBlur={() => setKeeperLocationFocused(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Specify Child Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={specifyChild}
+                    aria-label="Specify which child"
+                    onClick={() => setSpecifyChild(!specifyChild)}
+                    style={toggleStyle(specifyChild)}
+                  >
+                    <span style={toggleKnobStyle(specifyChild)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setSpecifyChild(!specifyChild)}>
+                    Specify which child?
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 ml-[56px] mt-1">*Unnecessary for single child homes</p>
+                
+                {specifyChild && (
+                  <div className="mt-3 ml-[56px] space-y-2">
+                    {children.map(child => (
+                      <label key={child.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedChildren.includes(child.name)}
+                          onChange={() => toggleChildSelection(child.name)}
+                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0 rounded"
+                          style={{ accentColor: '#217e8f' }}
+                        />
+                        <span className="text-sm text-gray-700">{child.name}</span>
+                      </label>
+                    ))}
+                    {children.length === 0 && (
+                      <p className="text-xs text-gray-500">No children profiles found. Add children in Profiles & Roles.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Description/Notes */}
+          <div className="mb-6">
+            <label htmlFor="description" className="text-sm font-medium text-gray-600 mb-2 block">Additional details (optional)</label>
+            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(descriptionFocused, false)}}>
+              <textarea 
+                name="description" 
+                id="description" 
+                style={textareaElementStyle}
+                placeholder="Any specific instructions, phone numbers, or notes..." 
+                value={description} 
+                className="placeholder-gray-400"
+                onChange={(e) => setDescription(e.target.value)}
+                onFocus={() => setDescriptionFocused(true)}
+                onBlur={() => setDescriptionFocused(false)}
+              />
+            </div>
+          </div>
+
+        </div>
       </div>
       <GlobalChatDrawer 
         onHeightChange={handleGlobalDrawerHeightChange}
