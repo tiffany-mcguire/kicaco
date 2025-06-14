@@ -99,12 +99,14 @@ export default function WeeklyCalendar() {
 
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
+  const weekNavRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const pageScrollRef = useRef<HTMLDivElement>(null);
 
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
   const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
   const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [weekNavBottom, setWeekNavBottom] = useState(0);
   const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
 
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
@@ -178,13 +180,16 @@ export default function WeeklyCalendar() {
   }, []); // Run only on mount
 
   useLayoutEffect(() => {
-    function updateSubheaderBottom() {
+    function updatePositions() {
       if (subheaderRef.current) {
         setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
       }
+      if (weekNavRef.current) {
+        setWeekNavBottom(weekNavRef.current.getBoundingClientRect().bottom);
+      }
     }
-    updateSubheaderBottom();
-    window.addEventListener('resize', updateSubheaderBottom);
+    updatePositions();
+    window.addEventListener('resize', updatePositions);
 
     const calculateMaxDrawerHeight = () => {
       const subheaderElement = subheaderRef.current;
@@ -202,7 +207,7 @@ export default function WeeklyCalendar() {
     window.addEventListener('resize', calculateMaxDrawerHeight);
 
     return () => {
-      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', updatePositions);
       window.removeEventListener('resize', calculateMaxDrawerHeight);
     };
   }, []);
@@ -394,12 +399,30 @@ export default function WeeklyCalendar() {
         title="Weekly Calendar"
         action={<AddByDayButton />}
       />
+      {/* Week Navigation - moved out to be static */}
+      <div ref={weekNavRef} className="flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full">
+        <button
+          onClick={goToPreviousWeek}
+          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+        >
+          <ChevronLeft className="w-4 h-4 text-gray-500" />
+        </button>
+        <h2 className="text-base font-normal text-gray-700 mx-3">
+          {format(weekStart, 'MMMM d')} - {format(addDays(weekStart, 6), 'MMMM d')} ({format(addDays(weekStart, 6), 'yyyy')})
+        </h2>
+        <button
+          onClick={goToNextWeek}
+          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+        >
+          <ChevronRight className="w-4 h-4 text-gray-500" />
+        </button>
+      </div>
       <div
         ref={pageScrollRef}
         className="weekly-calendar-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
-          top: subheaderBottom + 8,
+          top: weekNavBottom, // Start scrolling below the week navigation
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
@@ -409,28 +432,7 @@ export default function WeeklyCalendar() {
         }}
       >
         <div className="relative flex-1 flex flex-col overflow-hidden">
-          <div className="overflow-y-auto px-4 pb-2 pt-4" style={{ paddingBottom: 32 }}>
-            {/* Week Navigation */}
-            <div className="flex items-center justify-center mb-4 max-w-2xl mx-auto">
-              <button
-                onClick={goToPreviousWeek}
-                className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
-              >
-                <ChevronLeft className="w-4 h-4 text-gray-500" />
-              </button>
-              
-              <h2 className="text-base font-normal text-gray-700 mx-3">
-                {format(weekStart, 'MMMM d')} - {format(addDays(weekStart, 6), 'MMMM d')} ({format(addDays(weekStart, 6), 'yyyy')})
-              </h2>
-              
-              <button
-                onClick={goToNextWeek}
-                className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
-              >
-                <ChevronRight className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-
+          <div className="overflow-y-auto px-4 pb-2 pt-2" style={{ paddingBottom: 32 }}>
             {/* Week Grid */}
             <div className="space-y-3 max-w-2xl mx-auto">
               {weekDays.map((day, index) => {

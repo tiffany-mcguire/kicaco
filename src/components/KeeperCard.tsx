@@ -108,19 +108,25 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         >
           <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
           
-          {/* A single, simple overlay that includes the inward glow. */}
+          {/* A single overlay for the entire card */}
+          <div className="absolute inset-0 bg-black/[.65]" />
+          
+          {/* Tab overlay, with a soft bottom glow */}
           <div 
-            className="absolute top-0 left-0 right-0 h-[67px] bg-black/40 backdrop-blur-sm" 
+            className="absolute top-0 left-0 right-0 h-[67px] backdrop-blur-sm" 
             style={{
-              boxShadow: `inset 0 0 16px -2px ${childProfile?.color ? darkRainbowColors[colorIndex % darkRainbowColors.length] + '40' : 'transparent'}`
+              boxShadow: `
+                inset 0 10px 15px -10px ${childProfile?.color ? darkRainbowColors[colorIndex % darkRainbowColors.length] + '90' : 'transparent'}, 
+                inset 0 -15px 20px -15px ${childProfile?.color ? darkRainbowColors[colorIndex % darkRainbowColors.length] + '50' : 'transparent'}
+              `
             }}
           />
           
-          {/* Accent line - smaller and with padding */}
+          {/* Accent line */}
           <div 
-            className="absolute left-1/2 -translate-x-1/2 h-[3px] w-[40px] rounded-full"
+            className="absolute left-1/2 -translate-x-1/2 h-[2px] w-[40px] rounded-full"
             style={{
-              top: '8px', // Pushed down to avoid blur overlap
+              top: '8px',
               background: childProfile?.color ? lightRainbowColors[colorIndex % lightRainbowColors.length] : 'transparent',
             }}
           />
@@ -131,10 +137,15 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
             onClick={onTabClick}
           >
             <div className="flex flex-col justify-center">
-              <span className="font-semibold text-sm">{keeperName}</span>
+              <span className="text-sm font-semibold">{keeperName}</span>
               {childName && <span className="text-xs opacity-80">{childName}</span>}
             </div>
-            <span className="text-sm font-medium">{formatDate(date)}</span>
+            <span 
+              className="text-sm font-medium" 
+              style={{ transform: 'translateY(-8px)' }}
+            >
+              {formatDate(date)}
+            </span>
           </div>
           
           {isTodayKeeper && (

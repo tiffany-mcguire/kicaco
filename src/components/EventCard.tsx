@@ -8,6 +8,7 @@ interface EventCardProps {
   date?: string;
   time?: string;
   location?: string;
+  notes?: string;
 }
 
 const formatDate = (date?: string) => {
@@ -65,50 +66,39 @@ const EventCard: React.FC<EventCardProps> = ({
   date,
   time,
   location,
+  notes
 }) => {
   return (
-    <div
-      className="relative w-full transition-transform duration-300 hover:scale-[1.01] min-h-[240px]"
-    >
+    <div className="relative w-full transition-transform duration-300 hover:scale-[1.01] min-h-[240px] rounded-xl overflow-hidden text-white">
       {/* Background image */}
-      <img
-        src={image}
-        alt={name}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-
-      {/* Glass panel pinned to lower third */}
-      <div
-        className="
-          absolute inset-x-0 bottom-0
-          h-1/3
-          bg-black/25 backdrop-blur-sm
-          px-4 py-3
-          text-white
-          flex flex-row justify-between items-center
-        "
-      >
-        {/* Left side → Title + child name + Location */}
-        <div className="flex flex-col text-sm space-y-1">
-          <h3 className="text-base font-semibold flex items-baseline flex-wrap gap-x-1">
+      <img src={image} alt={name} className="absolute inset-0 w-full h-full object-cover" />
+      
+      {/* A single overlay for the entire card */}
+      <div className="absolute inset-0 bg-black/[.65]" />
+      
+      {/* Info Panel now pinned to the top */}
+      <div className="absolute inset-x-0 top-0 p-4 flex flex-col pt-16">
+        <div className="flex justify-between items-start">
+          <h3 className="text-sm font-semibold flex-1 pr-4">
             {name}
-            {childName && (
-              <span className="text-sm font-normal text-gray-300">
-                ({childName})
-              </span>
-            )}
+            {childName && <span className="text-xs font-normal text-gray-200 ml-1">({childName})</span>}
           </h3>
-          {location && <div>{location}</div>}
+          <div className="text-sm text-right font-semibold">
+            {formatDate(date)}
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center text-xs text-gray-300 mt-1">
+          <div>{location}</div>
+          <div>{formatTime(time)}</div>
         </div>
 
-        {/* Right side → Date bold + Time */}
-        <div className="flex flex-col items-start text-sm space-y-1 text-gray-100">
-          {date && <div className="font-semibold">{formatDate(date)}</div>}
-          {time && <div>{formatTime(time)}</div>}
-        </div>
+        {notes && (
+          <div className="mt-2 pt-2 border-t border-white/20">
+            <h4 className="text-xs font-bold mb-1 text-gray-300">Notes</h4>
+            <p className="text-xs text-gray-200">{notes}</p>
+          </div>
+        )}
       </div>
     </div>
   );

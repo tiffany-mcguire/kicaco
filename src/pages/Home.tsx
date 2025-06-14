@@ -21,7 +21,7 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay, differenceInDays } from 'date-fns';
 import PasswordModal from '../components/PasswordModal';
 import PostSignupOptions from '../components/PostSignupOptions';
-import { Home as HomeIcon } from "lucide-react";
+import { Home as HomeIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import GlobalSubheader from '../components/GlobalSubheader';
 
 // Add NodeJS type definition
@@ -121,6 +121,18 @@ function formatTime(time?: string) {
   return time;
 }
 
+// Helper to parse time strings for sorting
+function parseTo24H(time?: string): number {
+  if (!time) return 2400; // Put events without a time at the end
+  let normalized = time.trim().toLowerCase();
+  // ... (rest of the function is implemented inside the component for now)
+  const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+  if (!isNaN(dateObj.getTime())) {
+    return parseInt(format(dateObj, 'HHmm'), 10);
+  }
+  return 2400; // Fallback for invalid time formats
+}
+
 export default function Home() {
   console.log("[Home Function Body] window.innerHeight:", window.innerHeight);
 
@@ -176,10 +188,24 @@ export default function Home() {
   const next7Days = useMemo(() => generateNext7Days(), []);
   const [selectedDate, setSelectedDate] = useState(next7Days[0].date);
 
-  // Filter events for selected day
-  const eventsForSelectedDay = events.filter(event =>
-    event.date && isSameDay(parseISO(event.date), selectedDate)
-  );
+  // Filter and sort events for the selected day
+  const eventsForSelectedDay = useMemo(() => {
+    const parseTime = (timeStr?: string): number => {
+      if (!timeStr) return 2400; // Events without time go last
+      // Simple parse logic, can be improved
+      const date = parse(timeStr, 'h:mm a', new Date());
+      return date.getHours() * 100 + date.getMinutes();
+    };
+
+    return events
+      .filter(event => event.date && isSameDay(parseISO(event.date), selectedDate))
+      .sort((a, b) => parseTime(a.time) - parseTime(b.time));
+  }, [events, selectedDate]);
+  
+  // Reset index when selected day changes
+  useEffect(() => {
+    setDisplayedEventIndex(0);
+  }, [selectedDate]);
 
   // Filter keepers for next 30 days
   const keepersNext30Days = useMemo(() => {
@@ -816,6 +842,8 @@ export default function Home() {
     storedDrawerHeight
   });
 
+  const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -846,23 +874,43 @@ export default function Home() {
             }}
           >
             <div className="relative w-full max-w-md mx-auto">
+              {/* Event Carousel Controls now in the bottom right */}
+              {eventsForSelectedDay.length > 1 && (
+                <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+                  <button 
+                    onClick={() => setDisplayedEventIndex(prev => (prev - 1 + eventsForSelectedDay.length) % eventsForSelectedDay.length)}
+                    className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                    aria-label="Previous event"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">
+                    {displayedEventIndex + 1} / {eventsForSelectedDay.length}
+                  </span>
+                  <button 
+                    onClick={() => setDisplayedEventIndex(prev => (prev + 1) % eventsForSelectedDay.length)}
+                    className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                    aria-label="Next event"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+
               {/* Event Content */}
-              <div className="rounded-xl shadow-lg overflow-hidden">
+              <div className="relative rounded-xl shadow-lg overflow-hidden">
                 {eventsForSelectedDay.length > 0 ? (
-                  <div className="flex flex-col w-full">
-                    {eventsForSelectedDay.map((event, idx) => (
-                      <div key={`${event.eventName}-${idx}`} className={idx !== 0 ? 'mt-4' : ''}>
-                        <EventCard
-                          image={getKicacoEventPhoto(event.eventName)}
-                          name={event.eventName}
-                          childName={event.childName}
-                          date={event.date}
-                          time={event.time}
-                          location={event.location}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <EventCard
+                      image={getKicacoEventPhoto(eventsForSelectedDay[displayedEventIndex].eventName)}
+                      name={eventsForSelectedDay[displayedEventIndex].eventName}
+                      childName={eventsForSelectedDay[displayedEventIndex].childName}
+                      date={eventsForSelectedDay[displayedEventIndex].date}
+                      time={eventsForSelectedDay[displayedEventIndex].time}
+                      location={eventsForSelectedDay[displayedEventIndex].location}
+                      notes="Remember to bring sunscreen and a water bottle!"
+                    />
+                  </>
                 ) : (
                   <div className="relative w-full h-[240px] rounded-xl overflow-hidden">
                     <img
@@ -870,8 +918,8 @@ export default function Home() {
                       alt="No events"
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
-                    <div className="absolute inset-x-0 bottom-0 px-4 py-3 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm flex items-center justify-center h-1/3">
+                    <div className="absolute inset-0 bg-black/[.65]" />
+                    <div className="absolute inset-0 flex items-center justify-center">
                       <p className="text-white font-normal">No events scheduled.</p>
                     </div>
                   </div>
@@ -880,7 +928,7 @@ export default function Home() {
               
               {/* Tabs overlay bar */}
               <div className="absolute top-0 left-0 right-0 z-10">
-                <div className="flex divide-x divide-white/20 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm rounded-t-xl overflow-hidden">
+                <div className="flex divide-x divide-white/20 backdrop-blur-sm rounded-t-xl overflow-hidden">
                   {next7Days.map(day => (
                     <button
                       key={day.label + day.number}
@@ -956,13 +1004,12 @@ export default function Home() {
                     alt="No keepers"
                     className="absolute inset-0 w-full h-full object-cover"
                   />
+                  {/* Full-card overlay */}
+                  <div className="absolute inset-0 bg-black/[.65]" />
                   
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                  
-                  {/* Glass panel at bottom - matching EventCard exactly */}
-                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-black/25 backdrop-blur-sm px-4 py-3 text-white flex items-center justify-center">
-                    <p className="text-base font-normal">No keepers in the next 30 days.</p>
+                  {/* Text centered */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-white text-base font-normal">No keepers in the next 30 days.</p>
                   </div>
                 </div>
               )}
