@@ -923,7 +923,7 @@ export default function Home() {
                 <div 
                   className="relative w-full max-w-md mx-auto"
                   style={{
-                    height: `${240 + ((keepersNext30Days.length - 1) * 64)}px`,
+                    height: `${240 + ((keepersNext30Days.length - 1) * 56)}px`,
                     marginBottom: '20px',
                   }}
                 >
@@ -932,6 +932,7 @@ export default function Home() {
                     return (
                       <KeeperCard
                         key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
+                        image={getKicacoEventPhoto(keeper.keeperName)}
                         keeperName={keeper.keeperName}
                         childName={keeper.childName}
                         date={keeper.date}

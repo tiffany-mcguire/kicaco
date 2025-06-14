@@ -9,6 +9,7 @@ interface KeeperCardProps {
   date: string;
   time?: string;
   description?: string;
+  image?: string;
   stackPosition?: number;
   totalInStack?: number;
   isActive?: boolean;
@@ -51,7 +52,7 @@ const formatTime = (time?: string) => {
 };
 
 const KeeperCard: React.FC<KeeperCardProps> = ({
-  keeperName, childName, date, time, description,
+  keeperName, childName, date, time, description, image,
   stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex
 }) => {
   const children = useKicacoStore(state => state.children);
@@ -63,17 +64,16 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
   }
   const overlayColor = darkRainbowColors[colorIndex % darkRainbowColors.length];
   const isTodayKeeper = date ? isToday(parse(date, 'yyyy-MM-dd', new Date())) : false;
-  const image = getKicacoEventPhoto(keeperName || 'keeper');
+  const imageUrl = image || getKicacoEventPhoto(keeperName || 'keeper');
 
   // Stacking view for homepage
   if (totalInStack > 1) {
-    const visibleTabHeight = 64;
+    const visibleTabHeight = 56;
     const activeTransformOffset = 16; // The translateY offset for active cards
     
     // Calculate the card's vertical offset
-    // Cards stack from bottom to top with 64px visible for each tab
-    // When a card is active, cards above it need to move up to make room
-    let cardOffset = (totalInStack - 1 - stackPosition) * 64;
+    // Cards stack from bottom to top with the new, tighter spacing
+    let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
     
     // If there's an active card below this one, push this card up
     if (activeIndex !== null && activeIndex !== undefined && activeIndex > stackPosition) {
@@ -106,15 +106,22 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
               : '0 4px 12px rgba(0, 0, 0, 0.15)',
           }}
         >
-          <img src={image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
           
-          {/* Tab area with blur and rounded top corners */}
+          {/* A single, simple overlay that includes the inward glow. */}
           <div 
-            className="absolute inset-x-0 top-0 h-[80px] backdrop-blur-sm rounded-t-2xl"
+            className="absolute top-0 left-0 right-0 h-[67px] bg-black/40 backdrop-blur-sm" 
             style={{
-              background: isActive 
-                ? 'linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 64px, rgba(0, 0, 0, 0.1) 80px)'
-                : 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.4) 64px, rgba(0, 0, 0, 0.2) 80px)',
+              boxShadow: `inset 0 0 16px -2px ${childProfile?.color ? darkRainbowColors[colorIndex % darkRainbowColors.length] + '40' : 'transparent'}`
+            }}
+          />
+          
+          {/* Accent line - smaller and with padding */}
+          <div 
+            className="absolute left-1/2 -translate-x-1/2 h-[3px] w-[40px] rounded-full"
+            style={{
+              top: '8px', // Pushed down to avoid blur overlap
+              background: childProfile?.color ? lightRainbowColors[colorIndex % lightRainbowColors.length] : 'transparent',
             }}
           />
           
@@ -140,7 +147,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
             />
           )}
           {isActive && description && (
-            <div className="absolute inset-x-0 bottom-0 bg-black/25 backdrop-blur-sm px-4 py-3 text-white rounded-b-2xl">
+            <div className="absolute inset-x-0 bottom-0 bg-black/50 px-4 py-3 text-white rounded-b-2xl">
               <div className="text-sm text-gray-200">{description}</div>
             </div>
           )}
@@ -152,7 +159,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
   // Single card view (No changes here)
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg">
-      <img src={image} alt={keeperName} className="absolute inset-0 w-full h-full object-cover"/>
+      <img src={imageUrl} alt={keeperName} className="absolute inset-0 w-full h-full object-cover"/>
       <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-black/25 backdrop-blur-sm px-4 py-3 text-white flex flex-row justify-between items-center rounded-b-xl">
         <div className="flex flex-col text-sm space-y-1">
