@@ -66,9 +66,9 @@ const AddByDayButton = (props: { label?: string; onClick?: () => void; }) => {
       style={getButtonStyle()}
       tabIndex={0}
       type="button"
+      onClick={props.onClick}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
-      onClick={props.onClick}
       onMouseLeave={() => { setPressed(false); setHovered(false); }}
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
@@ -136,6 +136,7 @@ export default function WeeklyCalendar() {
   } = useKicacoStore();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  // NEW: Track which day tab is active (popped out)
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 }); // Start on Sunday
 
@@ -195,6 +196,7 @@ export default function WeeklyCalendar() {
       .filter(event => event.date === dateString)
       .sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
   };
+
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -454,7 +456,7 @@ export default function WeeklyCalendar() {
   };
 
   // Mini carousel for a day's events (fixed h-32)
-  const MiniEventCarousel: React.FC<{ dayEvents: typeof events }> = ({ dayEvents }) => {
+  const MiniEventCarousel: React.FC<{ dayEvents: typeof events; accentColor: string }> = ({ dayEvents, accentColor: accentColorSoft }) => {
     const [currentIdx, setCurrentIdx] = useState(0);
 
     if (dayEvents.length === 0) {
@@ -486,7 +488,7 @@ export default function WeeklyCalendar() {
         <div className="absolute inset-0 bg-black/65" />
         {/* Event Info placed directly over overlay */}
         <div className="absolute inset-x-0 top-0 px-3 pt-2 text-white" style={{ backdropFilter: 'none' }}>
-          <div className="flex justify-between items-start pb-1 border-b border-white/20">
+          <div className="flex justify-between items-start pb-1 border-b" style={{ borderBottomColor: accentColorSoft }}>
             <div className="flex-1 pr-2">
               <h4 className="text-sm font-medium leading-tight">
                 {evt.eventName}
@@ -601,7 +603,13 @@ export default function WeeklyCalendar() {
                 // Stack position starts from 0 at the top of the visual pile
                 const stackPosition = weekDays.length - 1 - idx;
                 const totalInStack = weekDays.length;
+                const accentColor = dayAccentColors[day.date.getDay()];
+                const accentColorSoft = `${accentColor}55`; // ~33% opacity
+                const accentColorTint = `${accentColor}40`; // ~25% opacity
                 const isActive = activeDayIndex === stackPosition;
+                const isEmphasized = day.dayName === 'Saturday' || day.dayName === 'Friday';
+                const finalAccentSoft = isEmphasized ? `${accentColor}80` : accentColorSoft;
+                const finalBoxShadow = isEmphasized ? `0 0 6px 2px ${finalAccentSoft}` : `0 0 5px 1px ${accentColorSoft}`;
                 const visibleTabHeight = 56;
                 const popOffset = 176; // 240 - 64
                 let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
@@ -612,7 +620,6 @@ export default function WeeklyCalendar() {
                   cardOffset += popOffset;
                 }
 
-                const accentColor = dayAccentColors[weekDays.length - 1 - idx];
                 const dayEvents = getEventsForDay(day.fullDate);
 
                 return (
@@ -626,19 +633,27 @@ export default function WeeklyCalendar() {
                     }}
                   >
                     <div
-                      className="bg-white rounded-xl shadow-sm overflow-hidden transition-all"
+                      className="bg-white rounded-xl shadow-sm overflow-hidden transition-all relative"
                       style={{
                         transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
                         transition: 'all 300ms ease-in-out',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        borderColor: finalAccentSoft,
+                        boxShadow: finalBoxShadow,
                       }}
                     >
                       {/* Day Header */}
                       <div
                         onClick={() => setActiveDayIndex(isActive ? null : stackPosition)}
-                        className="px-4 py-2 border-b border-gray-100 cursor-pointer"
-                        style={{ borderLeftWidth: '4px', borderLeftColor: accentColor }}
+                        className="relative px-4 py-2 cursor-pointer border-b"
+                        style={{
+                          backgroundColor: accentColor,
+                          borderBottomColor: finalAccentSoft,
+                          boxShadow: `inset 0 8px 15px -3px #0000001A, inset 0 -8px 15px -3px #0000001A`
+                        }}
                       >
-                        <div className="flex items-baseline justify-between">
+                        <div className="relative flex items-baseline justify-between" style={{ zIndex: 1 }}>
                           <div className="flex items-baseline gap-2">
                             <h3 className="text-sm font-medium text-gray-700">
                               {day.dayName}
@@ -653,31 +668,33 @@ export default function WeeklyCalendar() {
                             )}
                             {/* Event indicators */}
                             {dayEvents.length > 0 && (
-                              <div className="flex items-center ml-2 space-x-[2px]">
-                                {(() => {
-                                  const circles: JSX.Element[] = [];
-                                  const MAX_SHOW = 6;
-                                  dayEvents.slice(0, MAX_SHOW).forEach((ev, i) => {
-                                    const child = getChildProfile(ev.childName);
-                                    const bg = child?.color || '#6b7280';
-                                    const initial = (ev.childName || '?')[0].toUpperCase();
-                                    circles.push(
-                                      <span
-                                        key={`${ev.eventName}-${i}`}
-                                        className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
-                                        style={{ backgroundColor: bg }}
-                                      >
-                                        {initial}
-                                      </span>
-                                    );
-                                  });
-                                  if (dayEvents.length > MAX_SHOW) {
-                                    circles.push(
-                                      <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white">+{dayEvents.length - MAX_SHOW}</span>
-                                    );
-                                  }
-                                  return circles;
-                                })()}
+                              <div className="flex items-center ml-2 px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
+                                <div className="flex items-center space-x-1">
+                                  {(() => {
+                                    const circles: JSX.Element[] = [];
+                                    const MAX_SHOW = 6;
+                                    dayEvents.slice(0, MAX_SHOW).forEach((ev, i) => {
+                                      const child = getChildProfile(ev.childName);
+                                      const bg = child?.color || '#6b7280';
+                                      const initial = (ev.childName || '?')[0].toUpperCase();
+                                      circles.push(
+                                        <span
+                                          key={`${ev.eventName}-${i}`}
+                                          className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700"
+                                          style={{ backgroundColor: bg }}
+                                        >
+                                          {initial}
+                                        </span>
+                                      );
+                                    });
+                                    if (dayEvents.length > MAX_SHOW) {
+                                      circles.push(
+                                        <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white">+{dayEvents.length - MAX_SHOW}</span>
+                                      );
+                                    }
+                                    return circles;
+                                  })()}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -692,7 +709,7 @@ export default function WeeklyCalendar() {
 
                       {/* Day Events */}
                       <div className="p-3">
-                        <MiniEventCarousel dayEvents={dayEvents} />
+                        <MiniEventCarousel dayEvents={dayEvents} accentColor={accentColorSoft} />
                       </div>
                     </div>
                   </div>
@@ -738,4 +755,4 @@ export default function WeeklyCalendar() {
       />
     </div>
   );
-} 
+}

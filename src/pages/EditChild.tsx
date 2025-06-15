@@ -132,6 +132,19 @@ const toggleKnobStyle = (isOn: boolean) => ({
   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
 });
 
+const childNameInputId = 'child-name-input';
+
+// Replace pastel colors with the darker, more saturated versions
+const childColors = [
+  '#ec4899', // Pink
+  '#f97316', // Orange
+  '#eab308', // Yellow
+  '#22c55e', // Green
+  '#06b6d4', // Blue
+  '#6366f1', // Indigo
+  '#a855f7', // Purple
+];
+
 export default function EditChild() {
   const [input, setInput] = useState("");
   const location = useLocation();
