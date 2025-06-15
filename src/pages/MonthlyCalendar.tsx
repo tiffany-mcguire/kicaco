@@ -14,7 +14,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format as dateFormat, addMonths, subMonths } from 'date-fns';
+import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 
 const CalendarIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -85,290 +85,141 @@ const AddByDateButton = (props: { label?: string }) => {
 };
 
 export default function MonthlyCalendar() {
-  const [input, setInput] = useState("");
-  const location = useLocation();
-  const headerRef = React.useRef<HTMLDivElement>(null);
-  const subheaderRef = React.useRef<HTMLDivElement>(null);
-  const footerRef = React.useRef<HTMLDivElement>(null);
-  const pageScrollRef = React.useRef<HTMLDivElement>(null);
-  const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
-  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
-  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
-  const [scrollRefReady, setScrollRefReady] = useState(false);
-  const internalChatContentScrollRef = React.useRef<HTMLDivElement | null>(null);
-  const messagesContentRef = React.useRef<HTMLDivElement | null>(null);
-  const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
-  const mutationObserverRef = React.useRef<MutationObserver | null>(null);
-  const autoscrollFlagRef = React.useRef(false);
-  const previousMessagesLengthRef = React.useRef(0);
-  const firstEffectRunAfterLoadRef = React.useRef(true);
-  const {
-    messages,
-    threadId,
-    addMessage,
-    removeMessageById,
-    drawerHeight: storedDrawerHeight,
-    setDrawerHeight: setStoredDrawerHeight,
-    chatScrollPosition,
-    setChatScrollPosition,
-  } = useKicacoStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
+  const { events, children } = useKicacoStore();
 
-  const handleGlobalDrawerHeightChange = (height: number) => {
-    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
-    setStoredDrawerHeight(newHeight);
-    
-    setMainContentDrawerOffset(height);
-    setMainContentTopClearance(window.innerHeight - height);
+  const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+
+  const getChildProfile = (childName?: string) => children.find(c => c.name === childName);
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Use the darker pastel shades for the static day headers
+  const dayColors: { [key: number]: string } = {
+    0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
+    4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
   };
 
-  React.useLayoutEffect(() => {
-    function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
-    }
-    updateSubheaderBottom();
-    window.addEventListener('resize', updateSubheaderBottom);
-
-    const calculateMaxDrawerHeight = () => {
-      const subheaderElement = subheaderRef.current;
-      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
-      if (subheaderElement) {
-        const subheaderRect = subheaderElement.getBoundingClientRect();
-        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
-        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
-        setMaxDrawerHeight(Math.max(44, availableHeight));
-      } else {
-        setMaxDrawerHeight(window.innerHeight * 0.6);
-      }
-    };
-    calculateMaxDrawerHeight();
-    window.addEventListener('resize', calculateMaxDrawerHeight);
-
-    return () => {
-      window.removeEventListener('resize', updateSubheaderBottom);
-      window.removeEventListener('resize', calculateMaxDrawerHeight);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (mainContentDrawerOffset > 44 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
-    }
-  }, [mainContentDrawerOffset]);
-
-  // Chat Scroll Management Logic
-  const executeScrollToBottom = useCallback(() => {
-    const sc = internalChatContentScrollRef.current;
-    if (!sc || !scrollRefReady) return;
-    requestAnimationFrame(() => {
-      if (internalChatContentScrollRef.current) {
-        const currentSc = internalChatContentScrollRef.current;
-        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
-        currentSc.scrollTop = targetScrollTop;
-        if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop);
-        requestAnimationFrame(() => { // Second scroll for pending rendering
-          if (internalChatContentScrollRef.current) {
-            const currentSc2 = internalChatContentScrollRef.current;
-            const targetScrollTop2 = Math.max(0, currentSc2.scrollHeight - currentSc2.clientHeight);
-            if (Math.abs(currentSc2.scrollTop - targetScrollTop2) > 1) {
-              currentSc2.scrollTop = targetScrollTop2;
-              if (autoscrollFlagRef.current) setChatScrollPosition(targetScrollTop2);
-            }
-          }
-        });
-      }
-    });
-  }, [scrollRefReady, setChatScrollPosition, autoscrollFlagRef]);
-
-  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
-    internalChatContentScrollRef.current = node;
-    setScrollRefReady(!!node);
-  }, []);
-
-  useEffect(() => { // Main Scroll/Restore/Autoscroll Effect
-    const scrollContainer = internalChatContentScrollRef.current;
-    if (!scrollRefReady || !scrollContainer) return;
-    let isConsideredNewMessages = false;
-    if (firstEffectRunAfterLoadRef.current) {
-      if (chatScrollPosition !== null && Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
-        scrollContainer.scrollTop = chatScrollPosition;
-      }
-      firstEffectRunAfterLoadRef.current = false;
-    } else {
-      if (messages.length > previousMessagesLengthRef.current) isConsideredNewMessages = true;
-    }
-    if (isConsideredNewMessages) {
-      autoscrollFlagRef.current = true;
-      executeScrollToBottom();
-    }
-    previousMessagesLengthRef.current = messages.length;
-    return () => { firstEffectRunAfterLoadRef.current = true; };
-  }, [messages, chatScrollPosition, scrollRefReady, executeScrollToBottom]);
-
-  useEffect(() => { // ResizeObserver Effect
-    const scrollContainer = internalChatContentScrollRef.current;
-    if (!scrollRefReady || !scrollContainer || !window.ResizeObserver) return;
-    const observer = new ResizeObserver(() => {
-      if (autoscrollFlagRef.current && internalChatContentScrollRef.current) executeScrollToBottom();
-    });
-    observer.observe(scrollContainer);
-    resizeObserverRef.current = observer;
-    return () => { if (observer) observer.disconnect(); resizeObserverRef.current = null; };
-  }, [scrollRefReady, executeScrollToBottom]);
-
-  useEffect(() => { // MutationObserver Effect
-    const contentElement = messagesContentRef.current;
-    if (!scrollRefReady || !contentElement || !window.MutationObserver) return;
-    const observer = new MutationObserver((mutationsList) => {
-      if (autoscrollFlagRef.current && internalChatContentScrollRef.current && mutationsList.length > 0) executeScrollToBottom();
-    });
-    observer.observe(contentElement, { childList: true, subtree: true, characterData: true });
-    mutationObserverRef.current = observer;
-    return () => { if (observer) observer.disconnect(); mutationObserverRef.current = null; };
-  }, [scrollRefReady, executeScrollToBottom]);
-
-  useEffect(() => { // Manual Scroll useEffect
-    const scrollElement = internalChatContentScrollRef.current;
-    if (!scrollRefReady || !scrollElement) return;
-    let scrollTimeout: number;
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        if (internalChatContentScrollRef.current) {
-          const sc = internalChatContentScrollRef.current;
-          setChatScrollPosition(sc.scrollTop);
-          autoscrollFlagRef.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 5;
-        }
-      }, 150);
-    };
-    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
-    return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
-  }, [scrollRefReady, setChatScrollPosition]);
-
-  // Full implementation for handleSendMessage
-  const handleSendMessage = async () => {
-    if (!input.trim()) return; // Use the existing input state for chat
-
-    if (!threadId) {
-      console.error("MonthlyCalendar: Cannot send message, threadId is null.");
-      addMessage({
-        id: crypto.randomUUID(),
-        sender: 'assistant',
-        content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
-      });
-      return;
-    }
-
-    const userMessageId = crypto.randomUUID();
-    addMessage({
-      id: userMessageId,
-      sender: 'user',
-      content: input, 
-    });
-    const messageToSend = input;
-    setInput(""); // Clear input
-
-    autoscrollFlagRef.current = true;
-
-    const thinkingMessageId = 'thinking-monthlycalendar';
-    addMessage({
-      id: thinkingMessageId,
-      sender: 'assistant',
-      content: 'Kicaco is thinking'
-    });
-
-    try {
-      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
-      removeMessageById(thinkingMessageId);
-      addMessage({
-        id: crypto.randomUUID(),
-        sender: 'assistant',
-        content: assistantResponseText,
-      });
-    } catch (error) {
-      console.error("Error sending message from MonthlyCalendar:", error);
-      removeMessageById(thinkingMessageId);
-      addMessage({
-        id: crypto.randomUUID(),
-        sender: 'assistant',
-        content: "Sorry, I encountered an error. Please try again.",
-      });
-    }
+  const dayColorsDark: { [key: number]: string } = {
+    0: '#e7a5b4', 1: '#e6c2a2', 2: '#e3d27c', 3: '#a8e1bb',
+    4: '#aed1d6', 5: '#b9bde3', 6: '#d4c0e6',
   };
 
-  const goToPreviousMonth = () => {
-    setCurrentMonth(subMonths(currentMonth, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentMonth(addMonths(currentMonth, 1));
+  const dayColorTints: { [key: number]: string } = {
+    0: '#f8b6c233', 1: '#ffd8b533', 2: '#fde68a33', 3: '#bbf7d033',
+    4: '#c0e2e74D', 5: '#d1d5fa4D', 6: '#e9d5ff4D',
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <GlobalHeader ref={headerRef} />
+      <GlobalHeader />
       <GlobalSubheader
-        ref={subheaderRef}
         icon={<Calendar />}
         title="Monthly Calendar"
         action={<AddByDateButton />}
       />
-      <div
-        ref={pageScrollRef}
-        className="monthly-calendar-content-scroll bg-gray-50"
-        style={{
-          position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
-          overflowY: mainContentScrollOverflow,
-          transition: 'top 0.2s, bottom 0.2s',
-        }}
-      >
-        {/* Main content goes here */}
-      </div>
-      <GlobalChatDrawer 
-        onHeightChange={handleGlobalDrawerHeightChange}
-        drawerHeight={currentDrawerHeight}
-        maxDrawerHeight={maxDrawerHeight}
-        scrollContainerRefCallback={chatContentScrollRef}
-      >
+      <div className="flex-1 overflow-y-auto p-4">
         <div 
-          ref={messagesContentRef}
-          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
+          className="max-w-md mx-auto bg-white rounded-xl"
+          style={{
+            boxShadow: '0 4px 10px -2px #c0e2e7, 0 2px 6px -2px #c0e2e7',
+          }}
         >
-          {/* Render Messages */}
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="w-full"
-            >
-              <ChatBubble
-                side={msg.sender === 'user' ? 'right' : 'left'}
+          {/* Month Navigation */}
+          <div 
+            className="flex items-center justify-between p-3 rounded-t-lg"
+            style={{
+              borderTop: '1px solid #c0e2e780',
+              borderLeft: '1px solid #c0e2e780',
+              borderRight: '1px solid #c0e2e780',
+              boxShadow: '0 -2px 5px -1px #c0e2e780, inset 0 -3px 6px -2px #c0e2e780',
+            }}
+          >
+            <button onClick={goToPreviousMonth} className="p-1 rounded-full hover:bg-gray-100">
+              <ChevronLeft size={20} className="text-gray-600" />
+            </button>
+            <h2 className="text-lg font-medium text-gray-700">{dateFormat(currentMonth, "MMMM yyyy")}</h2>
+            <button onClick={goToNextMonth} className="p-1 rounded-full hover:bg-gray-100">
+              <ChevronRight size={20} className="text-gray-600" />
+            </button>
+          </div>
+
+          {/* Static Day of Week Header */}
+          <div className="grid grid-cols-7 border-b border-t border-gray-200">
+            {weekDays.map((day, index) => (
+              <div 
+                key={day} 
+                className="text-center text-xs font-semibold py-2 text-gray-700"
+                style={{
+                  backgroundColor: dayColors[index],
+                  boxShadow: `inset 0 1px 2px 0 ${dayColorsDark[index]}, inset 0 -2px 2px 0 ${dayColorsDark[index]}`,
+                }}
               >
-                {msg.content}
-              </ChatBubble>
-            </motion.div>
-          ))}
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 rounded-b-lg overflow-hidden">
+            {days.map((day, index) => {
+              const dayEvents = events.filter(event => 
+                dateFormat(new Date(event.date), 'yyyy-MM-dd') === dateFormat(day, 'yyyy-MM-dd')
+              );
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              const isCurrentDay = isToday(day);
+
+              return (
+                <div 
+                  key={day.toString()}
+                  className={`relative p-1.5 h-20 flex flex-col items-center justify-start border-r border-b
+                    ${(index + 1) % 7 === 0 ? 'border-r-0' : 'border-gray-100'}
+                    ${index > 34 ? 'border-b-0' : 'border-gray-100'}
+                  `}
+                  style={{ backgroundColor: dayColorTints[day.getDay()] }}
+                >
+                  <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full 
+                    ${isCurrentDay 
+                      ? 'bg-[#217e8f] text-white' 
+                      : (isCurrentMonth ? 'text-gray-800' : 'text-gray-400')
+                    }`
+                  }>
+                    {dateFormat(day, "d")}
+                  </span>
+                  {dayEvents.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center mt-1 gap-0.5">
+                      {dayEvents.slice(0, 2).map((event, i) => {
+                        const child = getChildProfile(event.childName);
+                        return (
+                          <span
+                            key={i}
+                            className="w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                            style={{ backgroundColor: child?.color || '#6b7280' }}
+                          >
+                            {(event.childName || '?')[0].toUpperCase()}
+                          </span>
+                        );
+                      })}
+                      {dayEvents.length > 2 && (
+                        <span className="text-[9px] font-bold text-gray-400">
+                          +{dayEvents.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </GlobalChatDrawer>
-      <GlobalFooter
-        ref={footerRef}
-        value={input}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
-        onSend={handleSendMessage}
-      />
+      </div>
     </div>
   );
 } 
