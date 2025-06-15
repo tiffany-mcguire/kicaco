@@ -327,6 +327,13 @@ export default function AddEvent() {
     return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
   }, [scrollRefReady, setChatScrollPosition]);
 
+  // Pre-fill date from location state
+  useEffect(() => {
+    if (location.state?.date) {
+      setEventDate(location.state.date);
+    }
+  }, [location.state]);
+
   // Full implementation for handleSendMessage
   const handleSendMessage = async () => {
     if (!input.trim()) return; // Use the existing input state for chat

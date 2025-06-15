@@ -4,8 +4,8 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
@@ -15,6 +15,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse } from 'date-fns';
+import { parse as parseDate, format as formatDateFns } from 'date-fns';
 import EventCard from '../components/EventCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
@@ -24,7 +25,7 @@ const WeeklyIcon = () => (
   </svg>
 );
 
-const AddByDayButton = (props: { label?: string }) => {
+const AddByDayButton = (props: { label?: string; onClick?: () => void; }) => {
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
@@ -67,6 +68,7 @@ const AddByDayButton = (props: { label?: string }) => {
       type="button"
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
+      onClick={props.onClick}
       onMouseLeave={() => { setPressed(false); setHovered(false); }}
       onMouseOver={() => setHovered(true)}
       onFocus={() => setFocused(true)}
@@ -96,6 +98,7 @@ const dayAccentColors: { [key: number]: string } = {
 export default function WeeklyCalendar() {
   const [input, setInput] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
@@ -129,9 +132,11 @@ export default function WeeklyCalendar() {
     chatScrollPosition,
     setChatScrollPosition,
     events,
+    children,
   } = useKicacoStore();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 }); // Start on Sunday
 
   const goToPreviousWeek = () => {
@@ -155,9 +160,40 @@ export default function WeeklyCalendar() {
     };
   });
 
-  // Get events for a specific day
+  const [eventCarouselIdx, setEventCarouselIdx] = useState<{ [date: string]: number }>({});
+
+  const parseTimeForSorting = (timeStr?: string): number => {
+    if (!timeStr) return 2400; // Events without a time go last
+
+    let normalized = timeStr.trim().toLowerCase();
+    normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+    if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+      normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+    }
+
+    const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+    for (const pattern of patterns) {
+      try {
+        const dateObj = parseDate(normalized, pattern, new Date());
+        if (!isNaN(dateObj.getTime())) {
+          return parseInt(formatDateFns(dateObj, 'HHmm'), 10);
+        }
+      } catch {}
+    }
+    
+    const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+    if (!isNaN(dateObj.getTime())) {
+      return parseInt(formatDateFns(dateObj, 'HHmm'), 10);
+    }
+
+    return 2400;
+  };
+
+  // Get events for a specific day, now with sorting
   const getEventsForDay = (dateString: string) => {
-    return events.filter(event => event.date === dateString);
+    return events
+      .filter(event => event.date === dateString)
+      .sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
   };
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
@@ -390,6 +426,126 @@ export default function WeeklyCalendar() {
     }
   };
 
+  // Helper to get child profile by name
+  const getChildProfile = (childName?: string) => children.find(c => c.name === childName);
+
+  // Helper to format time as HH:MM AM/PM similar to homepage
+  const formatTime12 = (time?: string) => {
+    if (!time) return '';
+    let normalized = time.trim().toLowerCase();
+    normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+    if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+      normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+    }
+    const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+    for (const pattern of patterns) {
+      try {
+        const dateObj = parseDate(normalized, pattern, new Date());
+        if (!isNaN(dateObj.getTime())) {
+          return formatDateFns(dateObj, 'hh:mm a').toUpperCase();
+        }
+      } catch {}
+    }
+    const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+    if (!isNaN(dateObj.getTime())) {
+      return formatDateFns(dateObj, 'hh:mm a').toUpperCase();
+    }
+    return time;
+  };
+
+  // Mini carousel for a day's events (fixed h-32)
+  const MiniEventCarousel: React.FC<{ dayEvents: typeof events }> = ({ dayEvents }) => {
+    const [currentIdx, setCurrentIdx] = useState(0);
+
+    if (dayEvents.length === 0) {
+      return (
+        <div className="relative h-32 rounded-lg overflow-hidden shadow-sm">
+          <img
+            src={getKicacoEventPhoto('default')}
+            alt="No events"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/65" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-white text-sm">No events scheduled</p>
+          </div>
+        </div>
+      );
+    }
+
+    const evt = dayEvents[currentIdx];
+
+    return (
+      <div className="relative h-32 rounded-lg overflow-hidden shadow-sm group hover:shadow-md transition-shadow">
+        <img
+          src={getKicacoEventPhoto(evt.eventName)}
+          alt={evt.eventName}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {/* Single dark overlay */}
+        <div className="absolute inset-0 bg-black/65" />
+        {/* Event Info placed directly over overlay */}
+        <div className="absolute inset-x-0 top-0 px-3 pt-2 text-white" style={{ backdropFilter: 'none' }}>
+          <div className="flex justify-between items-start pb-1 border-b border-white/20">
+            <div className="flex-1 pr-2">
+              <h4 className="text-sm font-medium leading-tight">
+                {evt.eventName}
+                {evt.childName && (
+                  <span className="text-xs font-normal text-gray-300 ml-1">({evt.childName})</span>
+                )}
+              </h4>
+              {evt.location && (
+                <p className="text-xs text-gray-200 mt-0.5">{evt.location}</p>
+              )}
+            </div>
+            <div className="text-xs text-gray-100 text-right ml-2 whitespace-nowrap">
+              {formatTime12(evt.time)}
+            </div>
+          </div>
+          <div className="mt-2">
+            <span className="block text-[10px] font-semibold text-gray-400 leading-tight">Notes</span>
+            {((evt as any).notes ?? (evt as any).description) ? (
+              <p className="text-[10px] text-gray-300 line-clamp-2 leading-tight">
+                {((evt as any).notes ?? (evt as any).description)}
+              </p>
+            ) : (
+              <p className="text-[10px] italic text-gray-500">—</p>
+            )}
+          </div>
+        </div>
+
+        {/* Carousel controls */}
+        {dayEvents.length > 1 && (
+          <div className="absolute bottom-1 right-1 z-10 flex items-center gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length); }}
+              className="bg-black/40 text-white p-0.5 rounded-full hover:bg-black/60 transition-colors"
+              aria-label="Previous event"
+            >
+              <ChevronLeft size={12} />
+            </button>
+            <span className="text-[10px] font-medium px-1 text-white/80">
+              {currentIdx + 1}/{dayEvents.length}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayEvents.length); }}
+              className="bg-black/40 text-white p-0.5 rounded-full hover:bg-black/60 transition-colors"
+              aria-label="Next event"
+            >
+              <ChevronRight size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleAddEventClick = (date: string | null) => {
+    setTimeout(() => {
+      navigate('/add-event', { state: { date } });
+    }, 150);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -397,7 +553,7 @@ export default function WeeklyCalendar() {
         ref={subheaderRef}
         icon={<Calendar />}
         title="Weekly Calendar"
-        action={<AddByDayButton />}
+        action={<AddByDayButton onClick={() => handleAddEventClick(null)} />}
       />
       {/* Week Navigation - moved out to be static */}
       <div ref={weekNavRef} className="flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full">
@@ -433,85 +589,111 @@ export default function WeeklyCalendar() {
       >
         <div className="relative flex-1 flex flex-col overflow-hidden">
           <div className="overflow-y-auto px-4 pb-2 pt-2" style={{ paddingBottom: 32 }}>
-            {/* Week Grid */}
-            <div className="space-y-3 max-w-2xl mx-auto">
-              {weekDays.map((day, index) => {
+            {/* Apple-Pay style stacked days */}
+            <div
+              className="relative max-w-2xl mx-auto"
+              style={{
+                height: `${240 + ((weekDays.length - 1) * 56)}px`, // Card height 240 + tabs
+                marginBottom: '20px',
+              }}
+            >
+              {weekDays.slice().reverse().map((day, idx) => {
+                // Stack position starts from 0 at the top of the visual pile
+                const stackPosition = weekDays.length - 1 - idx;
+                const totalInStack = weekDays.length;
+                const isActive = activeDayIndex === stackPosition;
+                const visibleTabHeight = 56;
+                const popOffset = 176; // 240 - 64
+                let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
+                if (activeDayIndex !== null && activeDayIndex > stackPosition) {
+                  cardOffset += popOffset;
+                }
+                if (isActive) {
+                  cardOffset += popOffset;
+                }
+
+                const accentColor = dayAccentColors[weekDays.length - 1 - idx];
                 const dayEvents = getEventsForDay(day.fullDate);
-                const accentColor = dayAccentColors[index];
-                
+
                 return (
                   <div
                     key={day.fullDate}
-                    className="bg-white rounded-xl shadow-sm overflow-hidden transition-all"
+                    className="absolute left-0 right-0"
+                    style={{
+                      top: `${cardOffset}px`,
+                      zIndex: totalInStack - stackPosition,
+                      transition: 'all 300ms ease-in-out',
+                    }}
                   >
-                    {/* Day Header */}
-                    <div 
-                      className="px-4 py-2 border-b border-gray-100"
-                      style={{ borderLeftWidth: '4px', borderLeftColor: accentColor }}
+                    <div
+                      className="bg-white rounded-xl shadow-sm overflow-hidden transition-all"
+                      style={{
+                        transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
+                        transition: 'all 300ms ease-in-out',
+                      }}
                     >
-                      <div className="flex items-baseline justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <h3 className="text-sm font-medium text-gray-700">
-                            {day.dayName}
-                          </h3>
-                          <span className="text-xs text-gray-500">
-                            {day.monthName} {day.dayNumber}
-                          </span>
-                          {day.isToday && (
-                            <span className="text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
-                              Today
+                      {/* Day Header */}
+                      <div
+                        onClick={() => setActiveDayIndex(isActive ? null : stackPosition)}
+                        className="px-4 py-2 border-b border-gray-100 cursor-pointer"
+                        style={{ borderLeftWidth: '4px', borderLeftColor: accentColor }}
+                      >
+                        <div className="flex items-baseline justify-between">
+                          <div className="flex items-baseline gap-2">
+                            <h3 className="text-sm font-medium text-gray-700">
+                              {day.dayName}
+                            </h3>
+                            <span className="text-xs text-gray-500">
+                              {day.monthName} {day.dayNumber}
                             </span>
-                          )}
-                        </div>
-                        <button className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all active:scale-95">
-                          + Add
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Day Events */}
-                    <div className="p-3">
-                      {dayEvents.length > 0 ? (
-                        <div className="space-y-2">
-                          {dayEvents.map((event, eventIndex) => (
-                            <div key={`${day.fullDate}-${eventIndex}`} className="group">
-                              {/* Compact event card inspired by EventCard glassmorphism */}
-                              <div className="relative h-32 rounded-lg overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
-                                <img
-                                  src={getKicacoEventPhoto(event.eventName)}
-                                  alt={event.eventName}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                                
-                                {/* Glass panel with event info */}
-                                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-black/25 backdrop-blur-sm px-3 py-2 text-white">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <h4 className="text-sm font-medium leading-tight">
-                                        {event.eventName}
-                                        {event.childName && (
-                                          <span className="text-xs font-normal text-gray-300 ml-1">
-                                            ({event.childName})
-                                          </span>
-                                        )}
-                                      </h4>
-                                      {event.location && (
-                                        <p className="text-xs text-gray-200 mt-0.5">{event.location}</p>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-gray-100 text-right ml-2">
-                                      {event.time}
-                                    </div>
-                                  </div>
-                                </div>
+                            {day.isToday && (
+                              <span className="text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+                                Today
+                              </span>
+                            )}
+                            {/* Event indicators */}
+                            {dayEvents.length > 0 && (
+                              <div className="flex items-center ml-2 space-x-[2px]">
+                                {(() => {
+                                  const circles: JSX.Element[] = [];
+                                  const MAX_SHOW = 6;
+                                  dayEvents.slice(0, MAX_SHOW).forEach((ev, i) => {
+                                    const child = getChildProfile(ev.childName);
+                                    const bg = child?.color || '#6b7280';
+                                    const initial = (ev.childName || '?')[0].toUpperCase();
+                                    circles.push(
+                                      <span
+                                        key={`${ev.eventName}-${i}`}
+                                        className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                                        style={{ backgroundColor: bg }}
+                                      >
+                                        {initial}
+                                      </span>
+                                    );
+                                  });
+                                  if (dayEvents.length > MAX_SHOW) {
+                                    circles.push(
+                                      <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white">+{dayEvents.length - MAX_SHOW}</span>
+                                    );
+                                  }
+                                  return circles;
+                                })()}
                               </div>
-                            </div>
-                          ))}
+                            )}
+                          </div>
+                          <button 
+                            className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all active:scale-95"
+                            onClick={(e) => { e.stopPropagation(); handleAddEventClick(day.fullDate); }}
+                          >
+                            + Add
+                          </button>
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-400 text-center py-2">No events scheduled</p>
-                      )}
+                      </div>
+
+                      {/* Day Events */}
+                      <div className="p-3">
+                        <MiniEventCarousel dayEvents={dayEvents} />
+                      </div>
                     </div>
                   </div>
                 );
