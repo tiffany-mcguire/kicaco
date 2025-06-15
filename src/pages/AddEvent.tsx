@@ -116,6 +116,8 @@ export default function AddEvent() {
   // Form state
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [eventType, setEventType] = useState<'oneTime' | 'recurring'>('oneTime');
+  const [recurringSchedule, setRecurringSchedule] = useState("");
   const [addTime, setAddTime] = useState(false);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -481,18 +483,23 @@ export default function AddEvent() {
       alert("Please enter an event name");
       return;
     }
-    if (!eventDate) {
+    if (eventType === 'oneTime' && !eventDate) {
       alert("Please select a date");
+      return;
+    }
+    if (eventType === 'recurring' && !recurringSchedule.trim()) {
+      alert("Please enter a recurring schedule");
       return;
     }
 
     const newEvent = {
       eventName: eventName.trim(),
-      date: eventDate,
+      date: eventType === 'oneTime' ? eventDate : undefined,
+      recurring: eventType === 'recurring' ? recurringSchedule.trim() : undefined,
       time: addTime && startTime ? startTime : undefined,
       location: addLocation && eventLocation ? eventLocation.trim() : undefined,
       childName: specifyChild && selectedChildren.length > 0 ? selectedChildren.join(', ') : undefined,
-      // Additional fields can be added as needed
+      notes: notes,
     };
 
     addEvent(newEvent);
@@ -518,7 +525,7 @@ export default function AddEvent() {
         ref={subheaderRef}
         icon={<CalendarPlus />}
         title="Add Event"
-        action={<SaveButton onClick={handleSave} />}
+        action={<SaveButton label="Save Event" onClick={handleSave} />}
       />
       <div
         ref={pageScrollRef}
@@ -554,28 +561,81 @@ export default function AddEvent() {
             </div>
           </div>
 
-          {/* Date */}
+          {/* Event Type */}
           <div className="mb-6">
-            <label htmlFor="eventDate" className="text-sm font-medium text-gray-600 mb-2 block">Date</label>
-            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventDateFocused, true)}}>
-              <input 
-                type="date" 
-                name="eventDate" 
-                id="eventDate" 
-                style={{
-                  ...inputElementStyle,
-                  color: eventDate ? '#111827' : '#6b7280',
-                  WebkitTextFillColor: eventDate ? '#111827' : '#6b7280',
-                  opacity: 1,
-                }}
-                placeholder="mm/dd/yyyy"
-                value={eventDate} 
-                onChange={handleDateChange}
-                onFocus={() => setEventDateFocused(true)}
-                onBlur={() => setEventDateFocused(false)}
-              />
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Event type</label>
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="eventType"
+                    value="oneTime"
+                    checked={eventType === 'oneTime'}
+                    onChange={() => setEventType('oneTime')}
+                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                    style={{ accentColor: '#217e8f' }}
+                  />
+                  <span className="text-sm text-gray-700">One-time event</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="eventType"
+                    value="recurring"
+                    checked={eventType === 'recurring'}
+                    onChange={() => setEventType('recurring')}
+                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
+                    style={{ accentColor: '#217e8f' }}
+                  />
+                  <span className="text-sm text-gray-700">Recurring schedule</span>
+                </label>
+              </div>
             </div>
           </div>
+
+          {/* Conditional Date or Recurring Schedule */}
+          {eventType === 'recurring' && (
+            <div className="mb-6">
+              <label htmlFor="recurringSchedule" className="text-sm font-medium text-gray-600 mb-2 block">Recurring schedule</label>
+              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(false, false)}}>
+                <input 
+                  type="text" 
+                  name="recurringSchedule" 
+                  id="recurringSchedule" 
+                  style={inputElementStyle}
+                  placeholder="e.g. Every Friday, Last day of the month" 
+                  value={recurringSchedule}
+                  onChange={(e) => setRecurringSchedule(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Date */}
+          {eventType === 'oneTime' && (
+            <div className="mb-6">
+              <label htmlFor="eventDate" className="text-sm font-medium text-gray-600 mb-2 block">Date</label>
+              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventDateFocused, true)}}>
+                <input 
+                  type="date" 
+                  name="eventDate" 
+                  id="eventDate" 
+                  style={{
+                    ...inputElementStyle,
+                    color: eventDate ? '#111827' : '#6b7280',
+                    WebkitTextFillColor: eventDate ? '#111827' : '#6b7280',
+                    opacity: 1,
+                  }}
+                  placeholder="mm/dd/yyyy"
+                  value={eventDate} 
+                  onChange={handleDateChange}
+                  onFocus={() => setEventDateFocused(true)}
+                  onBlur={() => setEventDateFocused(false)}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Optional Settings */}
           <div className="mb-6">
@@ -642,6 +702,44 @@ export default function AddEvent() {
                           onBlur={() => setEndTimeFocused(false)}
                         />
                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Location Toggle */}
+              <div>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={addLocation}
+                    aria-label="Add a location"
+                    onClick={() => setAddLocation(!addLocation)}
+                    style={toggleStyle(addLocation)}
+                  >
+                    <span style={toggleKnobStyle(addLocation)} />
+                  </button>
+                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddLocation(!addLocation)}>
+                    Add a location?
+                  </span>
+                </div>
+                
+                {addLocation && (
+                  <div className="mt-3 ml-[56px]">
+                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventLocationFocused, false)}}>
+                      <input 
+                        type="text" 
+                        name="eventLocation" 
+                        id="eventLocation" 
+                        style={inputElementStyle}
+                        placeholder="e.g. Heatherwood field, Dentist office" 
+                        value={eventLocation} 
+                        className="placeholder-gray-400"
+                        onChange={(e) => setEventLocation(e.target.value)}
+                        onFocus={() => setEventLocationFocused(true)}
+                        onBlur={() => setEventLocationFocused(false)}
+                      />
                     </div>
                   </div>
                 )}
@@ -731,44 +829,6 @@ export default function AddEvent() {
                           <option value="1 week before">1 week before</option>
                         </select>
                       )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Add Location Toggle */}
-              <div>
-                <div className="flex items-center">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={addLocation}
-                    aria-label="Add a location"
-                    onClick={() => setAddLocation(!addLocation)}
-                    style={toggleStyle(addLocation)}
-                  >
-                    <span style={toggleKnobStyle(addLocation)} />
-                  </button>
-                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddLocation(!addLocation)}>
-                    Add a location?
-                  </span>
-                </div>
-                
-                {addLocation && (
-                  <div className="mt-3 ml-[56px]">
-                    <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventLocationFocused, false)}}>
-                      <input 
-                        type="text" 
-                        name="eventLocation" 
-                        id="eventLocation" 
-                        style={inputElementStyle}
-                        placeholder="e.g. Heatherwood field, Dentist office" 
-                        value={eventLocation} 
-                        className="placeholder-gray-400"
-                        onChange={(e) => setEventLocation(e.target.value)}
-                        onFocus={() => setEventLocationFocused(true)}
-                        onBlur={() => setEventLocationFocused(false)}
-                      />
                     </div>
                   </div>
                 )}

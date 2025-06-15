@@ -525,7 +525,7 @@ export default function AddKeeper() {
         ref={subheaderRef}
         icon={<BellPlus />}
         title="Add Keeper"
-        action={<SaveButton onClick={handleSave} />}
+        action={<SaveButton label="Save Keeper" onClick={handleSave} />}
       />
       <div
         ref={pageScrollRef}
@@ -561,9 +561,9 @@ export default function AddKeeper() {
             </div>
           </div>
 
-          {/* Reminder Type */}
+          {/* Reminder Type -> Changed to Keeper type */}
           <div className="mb-6">
-            <label className="text-sm font-medium text-gray-600 mb-2 block">Type of reminder</label>
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Keeper type</label>
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex gap-4">
                 <label className="flex items-center">
@@ -634,42 +634,44 @@ export default function AddKeeper() {
           )}
 
           {/* Priority Selection */}
-          <div className="bg-white rounded-lg p-4 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
-            <h3 className="text-sm font-medium text-gray-600 mb-3">Priority</h3>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPriority('high')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  priority === 'high'
-                    ? 'bg-red-100 text-red-700 ring-2 ring-red-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                High
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriority('medium')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  priority === 'medium'
-                    ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Medium
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriority('low')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  priority === 'low'
-                    ? 'bg-green-100 text-green-700 ring-2 ring-green-300'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Low
-              </button>
+          <div className="mb-6">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">Priority</label>
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriority('high')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    priority === 'high'
+                      ? 'bg-red-100 text-red-700 ring-2 ring-red-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  High
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('medium')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    priority === 'medium'
+                      ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Medium
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('low')}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    priority === 'low'
+                      ? 'bg-green-100 text-green-700 ring-2 ring-green-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Low
+                </button>
+              </div>
             </div>
           </div>
 

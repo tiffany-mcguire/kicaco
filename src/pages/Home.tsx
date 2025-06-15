@@ -75,7 +75,7 @@ const generateNext7Days = () => {
   return days;
 };
 
-// Rainbow colors for days of the week
+// Use the correct darker pastel shades from the weekly calendar
 const dayColors: { [key: number]: string } = {
   0: '#f8b6c2', // Sunday - pink
   1: '#ffd8b5', // Monday - orange
@@ -86,15 +86,15 @@ const dayColors: { [key: number]: string } = {
   6: '#e9d5ff', // Saturday - purple
 };
 
-// Darker rainbow colors for selected state
+// Replace the old dayColorsDark with a more appropriate, slightly darker version for the selected state glow
 const dayColorsDark: { [key: number]: string } = {
-  0: '#ec4899', // Sunday - pink
-  1: '#f97316', // Monday - orange
-  2: '#eab308', // Tuesday - yellow
-  3: '#22c55e', // Wednesday - green
-  4: '#06b6d4', // Thursday - blue
-  5: '#6366f1', // Friday - indigo
-  6: '#a855f7', // Saturday - purple
+  0: '#e7a5b4',
+  1: '#e6c2a2',
+  2: '#e3d27c',
+  3: '#a8e1bb',
+  4: '#aed1d6',
+  5: '#b9bde3',
+  6: '#d4c0e6',
 };
 
 // Add formatTime helper from EventCard

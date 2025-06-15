@@ -36,7 +36,7 @@ const AddByDateButton = (props: { label?: string }) => {
       border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontWeight: 500,
+      fontWeight: 400,
       fontSize: '14px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
