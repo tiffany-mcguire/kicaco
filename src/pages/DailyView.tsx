@@ -104,7 +104,12 @@ const AddEventButton = (props: { label?: string; date?: string }) => {
   );
 };
 
-// Helper to format time
+// Day Colors for accent line
+const dayColors: { [key: number]: string } = {
+  0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
+  4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
+};
+
 const formatTime = (time?: string) => {
   if (!time) return '';
   let normalized = time.trim().toLowerCase();
@@ -122,9 +127,105 @@ const formatTime = (time?: string) => {
   return time.toUpperCase();
 };
 
+// Custom EventCard wrapper for Daily View
+const DailyEventCard: React.FC<{
+  event: any;
+  currentDate: Date;
+  navigate: any;
+  allEvents: any[];
+}> = ({ event, currentDate, navigate, allEvents }) => {
+  const children = useKicacoStore(state => state.children);
+  const childProfile = event.childName ? children.find(c => c.name === event.childName) : null;
+  const childIndex = event.childName ? children.findIndex(c => c.name === event.childName) : -1;
+  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  const dayOfWeek = currentDate.getDay();
+  
+  // Find the global index of this event
+  const globalEventIndex = allEvents.findIndex(e => 
+    e.eventName === event.eventName && 
+    e.date === event.date && 
+    e.childName === event.childName &&
+    e.time === event.time
+  );
+
+  // Transform birthday party names to possessive form (same logic as EventCard)
+  const displayName = (() => {
+    const name = event.eventName;
+    if (name.toLowerCase().includes('birthday')) {
+      const parenthesesMatch = name.match(/\(([^)]+)\)/);
+      if (parenthesesMatch) {
+        const birthdayChild = parenthesesMatch[1];
+        const possessiveName = birthdayChild.endsWith('s') ? `${birthdayChild}'` : `${birthdayChild}'s`;
+        const baseEventName = name.replace(/\s*\([^)]+\)/, '').trim();
+        if (baseEventName.toLowerCase() === 'birthday party' || baseEventName.toLowerCase() === 'birthday') {
+          return `${possessiveName} Birthday Party`;
+        }
+        return `${possessiveName} ${baseEventName}`;
+      }
+      if (event.childName && (name.toLowerCase() === 'birthday party' || name.toLowerCase() === 'birthday')) {
+        const possessiveName = event.childName.endsWith('s') ? `${event.childName}'` : `${event.childName}'s`;
+        return `${possessiveName} Birthday Party`;
+      }
+    }
+    return name;
+  })();
+
+  return (
+    <div className="relative h-[240px] w-full rounded-xl overflow-hidden">
+      <EventCard
+        image={getKicacoEventPhoto(event.eventName)}
+        name={event.eventName}
+        childName={event.childName}
+        date={event.date}
+        time={event.time}
+        location={event.location}
+        notes={event.notes}
+        noHeaderSpace={false}
+        onEdit={() => {
+          navigate('/add-event', { 
+            state: { 
+              event: event,
+              eventIndex: globalEventIndex,
+              isEdit: true 
+            } 
+          });
+        }}
+      />
+      {/* Tab header overlay similar to UpcomingEvents */}
+      <div className="absolute top-0 left-0 right-0 z-10 h-[56px]">
+        <div className="flex h-full items-center justify-between px-4">
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              {event.childName && childColor && (
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
+                  style={{ backgroundColor: childColor }}
+                >
+                  {event.childName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm font-semibold text-white">{displayName}</span>
+            </div>
+            {event.location && (
+              <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: event.childName && childColor ? '22px' : '0' }}>{event.location}</span>
+            )}
+          </div>
+          {event.time && (
+            <div className="flex flex-col justify-center items-end">
+              <span className="text-xs text-gray-200">{formatTime(event.time)}</span>
+            </div>
+          )}
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[1.5px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
+      </div>
+    </div>
+  );
+};
+
 export default function DailyView() {
   const [input, setInput] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const dayNavRef = useRef<HTMLDivElement>(null);
@@ -522,16 +623,7 @@ export default function DailyView() {
                     </button>
                   </div>
                 )}
-                <EventCard
-                  image={getKicacoEventPhoto(eventsForDay[displayedEventIndex].eventName)}
-                  name={eventsForDay[displayedEventIndex].eventName}
-                  childName={eventsForDay[displayedEventIndex].childName}
-                  date={eventsForDay[displayedEventIndex].date}
-                  time={eventsForDay[displayedEventIndex].time}
-                  location={eventsForDay[displayedEventIndex].location}
-                  notes={eventsForDay[displayedEventIndex].notes}
-                  noHeaderSpace={true}
-                />
+                <DailyEventCard event={eventsForDay[displayedEventIndex]} currentDate={currentDate} navigate={navigate} allEvents={events} />
               </div>
             ) : (
               <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">

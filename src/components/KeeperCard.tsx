@@ -19,26 +19,28 @@ interface KeeperCardProps {
   activeIndex?: number | null;
 }
 
-const darkRainbowColors = [
-  '#ec4899', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#6366f1', '#a855f7',
+// Rainbow colors for children (same as EventCard)
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
 ];
 
-// Use the correct pastel colors from WeeklyCalendar.tsx
-const keeperCardAccentColors = [
-  '#f8b6c2', // Sunday - pink
-  '#ffd8b5', // Monday - orange
-  '#fde68a', // Tuesday - yellow
-  '#bbf7d0', // Wednesday - green
-  '#c0e2e7', // Thursday - blue
-  '#d1d5fa', // Indigo
-  '#e9d5ff', // Saturday - purple
-];
+// Day colors for accent line (same as EventCard and UpcomingEvents)
+const dayColors: { [key: number]: string } = {
+  0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
+  4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
+};
 
 const formatDate = (date?: string) => {
   if (!date) return '';
   try {
     const d = parse(date, 'yyyy-MM-dd', new Date());
-    return isNaN(d.getTime()) ? date : format(d, 'MM/dd/yyyy');
+    return isNaN(d.getTime()) ? date : format(d, 'EEEE, MMMM d');
   } catch { return date; }
 };
 
@@ -64,13 +66,12 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
   stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex
 }) => {
   const children = useKicacoStore(state => state.children);
-  const childProfile = children.find(c => c.name === childName);
-  let colorIndex = index;
-  if (childProfile?.color) {
-    const matchIndex = keeperCardAccentColors.findIndex(c => c === childProfile.color);
-    if (matchIndex !== -1) colorIndex = matchIndex;
-  }
-  const overlayColor = darkRainbowColors[colorIndex % darkRainbowColors.length];
+  const childProfile = childName ? children.find(c => c.name === childName) : null;
+  const childIndex = childName ? children.findIndex(c => c.name === childName) : -1;
+  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  
+  // Get day of week for color coding
+  const dayOfWeek = date ? parse(date, 'yyyy-MM-dd', new Date()).getDay() : 0;
   const isTodayKeeper = date ? isToday(parse(date, 'yyyy-MM-dd', new Date())) : false;
   const imageUrl = image || getKicacoEventPhoto(keeperName || 'keeper');
 
@@ -104,7 +105,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
       }}
     >
       <div
-        className="relative w-full h-full rounded-2xl shadow-lg overflow-hidden bg-black"
+        className="relative w-full h-full rounded-xl overflow-hidden bg-white"
         style={{
           transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
           transition: 'all 300ms ease-in-out',
@@ -118,56 +119,52 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         {/* A single overlay for the entire card */}
         <div className="absolute inset-0 bg-black/[.65]" />
         
-        {/* Tab overlay, with a soft bottom glow */}
-        <div 
-          className="absolute top-0 left-0 right-0 h-[67px] backdrop-blur-sm" 
-          style={{
-            boxShadow: `
-              inset 0 10px 15px -10px ${childProfile?.color ? overlayColor + '90' : 'transparent'}, 
-              inset 0 -15px 20px -15px ${childProfile?.color ? overlayColor + '50' : 'transparent'}
-            `
-          }}
-        />
-        
-        {/* Accent line */}
-        <div 
-          className="absolute left-1/2 -translate-x-1/2 h-[2px] w-[40px] rounded-full"
-          style={{
-            top: '8px',
-            background: childProfile?.color ? keeperCardAccentColors[colorIndex % keeperCardAccentColors.length] : 'transparent',
-          }}
-        />
-        
-        {/* Tab header */}
-        <div
-          className="absolute inset-x-0 top-0 h-[64px] flex items-center justify-between px-4 text-white cursor-pointer"
-          onClick={onTabClick}
-        >
-          <div className="flex flex-col justify-center">
-            <span className="text-sm font-semibold">{keeperName}</span>
-            {childName && <span className="text-xs opacity-80">{childName}</span>}
+        {/* Tab overlay on top of the KeeperCard (matching EventDayStackCard) */}
+        <div className="absolute top-0 left-0 right-0 z-10 h-[56px]">
+          <div className="flex h-full items-center justify-between px-4" onClick={onTabClick}>
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-1.5">
+                {childName && childColor && (
+                  <div
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
+                    style={{ backgroundColor: childColor }}
+                  >
+                    {childName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm font-semibold text-white">{keeperName}</span>
+              </div>
+            </div>
+            <div className="flex flex-col justify-center items-end">
+              <span className="text-sm font-medium text-white">{formatDate(date)}</span>
+              {time && (
+                <span className="text-xs text-gray-200 mt-0.5">{formatTime(time)}</span>
+              )}
+            </div>
           </div>
-          <span 
-            className="text-sm font-medium" 
-            style={{ transform: 'translateY(-8px)' }}
-          >
-            {formatDate(date)}
-          </span>
+          <div className="absolute bottom-0 left-0 right-0 h-[1.5px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
+        </div>
+        
+        {/* Info Panel with Notes - always visible like EventCard */}
+        <div className="absolute inset-x-0 top-16 p-4 text-white">
+          <div className="mt-3">
+            <h4 className="text-xs font-bold mb-1 text-gray-300">Notes</h4>
+            {description ? (
+              <p className="text-xs text-gray-200">{description}</p>
+            ) : (
+              <p className="text-xs italic text-gray-400">—</p>
+            )}
+          </div>
         </div>
         
         {isTodayKeeper && (
           <div
-            className="absolute inset-0 pointer-events-none rounded-2xl"
+            className="absolute inset-0 pointer-events-none rounded-xl"
             style={{
               boxShadow: `inset 0 0 20px rgba(248, 182, 194, 0.6)`,
               border: '1px solid rgba(248, 182, 194, 0.4)',
             }}
           />
-        )}
-        {isActive && description && (
-          <div className="absolute inset-x-0 bottom-0 bg-black/50 px-4 py-3 text-white rounded-b-2xl">
-            <div className="text-sm text-gray-200">{description}</div>
-          </div>
         )}
       </div>
     </div>

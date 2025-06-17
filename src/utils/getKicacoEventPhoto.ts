@@ -19,6 +19,7 @@ const KEYWORD_TO_IMAGE_MAP: Record<string, string> = {
   'tennis': 'tennis.jpg',
   'birthday': 'birthdaycupcake.jpg',
   'soccer': 'soccer.jpg',
+  'library': 'library.jpg',
   'keeper': 'keeper.jpg',
 };
 

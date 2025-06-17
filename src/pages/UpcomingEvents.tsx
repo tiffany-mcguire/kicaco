@@ -17,7 +17,7 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { parse, format } from 'date-fns';
+import { parse, format, startOfDay, isAfter, isSameDay } from 'date-fns';
 
 // Day Colors for Tabs (copied from Home.tsx)
 const dayColors: { [key: number]: string } = {
@@ -29,6 +29,17 @@ const dayColorsDark: { [key: number]: string } = {
   0: '#e7a5b4', 1: '#e6c2a2', 2: '#e3d27c', 3: '#a8e1bb',
   4: '#aed1d6', 5: '#b9bde3', 6: '#d4c0e6',
 };
+
+// Rainbow colors for children (same as EventCard)
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
 
 // Reusable formatTime function
 const formatTime = (time?: string) => {
@@ -115,11 +126,49 @@ const EventDayStackCard: React.FC<{
   date: string;
   events: any[];
   isActive: boolean;
-}> = ({ date, events, isActive }) => {
+  navigate: any;
+  allEvents: any[];
+}> = ({ date, events, isActive, navigate, allEvents }) => {
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const eventDate = parse(date, 'yyyy-MM-dd', new Date());
   const dayOfWeek = eventDate.getDay();
   const currentEvent = events[displayedEventIndex];
+  
+  // Get child info for the event
+  const children = useKicacoStore(state => state.children);
+  const childProfile = currentEvent.childName ? children.find(c => c.name === currentEvent.childName) : null;
+  const childIndex = currentEvent.childName ? children.findIndex(c => c.name === currentEvent.childName) : -1;
+  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  
+  // Find the global index of this event
+  const globalEventIndex = allEvents.findIndex(e => 
+    e.eventName === currentEvent.eventName && 
+    e.date === currentEvent.date && 
+    e.childName === currentEvent.childName &&
+    e.time === currentEvent.time
+  );
+
+  // Transform birthday party names to possessive form (same logic as EventCard)
+  const displayName = (() => {
+    const name = currentEvent.eventName;
+    if (name.toLowerCase().includes('birthday')) {
+      const parenthesesMatch = name.match(/\(([^)]+)\)/);
+      if (parenthesesMatch) {
+        const birthdayChild = parenthesesMatch[1];
+        const possessiveName = birthdayChild.endsWith('s') ? `${birthdayChild}'` : `${birthdayChild}'s`;
+        const baseEventName = name.replace(/\s*\([^)]+\)/, '').trim();
+        if (baseEventName.toLowerCase() === 'birthday party' || baseEventName.toLowerCase() === 'birthday') {
+          return `${possessiveName} Birthday Party`;
+        }
+        return `${possessiveName} ${baseEventName}`;
+      }
+      if (currentEvent.childName && (name.toLowerCase() === 'birthday party' || name.toLowerCase() === 'birthday')) {
+        const possessiveName = currentEvent.childName.endsWith('s') ? `${currentEvent.childName}'` : `${currentEvent.childName}'s`;
+        return `${possessiveName} Birthday Party`;
+      }
+    }
+    return name;
+  })();
 
   return (
     <div 
@@ -139,39 +188,61 @@ const EventDayStackCard: React.FC<{
         time={currentEvent.time}
         location={currentEvent.location}
         notes={currentEvent.notes}
+        showEventInfo={false}
+        onEdit={isActive ? () => {
+          navigate('/add-event', { 
+            state: { 
+              event: currentEvent,
+              eventIndex: globalEventIndex,
+              isEdit: true 
+            } 
+          });
+        } : undefined}
       />
       {/* The Tab is an overlay on top of the EventCard */}
-      <div className="absolute top-0 left-0 right-0 z-10 h-[56px]">
-        <div className="flex h-full items-center justify-between px-4 backdrop-blur-sm">
-          <div className="flex-1 flex items-center justify-center text-sm text-white relative h-full">
-            <div 
-              className="absolute inset-0"
-              style={{ 
-                background: `linear-gradient(180deg, ${dayColorsDark[dayOfWeek]}30 0%, ${dayColorsDark[dayOfWeek]}25 50%, ${dayColorsDark[dayOfWeek]}20 100%)`,
-                filter: 'blur(4px)',
-              }}
-            />
-            <span className="relative z-10 font-medium">{format(eventDate, 'EEEE, MMMM d')}</span>
+      <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
+        <div className="flex h-full items-center justify-between px-4">
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              {currentEvent.childName && childColor && (
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
+                  style={{ backgroundColor: childColor }}
+                >
+                  {currentEvent.childName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm font-semibold text-white">{displayName}</span>
+              {/* Carousel controls next to event name */}
+              {events.length > 1 && (
+                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-gray-800 text-[10px] font-medium">
+                    {displayedEventIndex + 1}/{events.length}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {currentEvent.location && (
+              <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: currentEvent.childName && childColor ? '22px' : '0' }}>{currentEvent.location}</span>
+            )}
+          </div>
+          <div className="flex flex-col justify-center items-end">
+            <span className="text-sm font-medium text-white">{format(eventDate, 'EEEE, MMMM d')}</span>
+            {currentEvent.time && (
+              <span className="text-xs text-gray-200 mt-0.5">{formatTime(currentEvent.time)}</span>
+            )}
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[1.5px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
       </div>
-      {/* Badge for multiple events */}
-      {events.length > 1 && (
-        <div className="absolute top-3 right-3 z-10">
-          <span className="text-xs font-semibold text-white/90 bg-black/30 rounded-full px-2 py-1">
-            {events.length}
-          </span>
-        </div>
-      )}
-      {/* Carousel controls are only visible when the card is active */}
-      {isActive && events.length > 1 && (
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50"><ChevronLeft size={16} /></button>
-          <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">{displayedEventIndex + 1} / {events.length}</span>
-          <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50"><ChevronRight size={16} /></button>
-        </div>
-      )}
+
+      
     </div>
   );
 };
@@ -290,9 +361,21 @@ export default function UpcomingEvents() {
   }, [scrollRefReady, executeScrollToBottom]);
 
   const eventsByDate = useMemo(() => {
+    const today = startOfDay(new Date());
     const grouped = events.reduce((acc, event) => {
       const date = event.date;
       if (!date) return acc;
+      
+      // Filter out past events
+      try {
+        const eventDate = parse(date, 'yyyy-MM-dd', new Date());
+        if (!isAfter(eventDate, today) && !isSameDay(eventDate, today)) {
+          return acc; // Skip past events
+        }
+      } catch (e) {
+        return acc; // Skip invalid dates
+      }
+      
       acc[date] = acc[date] ? [...acc[date], event] : [event];
       return acc;
     }, {} as Record<string, any[]>);
@@ -351,7 +434,15 @@ export default function UpcomingEvents() {
   const isFirstLoad = useRef(true);
   useEffect(() => {
       if (isFirstLoad.current && sortedDates.length > 0) {
-          setActiveDayDate(sortedDates[0]); // Set first (earliest) day active by default
+          // Find the first date in the current month or later
+          const currentMonth = format(new Date(), 'yyyy-MM');
+          const currentMonthDates = sortedDates.filter(date => {
+              const dateMonth = format(parse(date, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+              return dateMonth >= currentMonth;
+          });
+          
+          // Set the first date of current month or later as active, or fall back to first date
+          setActiveDayDate(currentMonthDates.length > 0 ? currentMonthDates[0] : sortedDates[0]);
           isFirstLoad.current = false;
       }
   }, [sortedDates]);
@@ -488,6 +579,8 @@ export default function UpcomingEvents() {
                                         date={date}
                                         events={eventsByDate[date]}
                                         isActive={isActive}
+                                        navigate={navigate}
+                                        allEvents={events}
                                     />
                                   </div>
                               </div>

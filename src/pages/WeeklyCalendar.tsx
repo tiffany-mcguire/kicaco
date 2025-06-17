@@ -95,6 +95,23 @@ const dayAccentColors: { [key: number]: string } = {
   6: '#e9d5ff', // Saturday - purple
 };
 
+// Rainbow colors for children (same as EventCard)
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
+
+// Day colors for accent line (same as EventCard and UpcomingEvents)
+const dayColors: { [key: number]: string } = {
+  0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
+  4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
+};
+
 export default function WeeklyCalendar() {
   const [isMounted, setIsMounted] = useState(false);
   const [isPositioned, setIsPositioned] = useState(false);
@@ -472,6 +489,43 @@ export default function WeeklyCalendar() {
     }
 
     const evt = dayEvents[currentIdx];
+    const eventDate = evt.date ? parseDate(evt.date, 'yyyy-MM-dd', new Date()) : new Date();
+    const dayOfWeek = eventDate.getDay();
+    
+    // Get child info for the event
+    const childProfile = evt.childName ? children.find(c => c.name === evt.childName) : null;
+    const childIndex = evt.childName ? children.findIndex(c => c.name === evt.childName) : -1;
+    const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+    
+    // Find the global index of this event in the events array
+    const globalEventIndex = events.findIndex(e => 
+      e.eventName === evt.eventName && 
+      e.date === evt.date && 
+      e.childName === evt.childName &&
+      e.time === evt.time
+    );
+
+    // Transform birthday party names to possessive form (same logic as EventCard)
+    const displayName = (() => {
+      const name = evt.eventName;
+      if (name.toLowerCase().includes('birthday')) {
+        const parenthesesMatch = name.match(/\(([^)]+)\)/);
+        if (parenthesesMatch) {
+          const birthdayChild = parenthesesMatch[1];
+          const possessiveName = birthdayChild.endsWith('s') ? `${birthdayChild}'` : `${birthdayChild}'s`;
+          const baseEventName = name.replace(/\s*\([^)]+\)/, '').trim();
+                      if (baseEventName.toLowerCase() === 'birthday party' || baseEventName.toLowerCase() === 'birthday') {
+            return `${possessiveName} Birthday Party`;
+          }
+          return `${possessiveName} ${baseEventName}`;
+        }
+        if (evt.childName && (name.toLowerCase() === 'birthday party' || name.toLowerCase() === 'birthday')) {
+          const possessiveName = evt.childName.endsWith('s') ? `${evt.childName}'` : `${evt.childName}'s`;
+          return `${possessiveName} Birthday Party`;
+        }
+      }
+      return name;
+    })();
 
     return (
       <div className="relative h-32 rounded-lg overflow-hidden shadow-sm group hover:shadow-md transition-shadow">
@@ -482,34 +536,63 @@ export default function WeeklyCalendar() {
         />
         {/* Single dark overlay */}
         <div className="absolute inset-0 bg-black/65" />
-        {/* Event Info placed directly over overlay */}
-        <div className="absolute inset-x-0 top-0 px-3 pt-2 text-white" style={{ backdropFilter: 'none' }}>
-          <div className="flex justify-between items-start pb-1 border-b" style={{ borderBottomColor: accentColorSoft }}>
-            <div className="flex-1 pr-2">
-              <h4 className="text-sm font-medium leading-tight">
-                {evt.eventName}
-                {evt.childName && (
-                  <span className="text-xs font-normal text-gray-300 ml-1">({evt.childName})</span>
+        
+        {/* Tab overlay at top (matching EventDayStackCard style but smaller) */}
+        <div className="absolute top-2 left-0 right-0 z-10 h-[36px]">
+          <div className="flex h-full items-center justify-between px-3">
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-1">
+                {evt.childName && childColor && (
+                  <div
+                    className="w-3 h-3 rounded-full flex items-center justify-center text-gray-700 text-[8px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
+                    style={{ backgroundColor: childColor }}
+                  >
+                    {evt.childName.charAt(0).toUpperCase()}
+                  </div>
                 )}
-              </h4>
+                <span className="text-xs font-semibold text-white leading-tight">{displayName}</span>
+              </div>
               {evt.location && (
-                <p className="text-xs text-gray-200 mt-0.5">{evt.location}</p>
+                <span className="text-[10px] text-gray-200" style={{ marginLeft: evt.childName && childColor ? '16px' : '0' }}>{evt.location}</span>
               )}
             </div>
-            <div className="text-xs text-gray-100 text-right ml-2 whitespace-nowrap">
-              {formatTime12(evt.time)}
+            <div className="flex flex-col justify-center items-end">
+              {evt.time && (
+                <span className="text-[10px] text-gray-200">{formatTime12(evt.time)}</span>
+              )}
             </div>
           </div>
-          <div className="mt-2">
-            <span className="block text-[10px] font-semibold text-gray-400 leading-tight">Notes</span>
-            {((evt as any).notes ?? (evt as any).description) ? (
-              <p className="text-[10px] text-gray-300 line-clamp-2 leading-tight">
-                {((evt as any).notes ?? (evt as any).description)}
-              </p>
-            ) : (
-              <p className="text-[10px] italic text-gray-500">—</p>
-            )}
+          <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
+        </div>
+        
+        {/* Notes section below tab */}
+        <div className="absolute inset-x-0 top-[52px] px-3 text-white">
+          <div className="flex justify-between items-center mb-0.5">
+            <h4 className="text-[10px] font-bold text-gray-300">Notes</h4>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-event', { 
+                  state: { 
+                    event: evt,
+                    eventIndex: globalEventIndex,
+                    isEdit: true 
+                  } 
+                });
+              }}
+              className="text-[10px] text-gray-300 hover:text-white transition-colors"
+              aria-label="Edit event"
+            >
+              Edit
+            </button>
           </div>
+          {((evt as any).notes ?? (evt as any).description) ? (
+            <p className="text-[10px] text-gray-200 line-clamp-2 leading-tight">
+              {((evt as any).notes ?? (evt as any).description)}
+            </p>
+          ) : (
+            <p className="text-[10px] italic text-gray-400">—</p>
+          )}
         </div>
 
         {/* Carousel controls */}

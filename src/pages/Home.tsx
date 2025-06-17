@@ -14,7 +14,7 @@ import { runAssistantFunction } from '../utils/runAssistantFunction';
 import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
 import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
 import { ParsedFields } from '../utils/kicacoFlow';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import EventCard from '../components/EventCard';
 import KeeperCard from '../components/KeeperCard';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
@@ -135,6 +135,7 @@ function parseTo24H(time?: string): number {
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsMounted(true);
@@ -920,7 +921,25 @@ export default function Home() {
                       date={eventsForSelectedDay[displayedEventIndex].date}
                       time={eventsForSelectedDay[displayedEventIndex].time}
                       location={eventsForSelectedDay[displayedEventIndex].location}
-                      notes="Remember to bring sunscreen and a water bottle!"
+                      notes={eventsForSelectedDay[displayedEventIndex].notes || "Remember to bring sunscreen and a water bottle!"}
+                      noHeaderSpace={true}
+                      showEventInfo={true}
+                      onEdit={() => {
+                        const currentEvent = eventsForSelectedDay[displayedEventIndex];
+                        const globalEventIndex = events.findIndex(e => 
+                          e.eventName === currentEvent.eventName && 
+                          e.date === currentEvent.date && 
+                          e.childName === currentEvent.childName &&
+                          e.time === currentEvent.time
+                        );
+                        navigate('/add-event', { 
+                          state: { 
+                            event: currentEvent,
+                            eventIndex: globalEventIndex,
+                            isEdit: true 
+                          } 
+                        });
+                      }}
                     />
                   </>
                 ) : (

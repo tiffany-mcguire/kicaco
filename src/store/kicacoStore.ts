@@ -58,6 +58,7 @@ type KicacoState = {
 
   events: Event[];
   addEvent: (event: Partial<Event>) => void;
+  updateEvent: (index: number, event: Partial<Event>) => void;
 
   messages: ChatMessage[];
   addMessage: (message: ChatMessage) => void;
@@ -176,6 +177,10 @@ export const useKicacoStore = create(
       events: mockEvents,
       addEvent: (event: Partial<Event>) =>
         set((state) => ({ events: [event as Event, ...state.events] })),
+      updateEvent: (index: number, event: Partial<Event>) =>
+        set((state) => ({
+          events: state.events.map((e, i) => i === index ? { ...e, ...event } as Event : e)
+        })),
 
       messages: [],
       addMessage: (message: ChatMessage) => {

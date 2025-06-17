@@ -150,6 +150,7 @@ export default function AddEvent() {
     chatScrollPosition,
     setChatScrollPosition,
     addEvent,
+    updateEvent,
     children,
   } = useKicacoStore();
 
@@ -329,9 +330,33 @@ export default function AddEvent() {
     return () => { clearTimeout(scrollTimeout); scrollElement.removeEventListener('scroll', handleScroll); };
   }, [scrollRefReady, setChatScrollPosition]);
 
-  // Pre-fill date from location state
+  // Pre-fill data from location state (for edit mode or date pre-fill)
   useEffect(() => {
-    if (location.state?.date) {
+    if (location.state?.event && location.state?.isEdit) {
+      const event = location.state.event;
+      // Pre-populate all fields with event data
+      setEventName(event.eventName || '');
+      if (event.date) {
+        setEventType('oneTime');
+        setEventDate(event.date);
+      } else if (event.recurring) {
+        setEventType('recurring');
+        setRecurringSchedule(event.recurring);
+      }
+      if (event.time) {
+        setAddTime(true);
+        setStartTime(event.time);
+      }
+      if (event.location) {
+        setAddLocation(true);
+        setEventLocation(event.location);
+      }
+      if (event.childName) {
+        setSpecifyChild(true);
+        setSelectedChildren(event.childName.split(', '));
+      }
+      setNotes(event.notes || '');
+    } else if (location.state?.date) {
       setEventDate(location.state.date);
     }
   }, [location.state]);
@@ -492,7 +517,7 @@ export default function AddEvent() {
       return;
     }
 
-    const newEvent = {
+    const eventData = {
       eventName: eventName.trim(),
       date: eventType === 'oneTime' ? eventDate : undefined,
       recurring: eventType === 'recurring' ? recurringSchedule.trim() : undefined,
@@ -502,7 +527,11 @@ export default function AddEvent() {
       notes: notes,
     };
 
-    addEvent(newEvent);
+    if (location.state?.isEdit && location.state?.eventIndex !== undefined) {
+      updateEvent(location.state.eventIndex, eventData);
+    } else {
+      addEvent(eventData);
+    }
     navigate(-1); // Go back to previous page
   };
 
@@ -524,8 +553,8 @@ export default function AddEvent() {
       <GlobalSubheader
         ref={subheaderRef}
         icon={<CalendarPlus />}
-        title="Add Event"
-        action={<SaveButton label="Save Event" onClick={handleSave} />}
+        title={location.state?.isEdit ? "Edit Event" : "Add Event"}
+        action={<SaveButton label={location.state?.isEdit ? "Update Event" : "Save Event"} onClick={handleSave} />}
       />
       <div
         ref={pageScrollRef}
