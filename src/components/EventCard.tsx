@@ -9,6 +9,7 @@ interface EventCardProps {
   time?: string;
   location?: string;
   notes?: string;
+  noHeaderSpace?: boolean;
 }
 
 const formatDate = (date?: string) => {
@@ -66,7 +67,8 @@ const EventCard: React.FC<EventCardProps> = ({
   date,
   time,
   location,
-  notes
+  notes,
+  noHeaderSpace = false
 }) => {
   return (
     <div className="relative w-full min-h-[240px] rounded-xl overflow-hidden text-white">
@@ -77,7 +79,7 @@ const EventCard: React.FC<EventCardProps> = ({
       <div className="absolute inset-0 bg-black/[.65]" />
       
       {/* Info Panel now pinned to the top */}
-      <div className="absolute inset-x-0 top-0 p-4 flex flex-col pt-16">
+      <div className={`absolute inset-x-0 top-0 p-4 flex flex-col ${noHeaderSpace ? 'pt-4' : 'pt-16'}`}>
         <div className="flex justify-between items-start">
           <h3 className="text-sm font-semibold flex-1 pr-4">
             {name}

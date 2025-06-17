@@ -681,7 +681,7 @@ export default function WeeklyCalendar() {
                                       circles.push(
                                         <span
                                           key={`${ev.eventName}-${i}`}
-                                          className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700"
+                                          className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700 ring-1 ring-gray-400"
                                           style={{ backgroundColor: bg }}
                                         >
                                           {initial}
@@ -690,7 +690,7 @@ export default function WeeklyCalendar() {
                                     });
                                     if (dayEvents.length > MAX_SHOW) {
                                       circles.push(
-                                        <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white">+{dayEvents.length - MAX_SHOW}</span>
+                                        <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">+{dayEvents.length - MAX_SHOW}</span>
                                       );
                                     }
                                     return circles;

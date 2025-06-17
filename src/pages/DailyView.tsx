@@ -4,8 +4,8 @@ import ChatBubble from '../components/ChatBubble';
 import HamburgerMenu from '../components/HamburgerMenu';
 import CalendarMenu from '../components/CalendarMenu';
 import ThreeDotMenu from '../components/ThreeDotMenu';
-import { Link, useLocation } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
 import GlobalSubheader from '../components/GlobalSubheader';
@@ -14,7 +14,21 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, isSameDay, parse, isToday } from 'date-fns';
+import EventCard from '../components/EventCard';
+import KeeperCard from '../components/KeeperCard';
+import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
+
+// Rainbow colors for children (matching other pages)
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
 
 const DailyViewIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '18px', width: '18px', height: '18px', strokeWidth: '1.5' }} viewBox="0 0 90 90">
@@ -27,16 +41,99 @@ const DailyViewIcon = () => (
   </svg>
 );
 
+// Add Event Button
+const AddEventButton = (props: { label?: string; date?: string }) => {
+  const navigate = useNavigate();
+  const [hovered, setHovered] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
+
+  const getButtonStyle = () => {
+    let s = {
+      width: '140px',
+      height: '30px',
+      padding: '0px 8px',
+      border: 'none',
+      boxSizing: 'border-box' as const,
+      borderRadius: '6px',
+      fontWeight: 500,
+      fontSize: '14px',
+      lineHeight: '20px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+      background: '#217e8f',
+      color: '#ffffff',
+      outline: 'none',
+      transition: 'all 0.2s ease',
+    } as React.CSSProperties;
+    if (hovered || focused) {
+      s = {
+        ...s,
+        background: '#1a6e7e',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
+      };
+    }
+    if (pressed) {
+      s = { ...s, transform: 'scale(0.95)' };
+    }
+    s.outline = 'none';
+    return s;
+  };
+
+  const handleClick = () => {
+    setTimeout(() => navigate('/add-event', { state: { date: props.date } }), 150);
+  };
+
+  return (
+    <button
+      style={getButtonStyle()}
+      tabIndex={0}
+      type="button"
+      onClick={handleClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => { setPressed(false); setHovered(false); }}
+      onMouseOver={() => setHovered(true)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); setPressed(false); }}
+      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
+      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
+    >
+      {props.label ?? 'Add Event'}
+    </button>
+  );
+};
+
+// Helper to format time
+const formatTime = (time?: string) => {
+  if (!time) return '';
+  let normalized = time.trim().toLowerCase();
+  normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+  if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+    normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+  }
+  const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+  for (const pattern of patterns) {
+    try {
+      const dateObj = parse(normalized, pattern, new Date());
+      if (!isNaN(dateObj.getTime())) return format(dateObj, 'hh:mm a');
+    } catch {}
+  }
+  return time.toUpperCase();
+};
+
 export default function DailyView() {
   const [input, setInput] = useState("");
   const location = useLocation();
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
+  const dayNavRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const pageScrollRef = useRef<HTMLDivElement>(null);
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
   const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
+  const [subheaderBottom, setSubheaderBottom] = useState(120);
+  const [dayNavBottom, setDayNavBottom] = useState(160);
   const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
@@ -56,17 +153,93 @@ export default function DailyView() {
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
     setChatScrollPosition,
+    events,
+    keepers,
+    children,
   } = useKicacoStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Initialize currentDate from navigation state if available
+  const navigationDate = location.state?.date;
+  const initialDate = navigationDate ? parse(navigationDate, 'yyyy-MM-dd', new Date()) : new Date();
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
+  const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
+  
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const goToPreviousDay = () => {
     setCurrentDate(subDays(currentDate, 1));
+    setDisplayedEventIndex(0);
+    setDisplayedKeeperIndex(0);
   };
 
   const goToNextDay = () => {
     setCurrentDate(addDays(currentDate, 1));
+    setDisplayedEventIndex(0);
+    setDisplayedKeeperIndex(0);
   };
+
+  // Get events for the current day
+  const eventsForDay = useMemo(() => {
+    const dateString = format(currentDate, 'yyyy-MM-dd');
+    return events.filter(event => {
+      if (!event.date) return false;
+      try {
+        const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
+        return isSameDay(eventDate, currentDate);
+      } catch (e) {
+        console.error("Error parsing event date:", event.date, e);
+        return false;
+      }
+    }).sort((a, b) => {
+      const timeA = a.time ? parse(a.time, 'h:mm a', new Date()).getTime() : 0;
+      const timeB = b.time ? parse(b.time, 'h:mm a', new Date()).getTime() : 0;
+      return timeA - timeB;
+    });
+  }, [events, currentDate]);
+
+  // Get keepers for the current day
+  const keepersForDay = useMemo(() => {
+    const dateString = format(currentDate, 'yyyy-MM-dd');
+    return keepers.filter(keeper => {
+      if (!keeper.date) return false;
+      try {
+        const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
+        return isSameDay(keeperDate, currentDate);
+      } catch (e) {
+        console.error("Error parsing keeper date:", keeper.date, e);
+        return false;
+      }
+    });
+  }, [keepers, currentDate]);
+
+  // Get unique children for events of the day
+  const childrenForEvents = useMemo(() => {
+    const childNames = new Set(eventsForDay.map(event => event.childName).filter(Boolean));
+    return Array.from(childNames).map(name => {
+      const child = children.find(c => c.name === name);
+      const index = children.findIndex(c => c.name === name);
+      return {
+        name,
+        color: child?.color || childColors[index % childColors.length],
+        initial: name.charAt(0).toUpperCase()
+      };
+    });
+  }, [eventsForDay, children]);
+
+  // Get unique children for keepers of the day
+  const childrenForKeepers = useMemo(() => {
+    const childNames = new Set(keepersForDay.map(keeper => keeper.childName).filter(Boolean));
+    return Array.from(childNames).map(name => {
+      const child = children.find(c => c.name === name);
+      const index = children.findIndex(c => c.name === name);
+      return {
+        name,
+        color: child?.color || childColors[index % childColors.length],
+        initial: name.charAt(0).toUpperCase()
+      };
+    });
+  }, [keepersForDay, children]);
 
   const handleGlobalDrawerHeightChange = (height: number) => {
     const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
@@ -75,41 +248,46 @@ export default function DailyView() {
     setMainContentDrawerOffset(height);
     setMainContentTopClearance(window.innerHeight - height);
   };
+
   useLayoutEffect(() => {
-    function updateSubheaderBottom() {
+    function updatePositions() {
       if (subheaderRef.current) {
         setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
       }
+      if (dayNavRef.current) {
+        const navBottom = dayNavRef.current.getBoundingClientRect().bottom;
+        setDayNavBottom(navBottom);
+      }
     }
-    updateSubheaderBottom();
-    window.addEventListener('resize', updateSubheaderBottom);
 
     const calculateMaxDrawerHeight = () => {
       const subheaderElement = subheaderRef.current;
-      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
-      if (subheaderElement) {
+      const footerElement = footerRef.current;
+      if (subheaderElement && footerElement) {
         const subheaderRect = subheaderElement.getBoundingClientRect();
-        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const footerHeight = footerElement.getBoundingClientRect().height;
         const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
         setMaxDrawerHeight(Math.max(44, availableHeight));
       } else {
         setMaxDrawerHeight(window.innerHeight * 0.6);
       }
     };
+
+    updatePositions();
     calculateMaxDrawerHeight();
+
+    window.addEventListener('resize', updatePositions);
     window.addEventListener('resize', calculateMaxDrawerHeight);
 
     return () => {
-      window.removeEventListener('resize', updateSubheaderBottom);
+      window.removeEventListener('resize', updatePositions);
       window.removeEventListener('resize', calculateMaxDrawerHeight);
     };
-  }, []);
+  }, [subheaderRef.current, footerRef.current, dayNavRef.current]);
+
   useEffect(() => {
-    if (mainContentDrawerOffset > 44 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
-    }
+    // Always enable scrolling
+    setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
   // Chat Scroll Management Logic
@@ -259,23 +437,190 @@ export default function DailyView() {
         ref={subheaderRef}
         icon={<Calendar />}
         title="Daily View"
+        action={<AddEventButton date={format(currentDate, 'yyyy-MM-dd')} />}
       />
+      {/* Day Navigation - similar to weekly calendar */}
+      <div ref={dayNavRef} className="flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full">
+        <button
+          onClick={goToPreviousDay}
+          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+        >
+          <ChevronLeft className="w-4 h-4 text-gray-500" />
+        </button>
+        <h2 className="text-base font-normal text-gray-700 mx-3">
+          {format(currentDate, 'EEEE, MMMM d, yyyy')}
+          {isToday(currentDate) && (
+            <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+              Today
+            </span>
+          )}
+        </h2>
+        <button
+          onClick={goToNextDay}
+          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+        >
+          <ChevronRight className="w-4 h-4 text-gray-500" />
+        </button>
+      </div>
       <div
         ref={pageScrollRef}
-        className="daily-view-content-scroll bg-gray-50"
+        className="daily-view-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
-          top: subheaderBottom + 8,
+          top: dayNavBottom,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: mainContentScrollOverflow,
+          WebkitOverflowScrolling: 'touch',
+          overflowY: 'auto',
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
-        <div className="relative flex-1 flex flex-col overflow-hidden">
-          <div className="overflow-y-auto px-4 pt-4">
-          </div>
+        <div className="px-4 pt-4 pb-8 max-w-2xl mx-auto">
+          {/* Events of the Day Section */}
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-medium text-gray-600 ml-1">
+                Events of the Day
+              </h2>
+              {childrenForEvents.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {childrenForEvents.map((child, index) => (
+                    <div
+                      key={`event-child-${index}`}
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400"
+                      style={{ backgroundColor: child.color }}
+                      title={child.name}
+                    >
+                      {child.initial}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {eventsForDay.length > 0 ? (
+              <div className="relative rounded-xl shadow-lg overflow-hidden">
+                {/* Event Carousel Controls */}
+                {eventsForDay.length > 1 && (
+                  <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+                    <button 
+                      onClick={() => setDisplayedEventIndex(prev => (prev - 1 + eventsForDay.length) % eventsForDay.length)}
+                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                      aria-label="Previous event"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">
+                      {displayedEventIndex + 1} / {eventsForDay.length}
+                    </span>
+                    <button 
+                      onClick={() => setDisplayedEventIndex(prev => (prev + 1) % eventsForDay.length)}
+                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                      aria-label="Next event"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+                <EventCard
+                  image={getKicacoEventPhoto(eventsForDay[displayedEventIndex].eventName)}
+                  name={eventsForDay[displayedEventIndex].eventName}
+                  childName={eventsForDay[displayedEventIndex].childName}
+                  date={eventsForDay[displayedEventIndex].date}
+                  time={eventsForDay[displayedEventIndex].time}
+                  location={eventsForDay[displayedEventIndex].location}
+                  notes={eventsForDay[displayedEventIndex].notes}
+                  noHeaderSpace={true}
+                />
+              </div>
+            ) : (
+              <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">
+                <img
+                  src={getKicacoEventPhoto('default')}
+                  alt="No events"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/[.65]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-white font-normal">No events scheduled for this day.</p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Keepers Due Section */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-medium text-gray-600 ml-1">
+                Keepers Due
+              </h2>
+              {childrenForKeepers.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {childrenForKeepers.map((child, index) => (
+                    <div
+                      key={`keeper-child-${index}`}
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400"
+                      style={{ backgroundColor: child.color }}
+                      title={child.name}
+                    >
+                      {child.initial}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {keepersForDay.length > 0 ? (
+              <div className="relative rounded-xl shadow-lg overflow-hidden">
+                {/* Keeper Carousel Controls */}
+                {keepersForDay.length > 1 && (
+                  <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
+                    <button 
+                      onClick={() => setDisplayedKeeperIndex(prev => (prev - 1 + keepersForDay.length) % keepersForDay.length)}
+                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                      aria-label="Previous keeper"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">
+                      {displayedKeeperIndex + 1} / {keepersForDay.length}
+                    </span>
+                    <button 
+                      onClick={() => setDisplayedKeeperIndex(prev => (prev + 1) % keepersForDay.length)}
+                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
+                      aria-label="Next keeper"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+                <div className="relative h-[240px]">
+                  <KeeperCard
+                    keeperName={keepersForDay[displayedKeeperIndex].keeperName}
+                    date={keepersForDay[displayedKeeperIndex].date}
+                    childName={keepersForDay[displayedKeeperIndex].childName}
+                    description={keepersForDay[displayedKeeperIndex].description}
+                    time={keepersForDay[displayedKeeperIndex].time}
+                    index={0}
+                    stackPosition={0}
+                    totalInStack={1}
+                    isActive={true}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">
+                <img
+                  src={getKicacoEventPhoto('keeper')}
+                  alt="No keepers"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/[.65]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-white font-normal">No keepers due on this day.</p>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </div>
       <GlobalChatDrawer

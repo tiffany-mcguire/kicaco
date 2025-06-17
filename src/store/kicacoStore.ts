@@ -85,6 +85,20 @@ const mockChildren: ChildProfile[] = [
 ];
 
 const mockEvents: Event[] = [
+  // Past Events (relative to today)
+  { eventName: 'Science Fair', childName: 'Alex', date: getMockDate(-30), time: '1:00 PM', location: 'School Gymnasium', notes: 'Alex won 2nd place!' },
+  { eventName: 'Ballet Practice', childName: 'Emma', date: getMockDate(-28), time: '4:30 PM', location: 'Dance Studio' },
+  { eventName: 'Doctor Appointment', childName: 'Leo', date: getMockDate(-25), time: '10:00 AM', location: 'Pediatric Clinic', notes: 'Annual checkup - all good!' },
+  { eventName: 'Soccer Tournament', childName: 'Alex', date: getMockDate(-20), time: '9:00 AM', location: 'Sports Complex' },
+  { eventName: 'Piano Recital', childName: 'Emma', date: getMockDate(-18), time: '6:00 PM', location: 'Music Hall' },
+  { eventName: 'Playdate with Lily', childName: 'Leo', date: getMockDate(-15), time: '2:00 PM', location: 'Community Playground' },
+  { eventName: 'School Play', childName: 'Alex', date: getMockDate(-12), time: '7:00 PM', location: 'School Auditorium' },
+  { eventName: 'Art Exhibition', childName: 'Emma', date: getMockDate(-10), time: '3:00 PM', location: 'Art Gallery' },
+  { eventName: 'Swimming Lesson', childName: 'Leo', date: getMockDate(-8), time: '11:00 AM', location: 'YMCA Pool' },
+  { eventName: 'Birthday Party (Mike)', childName: 'Alex', date: getMockDate(-5), time: '1:00 PM', location: 'Jump Zone' },
+  { eventName: 'Dentist Cleaning', childName: 'Emma', date: getMockDate(-3), time: '2:30 PM', location: 'Happy Teeth Dental' },
+  { eventName: 'Story Time', childName: 'Leo', date: getMockDate(-1), time: '10:30 AM', location: 'Public Library' },
+  
   // Upcoming Events (relative to today)
   { eventName: 'Soccer Practice', childName: 'Alex', date: getMockDate(0), time: '4:00 PM', location: 'Heatherwood Field', notes: 'Remember to bring shin guards and a water bottle!' },
   { eventName: 'Team Dinner', childName: 'Alex', date: getMockDate(0), time: '6:00 PM', location: 'Pizza Palace', notes: 'Team celebration after the big game.' },
@@ -131,6 +145,13 @@ const mockEvents: Event[] = [
 ];
 
 const mockKeepers: Keeper[] = [
+  // Past Keepers
+  { keeperName: 'Submit field trip form', childName: 'Alex', date: getMockDate(-15), description: 'Science museum permission slip - COMPLETED' },
+  { keeperName: 'Buy ballet shoes', childName: 'Emma', date: getMockDate(-10), description: 'Size 12 - pink' },
+  { keeperName: 'Schedule flu shot', childName: 'Leo', date: getMockDate(-7), description: 'Done at last checkup' },
+  { keeperName: 'Pay soccer registration', childName: 'Alex', date: getMockDate(-5), description: 'Spring season - PAID' },
+  
+  // Upcoming Keepers
   { keeperName: 'Return library books', childName: 'Alex', date: getMockDate(3), description: '3 books about dinosaurs.' },
   { keeperName: 'Sign permission slip', childName: 'Emma', date: getMockDate(5), description: 'For the trip to the Science Museum.' },
   { keeperName: 'RSVP to birthday party', childName: 'Leo', date: getMockDate(8), description: 'For Noah\'s party.' },
