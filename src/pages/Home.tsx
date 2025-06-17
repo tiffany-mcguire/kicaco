@@ -134,7 +134,13 @@ function parseTo24H(time?: string): number {
 }
 
 export default function Home() {
-  console.log("[Home Function Body] window.innerHeight:", window.innerHeight);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Log the entire store state once the component has mounted
+    console.log("Kicaco Store State on Mount:", useKicacoStore.getState());
+  }, []);
 
   const [input, setInput] = useState("");
   const [hasIntroPlayed, setHasIntroPlayed] = useState(() => {
@@ -192,13 +198,21 @@ export default function Home() {
   const eventsForSelectedDay = useMemo(() => {
     const parseTime = (timeStr?: string): number => {
       if (!timeStr) return 2400; // Events without time go last
-      // Simple parse logic, can be improved
       const date = parse(timeStr, 'h:mm a', new Date());
       return date.getHours() * 100 + date.getMinutes();
     };
 
     return events
-      .filter(event => event.date && isSameDay(parseISO(event.date), selectedDate))
+      .filter(event => {
+        if (!event.date) return false;
+        try {
+          const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
+          return isSameDay(eventDate, selectedDate);
+        } catch (e) {
+          console.error("Error parsing event date for comparison:", event.date, e);
+          return false;
+        }
+      })
       .sort((a, b) => parseTime(a.time) - parseTime(b.time));
   }, [events, selectedDate]);
   
@@ -209,34 +223,23 @@ export default function Home() {
 
   // Filter keepers for next 30 days
   const keepersNext30Days = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-    const thirtyDaysFromNow = addDays(today, 30);
+    const today = startOfDay(new Date());
+    const thirtyDaysFromNow = endOfDay(addDays(today, 30));
     
-    console.log('Filtering keepers. Today:', today, 'Thirty days from now:', thirtyDaysFromNow);
-    console.log('All keepers:', keepers);
-    
-    const filtered = keepers.filter(keeper => {
+    return keepers.filter(keeper => {
       if (!keeper.date) return false;
       try {
-        const keeperDate = parseISO(keeper.date);
-        keeperDate.setHours(0, 0, 0, 0); // Normalize to start of day
-        const isInRange = keeperDate >= today && keeperDate <= thirtyDaysFromNow;
-        console.log('Keeper:', keeper.keeperName, 'Date:', keeper.date, 'Parsed:', keeperDate, 'In range:', isInRange);
-        return isInRange;
+        const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
+        return isWithinInterval(keeperDate, { start: today, end: thirtyDaysFromNow });
       } catch (e) {
         console.error('Error parsing date for keeper:', keeper, e);
         return false;
       }
     }).sort((a, b) => {
-      // Sort by date
-      const dateA = parseISO(a.date);
-      const dateB = parseISO(b.date);
+      const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
+      const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
       return dateA.getTime() - dateB.getTime();
     });
-    
-    console.log('Filtered keepers:', filtered);
-    return filtered;
   }, [keepers]);
 
   // State for keeper card interactions
@@ -844,6 +847,10 @@ export default function Home() {
 
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
 
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -873,7 +880,12 @@ export default function Home() {
               paddingRight: '1rem', // px-4
             }}
           >
-            <div className="relative w-full max-w-md mx-auto">
+            {/* 7-Day Event Outlook Section */}
+            <section className="pt-6 mb-10">
+              <h2 className="text-sm font-medium text-gray-600 mb-4 ml-1 max-w-md mx-auto">
+                7-Day Event Outlook
+              </h2>
+              <div className="relative w-full max-w-md mx-auto">
               {/* Event Carousel Controls now in the bottom right */}
               {eventsForSelectedDay.length > 1 && (
                 <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
@@ -964,9 +976,13 @@ export default function Home() {
                 </div>
               </div>
             </div>
+            </section>
 
-            {/* Keepers Section - No header, cards speak for themselves */}
+            {/* Keepers Section */}
             <div className="mt-8 mb-4">
+              <h2 className="text-sm font-medium text-gray-600 mb-4 ml-1 max-w-md mx-auto">
+                30-Day Keeper Outlook
+              </h2>
               {keepersNext30Days.length > 0 ? (
                 <div 
                   className="relative w-full max-w-md mx-auto"
@@ -975,7 +991,7 @@ export default function Home() {
                     marginBottom: '20px',
                   }}
                 >
-                  {keepersNext30Days.slice().reverse().map((keeper, index) => {
+                  {keepersNext30Days.map((keeper, index) => {
                     const stackPosition = keepersNext30Days.length - 1 - index;
                     return (
                       <KeeperCard

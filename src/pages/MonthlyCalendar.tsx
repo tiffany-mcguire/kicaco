@@ -14,7 +14,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parse } from 'date-fns';
 
 const CalendarIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
@@ -85,8 +85,25 @@ const AddByDateButton = (props: { label?: string }) => {
 };
 
 export default function MonthlyCalendar() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const { events, children } = useKicacoStore();
+  const { 
+    events, 
+    children,
+    messages,
+    threadId,
+    addMessage,
+    removeMessageById,
+    drawerHeight: storedDrawerHeight,
+    setDrawerHeight: setStoredDrawerHeight,
+  } = useKicacoStore();
+  
+  const [input, setInput] = useState("");
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
 
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -116,6 +133,59 @@ export default function MonthlyCalendar() {
     0: '#f8b6c233', 1: '#ffd8b533', 2: '#fde68a33', 3: '#bbf7d033',
     4: '#c0e2e74D', 5: '#d1d5fa4D', 6: '#e9d5ff4D',
   };
+  
+  const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
+
+  const handleDrawerHeightChange = (height: number) => {
+    const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
+    setStoredDrawerHeight(newHeight);
+  };
+  
+  const handleSendMessage = async () => {
+    if (!input.trim() || !threadId) return;
+    const userMessage = { id: crypto.randomUUID(), sender: 'user' as const, content: input };
+    addMessage(userMessage);
+    const messageToSend = input;
+    setInput('');
+    
+    const thinkingId = 'thinking-monthly';
+    addMessage({ id: thinkingId, sender: 'assistant', content: 'Kicaco is thinking' });
+
+    try {
+      const assistantResponse = await sendMessageToAssistant(threadId, messageToSend);
+      removeMessageById(thinkingId);
+      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: assistantResponse });
+    } catch (error) {
+      console.error("Error sending message from MonthlyCalendar:", error);
+      removeMessageById(thinkingId);
+      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: "I had an issue. Please try again." });
+    }
+  };
+
+  useLayoutEffect(() => {
+    const calculateMaxDrawerHeight = () => {
+      const subheaderElement = document.querySelector('.global-subheader') as HTMLElement | null;
+      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
+      
+      if (subheaderElement && footerElement) {
+        const subheaderRect = subheaderElement.getBoundingClientRect();
+        const footerHeight = footerElement.getBoundingClientRect().height;
+        const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
+        setMaxDrawerHeight(Math.max(32, availableHeight));
+      }
+    };
+    
+    calculateMaxDrawerHeight();
+    window.addEventListener('resize', calculateMaxDrawerHeight);
+    
+    return () => {
+      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    };
+  }, []);
+
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -170,9 +240,16 @@ export default function MonthlyCalendar() {
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 rounded-b-lg overflow-hidden">
             {days.map((day, index) => {
-              const dayEvents = events.filter(event => 
-                dateFormat(new Date(event.date), 'yyyy-MM-dd') === dateFormat(day, 'yyyy-MM-dd')
-              );
+              const dayEvents = events.filter(event => {
+                if (!event.date) return false;
+                try {
+                  const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
+                  return isSameDay(eventDate, day);
+                } catch (e) {
+                  console.error("Error parsing date for monthly calendar:", event.date, e);
+                  return false;
+                }
+              });
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isCurrentDay = isToday(day);
 
@@ -220,6 +297,33 @@ export default function MonthlyCalendar() {
           </div>
         </div>
       </div>
+      <GlobalChatDrawer
+        drawerHeight={currentDrawerHeight}
+        maxDrawerHeight={maxDrawerHeight}
+        onHeightChange={handleDrawerHeightChange}
+      >
+        <div className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4">
+          {messages.map((msg) => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full"
+            >
+              <ChatBubble side={msg.sender === 'user' ? 'right' : 'left'}>
+                {msg.content}
+              </ChatBubble>
+            </motion.div>
+          ))}
+        </div>
+      </GlobalChatDrawer>
+      <GlobalFooter
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onSend={handleSendMessage}
+        disabled={!threadId}
+      />
     </div>
   );
 } 

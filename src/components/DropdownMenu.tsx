@@ -74,12 +74,12 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
         <div
           style={{ width }}
           className={
-            `${positionClass} shadow-[0_4px_8px_rgba(0,0,0,0.1)] bg-[#217e8f] bg-opacity-95 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 transition-opacity transition-transform duration-200 ` +
+            `${positionClass} shadow-[0_4px_8px_rgba(0,0,0,0.1)] bg-[#217e8f] bg-opacity-95 ring-1 ring-black ring-opacity-5 focus:outline-none z-[150] transition-opacity transition-transform duration-200 ` +
             (closing ? 'opacity-0 scale-95 ease-in' : 'opacity-100 scale-100 ease-out')
           }
         >
           {shouldShowCaret && (
-            <div className={`absolute top-[-8px] ${positionClassCaret} w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-[#217e8f] shadow-[0_4px_8px_rgba(0,0,0,0.1)]`} style={{ opacity: 0.95, zIndex: 51 }} />
+            <div className={`absolute top-[-8px] ${positionClassCaret} w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-[#217e8f] shadow-[0_4px_8px_rgba(0,0,0,0.1)]`} style={{ opacity: 0.95, zIndex: 151 }} />
           )}
           {children}
         </div>

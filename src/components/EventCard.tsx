@@ -69,7 +69,7 @@ const EventCard: React.FC<EventCardProps> = ({
   notes
 }) => {
   return (
-    <div className="relative w-full transition-transform duration-300 hover:scale-[1.01] min-h-[240px] rounded-xl overflow-hidden text-white">
+    <div className="relative w-full min-h-[240px] rounded-xl overflow-hidden text-white">
       {/* Background image */}
       <img src={image} alt={name} className="absolute inset-0 w-full h-full object-cover" />
       
@@ -93,12 +93,14 @@ const EventCard: React.FC<EventCardProps> = ({
           <div>{formatTime(time)}</div>
         </div>
 
-        {notes && (
-          <div className="mt-2 pt-2 border-t border-white/20">
-            <h4 className="text-xs font-bold mb-1 text-gray-300">Notes</h4>
+        <div className="mt-3 pt-3 border-t border-white/20">
+          <h4 className="text-xs font-bold mb-1 text-gray-300">Notes</h4>
+          {notes ? (
             <p className="text-xs text-gray-200">{notes}</p>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs italic text-gray-400">—</p>
+          )}
+        </div>
       </div>
     </div>
   );

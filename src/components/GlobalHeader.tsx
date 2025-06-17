@@ -16,7 +16,7 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
     return (
       <header
         ref={ref}
-        className={`sticky top-0 z-50 flex items-center justify-between bg-[#217e8f] h-16 px-4 shadow-[0_2px_4px_rgba(0,0,0,0.12),0_4px_6px_rgba(0,0,0,0.08)] ${className}`}
+        className={`sticky top-0 z-[110] flex items-center justify-between bg-[#217e8f] h-16 px-4 shadow-[0_2px_4px_rgba(0,0,0,0.12),0_4px_6px_rgba(0,0,0,0.08)] ${className}`}
       >
         <div className="flex gap-2">
           <HamburgerMenu currentPath={location.pathname} />

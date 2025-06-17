@@ -96,6 +96,13 @@ const dayAccentColors: { [key: number]: string } = {
 };
 
 export default function WeeklyCalendar() {
+  const [isMounted, setIsMounted] = useState(false);
+  const [isPositioned, setIsPositioned] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [input, setInput] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
@@ -108,8 +115,8 @@ export default function WeeklyCalendar() {
 
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
   const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [weekNavBottom, setWeekNavBottom] = useState(0);
+  const [subheaderBottom, setSubheaderBottom] = useState(120); // Better initial estimate
+  const [weekNavBottom, setWeekNavBottom] = useState(160); // Better initial estimate
   const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
 
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
@@ -190,10 +197,20 @@ export default function WeeklyCalendar() {
     return 2400;
   };
 
-  // Get events for a specific day, now with sorting
+  // Get events for a specific day, now with sorting and robust parsing
   const getEventsForDay = (dateString: string) => {
     return events
-      .filter(event => event.date === dateString)
+      .filter(event => {
+        if (!event.date) return false;
+        try {
+          const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
+          const dayDate = parse(dateString, 'yyyy-MM-dd', new Date());
+          return isSameDay(eventDate, dayDate);
+        } catch (e) {
+          console.error("Error parsing date for weekly calendar:", event.date, e);
+          return false;
+        }
+      })
       .sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
   };
 
@@ -223,70 +240,49 @@ export default function WeeklyCalendar() {
         setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
       }
       if (weekNavRef.current) {
-        setWeekNavBottom(weekNavRef.current.getBoundingClientRect().bottom);
+        const navBottom = weekNavRef.current.getBoundingClientRect().bottom;
+        setWeekNavBottom(navBottom);
       }
     }
-    updatePositions();
-    window.addEventListener('resize', updatePositions);
 
     const calculateMaxDrawerHeight = () => {
       const subheaderElement = subheaderRef.current;
-      const footerElement = document.querySelector('.global-footer') as HTMLElement | null;
-      if (subheaderElement) {
+      const footerElement = footerRef.current;
+      if (subheaderElement && footerElement) {
         const subheaderRect = subheaderElement.getBoundingClientRect();
-        const footerHeight = footerElement ? footerElement.getBoundingClientRect().height : 0;
+        const footerHeight = footerElement.getBoundingClientRect().height;
         const availableHeight = window.innerHeight - subheaderRect.bottom - footerHeight - 4;
         setMaxDrawerHeight(Math.max(44, availableHeight));
       } else {
         setMaxDrawerHeight(window.innerHeight * 0.6);
       }
     };
+
+    updatePositions();
     calculateMaxDrawerHeight();
+    
+    // Mark as positioned after initial calculation
+    requestAnimationFrame(() => {
+      setIsPositioned(true);
+    });
+
+    window.addEventListener('resize', updatePositions);
     window.addEventListener('resize', calculateMaxDrawerHeight);
 
     return () => {
       window.removeEventListener('resize', updatePositions);
       window.removeEventListener('resize', calculateMaxDrawerHeight);
     };
-  }, []);
+  }, [subheaderRef.current, footerRef.current, weekNavRef.current]);
 
   useEffect(() => {
     // Always enable scrolling - let the browser handle whether it's needed
     setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
-  // Watch for content height changes
-  useEffect(() => {
-    const contentElement = pageScrollRef.current;
-    if (!contentElement) return;
 
-    const checkScrollNeeded = () => {
-      // Force a reflow to ensure scroll calculations are correct
-      if (contentElement) {
-        contentElement.style.overflow = 'hidden';
-        void contentElement.offsetHeight; // Force reflow
-        contentElement.style.overflow = 'auto';
-      }
-    };
 
-    // Check immediately after a small delay to ensure DOM is ready
-    setTimeout(checkScrollNeeded, 100);
 
-    // Set up ResizeObserver to watch for content changes
-    const resizeObserver = new ResizeObserver(() => {
-      checkScrollNeeded();
-    });
-
-    // Observe the inner content div
-    const innerContent = contentElement.querySelector('.overflow-y-auto');
-    if (innerContent) {
-      resizeObserver.observe(innerContent);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [mainContentDrawerOffset]);
 
   // Chat Scroll Management Logic
   const executeScrollToBottom = useCallback(() => {
@@ -548,6 +544,10 @@ export default function WeeklyCalendar() {
     }, 150);
   };
 
+  if (!isMounted) {
+    return null; // Or a loading spinner
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -580,25 +580,26 @@ export default function WeeklyCalendar() {
         className="weekly-calendar-content-scroll bg-gray-50 overflow-y-auto"
         style={{
           position: 'absolute',
-          top: weekNavBottom, // Start scrolling below the week navigation
+          top: weekNavBottom,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
           WebkitOverflowScrolling: 'touch',
           overflowY: 'auto',
-          transition: 'top 0.2s, bottom 0.2s',
+          transition: isPositioned ? 'top 0.2s, bottom 0.2s' : 'none',
+          opacity: isPositioned ? 1 : 0,
         }}
       >
-        <div className="relative flex-1 flex flex-col overflow-hidden">
-          <div className="overflow-y-auto px-4 pb-2 pt-2" style={{ paddingBottom: 32 }}>
-            {/* Apple-Pay style stacked days */}
-            <div
-              className="relative max-w-2xl mx-auto"
-              style={{
-                height: `${240 + ((weekDays.length - 1) * 56)}px`, // Card height 240 + tabs
-                marginBottom: '20px',
-              }}
-            >
+        <div className="px-4 pt-2" style={{ paddingBottom: '100px' }}>
+          {/* Apple-Pay style stacked days */}
+          <div
+            className="relative max-w-2xl mx-auto"
+            style={{
+              height: `${240 + ((weekDays.length - 1) * 56)}px`,
+              marginBottom: activeDayIndex === weekDays.length - 1 ? '196px' : '40px',
+              transition: 'margin-bottom 300ms ease-in-out',
+            }}
+          >
               {weekDays.slice().reverse().map((day, idx) => {
                 // Stack position starts from 0 at the top of the visual pile
                 const stackPosition = weekDays.length - 1 - idx;
@@ -717,7 +718,6 @@ export default function WeeklyCalendar() {
               })}
             </div>
           </div>
-        </div>
       </div>
       <GlobalChatDrawer 
         onHeightChange={handleGlobalDrawerHeightChange}

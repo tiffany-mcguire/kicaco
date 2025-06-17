@@ -1,7 +1,7 @@
 import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
 import IconButton from '../components/IconButton';
 import ChatBubble from '../components/ChatBubble';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import AddKeeperButton from '../components/AddKeeperButton';
 import GlobalHeader from '../components/GlobalHeader';
 import GlobalFooter from '../components/GlobalFooter';
@@ -12,6 +12,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Bell } from "lucide-react";
 import KeeperCard from '../components/KeeperCard';
+import { parse, format } from 'date-fns';
 
 const KeepersIcon = () => (
   <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
@@ -53,6 +54,43 @@ export default function Keepers() {
     setChatScrollPosition,
     keepers,
   } = useKicacoStore();
+
+  // State for keeper card interactions
+  const [activeKeeperIndices, setActiveKeeperIndices] = useState<Record<string, number | null>>({});
+
+  // Group keepers by month
+  const keepersByMonth = useMemo(() => {
+    const grouped = keepers.reduce((acc, keeper) => {
+      if (!keeper.date) return acc;
+      try {
+        const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
+        const monthKey = format(keeperDate, 'yyyy-MM');
+        if (!acc[monthKey]) {
+          acc[monthKey] = [];
+        }
+        acc[monthKey].push(keeper);
+      } catch (e) {
+        console.error('Error parsing keeper date:', keeper.date, e);
+      }
+      return acc;
+    }, {} as Record<string, typeof keepers>);
+
+    // Sort keepers within each month by date
+    Object.keys(grouped).forEach(month => {
+      grouped[month].sort((a, b) => {
+        const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
+        const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
+        return dateA.getTime() - dateB.getTime();
+      });
+    });
+
+    return grouped;
+  }, [keepers]);
+
+  const sortedMonths = useMemo(() => 
+    Object.keys(keepersByMonth).sort(), 
+    [keepersByMonth]
+  );
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -338,33 +376,67 @@ export default function Keepers() {
       />
       <div
         ref={scrollRef}
-        className="keepers-content-scroll bg-gray-50"
+        className="keepers-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
           position: 'absolute',
           top: subheaderBottom + 8,
           bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
           left: 0,
           right: 0,
-          overflowY: scrollOverflow,
           transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         {keepers && keepers.length > 0 ? (
-          <div className="max-w-md mx-auto px-4">
-            {keepers.map((keeper, index) => (
-              <div key={`${keeper.keeperName}-${index}`} className="relative h-[240px] mb-4">
-                <KeeperCard
-                  keeperName={keeper.keeperName}
-                  date={keeper.date}
-                  childName={keeper.childName}
-                  description={keeper.description}
-                  time={keeper.time}
-                  index={index}
-                  stackPosition={0}
-                  totalInStack={1}
-                />
-              </div>
-            ))}
+          <div className="max-w-md mx-auto px-4 pb-4">
+            {sortedMonths.map((month, monthIndex) => {
+              const monthKeepers = keepersByMonth[month];
+              // Reverse the keepers so earliest is last (will be at bottom of stack)
+              const reversedMonthKeepers = [...monthKeepers].reverse();
+              const activeIndex = activeKeeperIndices[month];
+
+              return (
+                <div key={month} className="mb-6">
+                  <h2 className="text-sm font-medium text-gray-600 mb-3 ml-1">
+                    {format(parse(month, 'yyyy-MM', new Date()), 'MMMM yyyy')}
+                  </h2>
+                  <div
+                    className="relative"
+                    style={{
+                      height: `${240 + ((reversedMonthKeepers.length - 1) * 56)}px`,
+                      marginBottom: activeIndex === reversedMonthKeepers.length - 1 ? '196px' : (monthIndex < sortedMonths.length - 1 ? '40px' : '20px'),
+                      transition: 'margin-bottom 300ms ease-in-out',
+                    }}
+                  >
+                    {reversedMonthKeepers.map((keeper, idx) => {
+                      const stackPosition = idx;
+                      const isActive = activeIndex === stackPosition;
+                      
+                      return (
+                        <KeeperCard
+                          key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
+                          keeperName={keeper.keeperName}
+                          date={keeper.date}
+                          childName={keeper.childName}
+                          description={keeper.description}
+                          time={keeper.time}
+                          index={stackPosition}
+                          stackPosition={stackPosition}
+                          totalInStack={reversedMonthKeepers.length}
+                          isActive={isActive}
+                          activeIndex={activeIndex ?? null}
+                          onTabClick={() => {
+                            setActiveKeeperIndices(prev => ({
+                              ...prev,
+                              [month]: prev[month] === stackPosition ? null : stackPosition
+                            }));
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-10">
