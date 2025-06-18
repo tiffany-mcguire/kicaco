@@ -1,5 +1,5 @@
 import React from 'react';
-import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
+import { getKicacoEventPhoto } from '../../utils/getKicacoEventPhoto';
 import EventCard from './EventCard';
 
 interface Props {

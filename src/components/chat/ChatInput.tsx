@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useKicacoStore } from '../store/kicacoStore';
-import { extractJsonFromMessage, validateParsedResponse } from '../utils/parseAssistantResponse';
-import { sendMessageToAssistant } from '../utils/talkToKicaco';
+import { useKicacoStore } from '../../store/kicacoStore';
+import { extractJsonFromMessage, validateParsedResponse } from '../../utils/parseAssistantResponse';
+import { sendMessageToAssistant } from '../../utils/talkToKicaco';
 
 const ChatInput: React.FC = () => {
   const [input, setInput] = useState('');

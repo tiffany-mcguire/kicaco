@@ -1,6 +1,5 @@
 import React from 'react';
-import DropdownMenu from './DropdownMenu';
-import IconButton from './IconButton';
+import { DropdownMenu, IconButton } from '../common';
 import { Link } from 'react-router-dom';
 
 interface HamburgerMenuProps {

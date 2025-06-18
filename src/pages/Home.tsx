@@ -1,28 +1,29 @@
 // import React from 'react';
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
 import { motion, AnimatePresence } from 'framer-motion';
-import ChatBubble from '../components/ChatBubble';
-import IconButton from '../components/IconButton';
+import { ChatBubble } from '../components/chat';
+import { IconButton } from '../components/common';
 import React, { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
-import GlobalHeader from '../components/GlobalHeader';
-import GlobalFooter from '../components/GlobalFooter';
-import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { GlobalHeader } from '../components/navigation';
+import { GlobalFooter } from '../components/navigation';
+import { GlobalChatDrawer } from '../components/chat';
 import { extractJsonFromMessage } from '../utils/parseAssistantResponse';
 import { useKicacoStore } from '../store/kicacoStore';
-import EventConfirmationCard from '../components/EventConfirmationCard';
+import { EventConfirmationCard } from '../components/calendar';
 import { runAssistantFunction } from '../utils/runAssistantFunction';
 import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
 import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
 import { ParsedFields } from '../utils/kicacoFlow';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import EventCard from '../components/EventCard';
-import KeeperCard from '../components/KeeperCard';
+import { EventCard } from '../components/calendar';
+import { KeeperCard } from '../components/calendar';
+import { SevenDayEventOutlook } from '../components/calendar';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay, differenceInDays } from 'date-fns';
-import PasswordModal from '../components/PasswordModal';
-import PostSignupOptions from '../components/PostSignupOptions';
-import { Home as HomeIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import GlobalSubheader from '../components/GlobalSubheader';
+import { PasswordModal } from '../components/common';
+import { PostSignupOptions } from '../components/common';
+import { Home as HomeIcon } from "lucide-react";
+import { GlobalSubheader } from '../components/navigation';
 
 // Add NodeJS type definition
 declare global {
@@ -57,45 +58,7 @@ function toTitleCase(str: string) {
   return str.replace(/\b\w+/g, txt => txt[0].toUpperCase() + txt.slice(1).toLowerCase());
 }
 
-// Helper → get next 7 days
-const generateNext7Days = () => {
-  const days = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    days.push({
-      date,
-      label: format(date, 'EEE'),
-      number: format(date, 'd'),
-      dayOfWeek: date.getDay(), // Add day of week for color mapping
-      isToday: i === 0, // Track if this is today
-    });
-  }
-  return days;
-};
 
-// Use the correct darker pastel shades from the weekly calendar
-const dayColors: { [key: number]: string } = {
-  0: '#f8b6c2', // Sunday - pink
-  1: '#ffd8b5', // Monday - orange
-  2: '#fde68a', // Tuesday - yellow
-  3: '#bbf7d0', // Wednesday - green
-  4: '#c0e2e7', // Thursday - blue
-  5: '#d1d5fa', // Friday - indigo
-  6: '#e9d5ff', // Saturday - purple
-};
-
-// Replace the old dayColorsDark with a more appropriate, slightly darker version for the selected state glow
-const dayColorsDark: { [key: number]: string } = {
-  0: '#e7a5b4',
-  1: '#e6c2a2',
-  2: '#e3d27c',
-  3: '#a8e1bb',
-  4: '#aed1d6',
-  5: '#b9bde3',
-  6: '#d4c0e6',
-};
 
 // Add formatTime helper from EventCard
 function formatTime(time?: string) {
@@ -191,36 +154,6 @@ export default function Home() {
   });
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
-
-  const next7Days = useMemo(() => generateNext7Days(), []);
-  const [selectedDate, setSelectedDate] = useState(next7Days[0].date);
-
-  // Filter and sort events for the selected day
-  const eventsForSelectedDay = useMemo(() => {
-    const parseTime = (timeStr?: string): number => {
-      if (!timeStr) return 2400; // Events without time go last
-      const date = parse(timeStr, 'h:mm a', new Date());
-      return date.getHours() * 100 + date.getMinutes();
-    };
-
-    return events
-      .filter(event => {
-        if (!event.date) return false;
-        try {
-          const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
-          return isSameDay(eventDate, selectedDate);
-        } catch (e) {
-          console.error("Error parsing event date for comparison:", event.date, e);
-          return false;
-        }
-      })
-      .sort((a, b) => parseTime(a.time) - parseTime(b.time));
-  }, [events, selectedDate]);
-  
-  // Reset index when selected day changes
-  useEffect(() => {
-    setDisplayedEventIndex(0);
-  }, [selectedDate]);
 
   // Filter keepers for next 30 days
   const keepersNext30Days = useMemo(() => {
@@ -846,8 +779,6 @@ export default function Home() {
     storedDrawerHeight
   });
 
-  const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
-
   if (!isMounted) {
     return null; // or a loading spinner
   }
@@ -882,114 +813,7 @@ export default function Home() {
             }}
           >
             {/* 7-Day Event Outlook Section */}
-            <section className="pt-6 mb-10">
-              <h2 className="text-sm font-medium text-gray-600 mb-4 ml-1 max-w-md mx-auto">
-                7-Day Event Outlook
-              </h2>
-              <div className="relative w-full max-w-md mx-auto">
-
-
-              {/* Event Content */}
-              <div className="relative rounded-xl shadow-lg overflow-hidden">
-                {eventsForSelectedDay.length > 0 ? (
-                  <>
-                    <EventCard
-                      image={getKicacoEventPhoto(eventsForSelectedDay[displayedEventIndex].eventName)}
-                      name={eventsForSelectedDay[displayedEventIndex].eventName}
-                      childName={eventsForSelectedDay[displayedEventIndex].childName}
-                      date={eventsForSelectedDay[displayedEventIndex].date}
-                      time={eventsForSelectedDay[displayedEventIndex].time}
-                      location={eventsForSelectedDay[displayedEventIndex].location}
-                      notes={eventsForSelectedDay[displayedEventIndex].notes || "Remember to bring sunscreen and a water bottle!"}
-                      noHeaderSpace={true}
-                      showEventInfo={true}
-                      onEdit={() => {
-                        const currentEvent = eventsForSelectedDay[displayedEventIndex];
-                        const globalEventIndex = events.findIndex(e => 
-                          e.eventName === currentEvent.eventName && 
-                          e.date === currentEvent.date && 
-                          e.childName === currentEvent.childName &&
-                          e.time === currentEvent.time
-                        );
-                        navigate('/add-event', { 
-                          state: { 
-                            event: currentEvent,
-                            eventIndex: globalEventIndex,
-                            isEdit: true 
-                          } 
-                        });
-                      }}
-                      carouselControls={
-                        eventsForSelectedDay.length > 1 ? (
-                          <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
-                            <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + eventsForSelectedDay.length) % eventsForSelectedDay.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                              <ChevronLeft size={12} />
-                            </button>
-                            <span className="text-gray-800 text-[10px] font-medium">
-                              {displayedEventIndex + 1}/{eventsForSelectedDay.length}
-                            </span>
-                            <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % eventsForSelectedDay.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                              <ChevronRight size={12} />
-                            </button>
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                  </>
-                ) : (
-                  <div className="relative w-full h-[240px] rounded-xl overflow-hidden">
-                    <img
-                      src={getKicacoEventPhoto('default')}
-                      alt="No events"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/[.65]" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-white font-normal">No events scheduled.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Tabs overlay bar */}
-              <div className="absolute top-0 left-0 right-0 z-10">
-                <div className="flex divide-x divide-white/20 backdrop-blur-sm rounded-t-xl overflow-hidden">
-                  {next7Days.map(day => (
-                    <button
-                      key={day.label + day.number}
-                      onClick={() => setSelectedDate(day.date)}
-                      className={`flex-1 flex flex-col items-center py-2 text-xs sm:text-sm font-medium transition-all relative overflow-hidden ${
-                        isSameDay(day.date, selectedDate)
-                          ? 'text-white font-bold'
-                          : 'text-white/70'
-                      }`}
-                    >
-                      {/* Rainbow background for selected tab */}
-                      {isSameDay(day.date, selectedDate) && (
-                        <div 
-                          className="absolute inset-0"
-                          style={{ 
-                            background: `linear-gradient(180deg, ${dayColorsDark[day.dayOfWeek]}30 0%, ${dayColorsDark[day.dayOfWeek]}25 50%, ${dayColorsDark[day.dayOfWeek]}20 100%)`,
-                            filter: 'blur(4px)'
-                          }}
-                        />
-                      )}
-                      <span className="relative z-10">{day.label}</span>
-                      <span className="relative z-10 text-[10px]">{day.number}</span>
-                      {/* Rainbow accent at bottom */}
-                      <div 
-                        className="absolute bottom-0 left-0 right-0 h-[2px] transition-all z-10"
-                        style={{ 
-                          backgroundColor: dayColors[day.dayOfWeek],
-                          opacity: day.isToday ? 0.9 : (isSameDay(day.date, selectedDate) ? 0.9 : 0.4)
-                        }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            </section>
+            <SevenDayEventOutlook />
 
             {/* Keepers Section */}
             <div className="mt-8 mb-4">
@@ -1021,6 +845,21 @@ export default function Home() {
                         isActive={activeKeeperIndex === stackPosition}
                         activeIndex={activeKeeperIndex}
                         onTabClick={() => setActiveKeeperIndex(activeKeeperIndex === stackPosition ? null : stackPosition)}
+                        onEdit={() => {
+                          const globalKeeperIndex = keepers.findIndex(k => 
+                            k.keeperName === keeper.keeperName && 
+                            k.date === keeper.date && 
+                            k.childName === keeper.childName &&
+                            k.time === keeper.time
+                          );
+                          navigate('/add-keeper', { 
+                            state: { 
+                              keeper: keeper,
+                              keeperIndex: globalKeeperIndex,
+                              isEdit: true 
+                            } 
+                          });
+                        }}
                       />
                     );
                   })}

@@ -1,6 +1,5 @@
 import React, { forwardRef, ReactNode } from 'react';
-import IconButton from './IconButton';
-import { ClipboardIcon2, UploadIcon, CameraIconMD, MicIcon } from './icons';
+import { IconButton, ClipboardIcon2, UploadIcon, CameraIconMD, MicIcon } from '../common';
 
 interface GlobalFooterProps {
   value: string;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { format, parse, isToday } from 'date-fns';
-import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
-import { useKicacoStore } from '../store/kicacoStore';
+import { getKicacoEventPhoto } from '../../utils/getKicacoEventPhoto';
+import { useKicacoStore } from '../../store/kicacoStore';
 
 interface KeeperCardProps {
   keeperName: string;

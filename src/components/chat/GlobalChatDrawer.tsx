@@ -1,6 +1,6 @@
 import React, { useRef, useLayoutEffect, useState, useEffect, PropsWithChildren, forwardRef, useImperativeHandle } from 'react';
 import { motion, useMotionValue, useMotionValueEvent, AnimatePresence } from 'framer-motion';
-import Portal from './Portal';
+import { Portal } from '../common';
 
 const MIN_HEIGHT = 32; // px, now matches the handle bar's height
 const CHAT_FOOTER_PADDING = 4; // px, minimal padding above footer

@@ -1,17 +1,17 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
-import IconButton from '../components/IconButton';
-import ChatBubble from '../components/ChatBubble';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { IconButton } from '../components/common';
+import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
-import AddKeeperButton from '../components/AddKeeperButton';
-import GlobalHeader from '../components/GlobalHeader';
-import GlobalFooter from '../components/GlobalFooter';
-import GlobalChatDrawer from '../components/GlobalChatDrawer';
-import GlobalSubheader from '../components/GlobalSubheader';
+import { AddKeeperButton } from '../components/common';
+import { GlobalHeader } from '../components/navigation';
+import { GlobalFooter } from '../components/navigation';
+import { GlobalChatDrawer } from '../components/chat';
+import { GlobalSubheader } from '../components/navigation';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Bell } from "lucide-react";
-import KeeperCard from '../components/KeeperCard';
+import { KeeperCard } from '../components/calendar';
 import { parse, format, startOfDay, isAfter, isSameDay } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 

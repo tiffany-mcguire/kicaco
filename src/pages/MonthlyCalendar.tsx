@@ -1,15 +1,15 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
-import IconButton from '../components/IconButton';
-import ChatBubble from '../components/ChatBubble';
-import HamburgerMenu from '../components/HamburgerMenu';
-import CalendarMenu from '../components/CalendarMenu';
-import ThreeDotMenu from '../components/ThreeDotMenu';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { IconButton } from '../components/common';
+import { ChatBubble } from '../components/chat';
+import { HamburgerMenu } from '../components/navigation';
+import { CalendarMenu } from '../components/calendar';
+import { ThreeDotMenu } from '../components/navigation';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
-import GlobalHeader from '../components/GlobalHeader';
-import GlobalFooter from '../components/GlobalFooter';
-import GlobalSubheader from '../components/GlobalSubheader';
-import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { GlobalHeader } from '../components/navigation';
+import { GlobalFooter } from '../components/navigation';
+import { GlobalSubheader } from '../components/navigation';
+import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
@@ -446,7 +446,9 @@ export default function MonthlyCalendar() {
 
           {/* List View Section */}
           <section className="mt-8 mb-20">
-            <h2 className="text-sm font-medium text-gray-600 mb-3 ml-1">List View</h2>
+            <h2 className="text-sm font-medium text-gray-600 mb-3 ml-1">
+              {dateFormat(currentMonth, "MMMM yyyy")} List View
+            </h2>
             <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
               <div className="grid grid-cols-2 gap-x-4">
                 {/* First Column */}
@@ -472,11 +474,11 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-center gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
+                                    className="flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
                                   >
                                     {event.childName && (
                                       <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400"
+                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
                                         style={{ backgroundColor: child?.color || '#6b7280' }}
                                       >
                                         {event.childName[0].toUpperCase()}
@@ -496,11 +498,11 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-center gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
+                                    className="flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
                                   >
                                     {keeper.childName && (
                                       <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400"
+                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
                                         style={{ backgroundColor: child?.color || '#6b7280' }}
                                       >
                                         {keeper.childName[0].toUpperCase()}
@@ -543,11 +545,11 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-center gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
+                                    className="flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
                                   >
                                     {event.childName && (
                                       <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400"
+                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
                                         style={{ backgroundColor: child?.color || '#6b7280' }}
                                       >
                                         {event.childName[0].toUpperCase()}
@@ -567,11 +569,11 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-center gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
+                                    className="flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
                                   >
                                     {keeper.childName && (
                                       <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400"
+                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
                                         style={{ backgroundColor: child?.color || '#6b7280' }}
                                       >
                                         {keeper.childName[0].toUpperCase()}

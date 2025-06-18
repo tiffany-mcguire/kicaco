@@ -1,22 +1,22 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/icons.tsx';
-import IconButton from '../components/IconButton';
-import ChatBubble from '../components/ChatBubble';
-import HamburgerMenu from '../components/HamburgerMenu';
-import CalendarMenu from '../components/CalendarMenu';
-import ThreeDotMenu from '../components/ThreeDotMenu';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { IconButton } from '../components/common';
+import { ChatBubble } from '../components/chat';
+import { HamburgerMenu } from '../components/navigation';
+import { CalendarMenu } from '../components/calendar';
+import { ThreeDotMenu } from '../components/navigation';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
-import GlobalHeader from '../components/GlobalHeader';
-import GlobalFooter from '../components/GlobalFooter';
-import GlobalSubheader from '../components/GlobalSubheader';
-import GlobalChatDrawer from '../components/GlobalChatDrawer';
+import { GlobalHeader } from '../components/navigation';
+import { GlobalFooter } from '../components/navigation';
+import { GlobalSubheader } from '../components/navigation';
+import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse } from 'date-fns';
 import { parse as parseDate, format as formatDateFns } from 'date-fns';
-import EventCard from '../components/EventCard';
+import { EventCard } from '../components/calendar';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 const WeeklyIcon = () => (

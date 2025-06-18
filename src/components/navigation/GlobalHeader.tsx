@@ -1,8 +1,8 @@
 import React, { forwardRef, ReactNode } from 'react';
 import HamburgerMenu from './HamburgerMenu';
-import CalendarMenu from './CalendarMenu';
-import IconButton from './IconButton';
 import ThreeDotMenu from './ThreeDotMenu';
+import { CalendarMenu } from '../calendar';
+import { IconButton } from '../common';
 import { useLocation } from 'react-router-dom';
 
 interface GlobalHeaderProps {

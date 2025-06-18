@@ -82,7 +82,7 @@ export class ConversationModeController {
 
   cancelPendingIntroMessage(): void {
     if (this.pendingIntroMessage) {
-      clearTimeout(this.pendingIntroMessage);
+      clearTimeout(this.pendingIntroMessage as unknown as number);
       this.pendingIntroMessage = null;
       console.log('❌ Cancelled pending intro message');
     }

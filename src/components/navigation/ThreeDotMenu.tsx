@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import DropdownMenu from './DropdownMenu';
-import IconButton from './IconButton';
+import { DropdownMenu, IconButton } from '../common';
 
 interface ThreeDotMenuProps {
   currentPath: string;

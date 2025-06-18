@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parse } from 'date-fns';
-import { useKicacoStore } from '../store/kicacoStore';
+import { useKicacoStore } from '../../store/kicacoStore';
 
 interface EventCardProps {
   image: string;

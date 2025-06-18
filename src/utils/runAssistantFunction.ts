@@ -40,13 +40,16 @@ export async function runAssistantFunction({
     });
 
     // Submit the tool call input
-    const result = await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
-      tool_outputs: [
-        {
-          tool_call_id: run.required_action?.submit_tool_outputs.tool_calls[0].id,
-          output: JSON.stringify(parameters)
-        }
-      ]
+    const outputs = [
+      {
+        tool_call_id: run.required_action?.submit_tool_outputs.tool_calls[0].id || '',
+        output: JSON.stringify(parameters)
+      }
+    ];
+    
+    const result = await openai.beta.threads.runs.submitToolOutputs(run.id, {
+      thread_id: threadId,
+      tool_outputs: outputs
     });
 
     return result;
