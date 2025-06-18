@@ -98,6 +98,12 @@ export default function AddKeeper() {
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const location = useLocation();
+  
+  // Check if we're in edit mode
+  const isEdit = location.state?.isEdit || false;
+  const keeperToEdit = location.state?.keeper;
+  const keeperIndex = location.state?.keeperIndex;
+  const dateFromCalendar = location.state?.date;
 
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
@@ -119,19 +125,27 @@ export default function AddKeeper() {
   const previousMessagesLengthRef = useRef(0);
   const firstEffectRunAfterLoadRef = useRef(true);
 
-  // Form state
-  const [keeperName, setKeeperName] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  // Form state - initialize with keeper data if in edit mode, or date from calendar
+  const [keeperName, setKeeperName] = useState(isEdit && keeperToEdit ? keeperToEdit.keeperName : "");
+  const [dueDate, setDueDate] = useState(
+    isEdit && keeperToEdit 
+      ? keeperToEdit.date || "" 
+      : dateFromCalendar || ""
+  );
   const [reminderType, setReminderType] = useState<'deadline' | 'recurring'>('deadline');
   const [recurringSchedule, setRecurringSchedule] = useState("");
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [addTime, setAddTime] = useState(false);
-  const [dueTime, setDueTime] = useState("");
-  const [addLocation, setAddLocation] = useState(false);
-  const [keeperLocation, setKeeperLocation] = useState("");
-  const [specifyChild, setSpecifyChild] = useState(false);
-  const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
-  const [description, setDescription] = useState("");
+  const [addTime, setAddTime] = useState(isEdit && keeperToEdit && keeperToEdit.time ? true : false);
+  const [dueTime, setDueTime] = useState(isEdit && keeperToEdit ? keeperToEdit.time || "" : "");
+  const [addLocation, setAddLocation] = useState(isEdit && keeperToEdit && keeperToEdit.location ? true : false);
+  const [keeperLocation, setKeeperLocation] = useState(isEdit && keeperToEdit ? keeperToEdit.location || "" : "");
+  const [specifyChild, setSpecifyChild] = useState(isEdit && keeperToEdit && keeperToEdit.childName ? true : false);
+  const [selectedChildren, setSelectedChildren] = useState<string[]>(
+    isEdit && keeperToEdit && keeperToEdit.childName 
+      ? keeperToEdit.childName.split(', ').filter((name: string) => name.trim())
+      : []
+  );
+  const [description, setDescription] = useState(isEdit && keeperToEdit ? keeperToEdit.description || "" : "");
 
   // Focus states
   const [keeperNameFocused, setKeeperNameFocused] = useState(false);
@@ -151,6 +165,7 @@ export default function AddKeeper() {
     chatScrollPosition,
     setChatScrollPosition,
     addKeeper,
+    updateKeeper,
     children,
   } = useKicacoStore();
 
@@ -491,7 +506,7 @@ export default function AddKeeper() {
       return;
     }
 
-    const newKeeper = {
+    const keeperData = {
       keeperName: keeperName.trim(),
       date: dueDate,
       time: addTime && dueTime ? dueTime : undefined,
@@ -500,14 +515,18 @@ export default function AddKeeper() {
       description: description.trim() || undefined,
     };
 
-    console.log('Adding keeper:', newKeeper);
-    if (addKeeper) {
-      addKeeper(newKeeper);
+    if (isEdit && updateKeeper && keeperIndex !== undefined) {
+      console.log('Updating keeper:', keeperData);
+      updateKeeper(keeperIndex, keeperData);
+      console.log('Keeper updated, navigating to /keepers');
+    } else if (addKeeper) {
+      console.log('Adding keeper:', keeperData);
+      addKeeper(keeperData);
       console.log('Keeper added, navigating to /keepers');
-      navigate('/keepers');
     } else {
-      console.error("addKeeper function is not defined");
+      console.error("addKeeper/updateKeeper function is not defined");
     }
+    navigate('/keepers');
   };
 
   const toggleChildSelection = (childName: string) => {
@@ -524,8 +543,8 @@ export default function AddKeeper() {
       <GlobalSubheader
         ref={subheaderRef}
         icon={<BellPlus />}
-        title="Add Keeper"
-        action={<SaveButton label="Save Keeper" onClick={handleSave} />}
+        title={isEdit ? "Edit Keeper" : "Add Keeper"}
+        action={<SaveButton label={isEdit ? "Update Keeper" : "Save Keeper"} onClick={handleSave} />}
       />
       <div
         ref={pageScrollRef}

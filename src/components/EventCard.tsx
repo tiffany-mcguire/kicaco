@@ -13,6 +13,7 @@ interface EventCardProps {
   noHeaderSpace?: boolean;
   showEventInfo?: boolean;
   onEdit?: () => void;
+  carouselControls?: React.ReactNode;
 }
 
 const formatDate = (date?: string) => {
@@ -79,7 +80,8 @@ const EventCard: React.FC<EventCardProps> = ({
   notes,
   noHeaderSpace = false,
   showEventInfo = false,
-  onEdit
+  onEdit,
+  carouselControls
 }) => {
   const children = useKicacoStore(state => state.children);
   const childProfile = childName ? children.find(c => c.name === childName) : null;
@@ -148,6 +150,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 <h3 className="text-sm font-semibold">
                   {displayName}
                 </h3>
+                {carouselControls}
               </div>
               {location && (
                 <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: childName && childColor ? '22px' : '0' }}>{location}</span>

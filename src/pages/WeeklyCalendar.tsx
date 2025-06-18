@@ -157,6 +157,7 @@ export default function WeeklyCalendar() {
     setChatScrollPosition,
     events,
     children,
+    keepers,
   } = useKicacoStore();
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -231,6 +232,21 @@ export default function WeeklyCalendar() {
       .sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
   };
 
+  // Get keepers for a specific day
+  const getKeepersForDay = (dateString: string) => {
+    return keepers
+      .filter(keeper => {
+        if (!keeper.date) return false;
+        try {
+          const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
+          const dayDate = parse(dateString, 'yyyy-MM-dd', new Date());
+          return isSameDay(keeperDate, dayDate);
+        } catch (e) {
+          console.error("Error parsing date for weekly calendar keeper:", keeper.date, e);
+          return false;
+        }
+      });
+  };
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -469,7 +485,7 @@ export default function WeeklyCalendar() {
   };
 
   // Mini carousel for a day's events (fixed h-32)
-  const MiniEventCarousel: React.FC<{ dayEvents: typeof events; accentColor: string }> = ({ dayEvents, accentColor: accentColorSoft }) => {
+  const MiniEventCarousel: React.FC<{ dayEvents: typeof events; accentColor: string; fullDate: string }> = ({ dayEvents, accentColor: accentColorSoft, fullDate }) => {
     const [currentIdx, setCurrentIdx] = useState(0);
 
     if (dayEvents.length === 0) {
@@ -483,6 +499,19 @@ export default function WeeklyCalendar() {
           <div className="absolute inset-0 bg-black/65" />
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-white text-sm">No events scheduled</p>
+          </div>
+          
+          {/* Add Event button in bottom right */}
+          <div className="absolute bottom-2 right-2 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-event', { state: { date: fullDate } });
+              }}
+              className="bg-white/50 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-800 hover:text-gray-900 font-medium transition-all hover:bg-white/60"
+            >
+              + Add Event
+            </button>
           </div>
         </div>
       );
@@ -538,7 +567,7 @@ export default function WeeklyCalendar() {
         <div className="absolute inset-0 bg-black/65" />
         
         {/* Tab overlay at top (matching EventDayStackCard style but smaller) */}
-        <div className="absolute top-2 left-0 right-0 z-10 h-[36px]">
+        <div className="absolute top-2 left-0 right-0 z-10 h-[40px]">
           <div className="flex h-full items-center justify-between px-3">
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-1">
@@ -551,9 +580,23 @@ export default function WeeklyCalendar() {
                   </div>
                 )}
                 <span className="text-xs font-semibold text-white leading-tight">{displayName}</span>
+                {/* Carousel controls next to event name */}
+                {dayEvents.length > 1 && (
+                  <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
+                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                      <ChevronLeft size={12} />
+                    </button>
+                    <span className="text-gray-800 text-[10px] font-medium">
+                      {currentIdx + 1}/{dayEvents.length}
+                    </span>
+                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
               </div>
               {evt.location && (
-                <span className="text-[10px] text-gray-200" style={{ marginLeft: evt.childName && childColor ? '16px' : '0' }}>{evt.location}</span>
+                <span className="text-[10px] text-gray-200 mb-1" style={{ marginLeft: evt.childName && childColor ? '16px' : '0' }}>{evt.location}</span>
               )}
             </div>
             <div className="flex flex-col justify-center items-end">
@@ -566,25 +609,9 @@ export default function WeeklyCalendar() {
         </div>
         
         {/* Notes section below tab */}
-        <div className="absolute inset-x-0 top-[52px] px-3 text-white">
+        <div className="absolute inset-x-0 top-[56px] px-3 text-white">
           <div className="flex justify-between items-center mb-0.5">
             <h4 className="text-[10px] font-bold text-gray-300">Notes</h4>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/add-event', { 
-                  state: { 
-                    event: evt,
-                    eventIndex: globalEventIndex,
-                    isEdit: true 
-                  } 
-                });
-              }}
-              className="text-[10px] text-gray-300 hover:text-white transition-colors"
-              aria-label="Edit event"
-            >
-              Edit
-            </button>
           </div>
           {((evt as any).notes ?? (evt as any).description) ? (
             <p className="text-[10px] text-gray-200 line-clamp-2 leading-tight">
@@ -595,28 +622,182 @@ export default function WeeklyCalendar() {
           )}
         </div>
 
-        {/* Carousel controls */}
-        {dayEvents.length > 1 && (
-          <div className="absolute bottom-1 right-1 z-10 flex items-center gap-1">
+        {/* Edit button in bottom left */}
+        <div className="absolute bottom-2 left-2 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/add-event', { 
+                state: { 
+                  event: evt,
+                  eventIndex: globalEventIndex,
+                  isEdit: true 
+                } 
+              });
+            }}
+            className="bg-black/30 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-300 hover:text-white font-medium transition-all hover:bg-black/40"
+          >
+            Edit
+          </button>
+        </div>
+
+        {/* Add Event button in bottom right */}
+        <div className="absolute bottom-2 right-2 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/add-event', { state: { date: evt.date } });
+            }}
+            className="bg-white/50 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-800 hover:text-gray-900 font-medium transition-all hover:bg-white/60"
+          >
+            + Add Event
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Mini keeper card for a day (fixed h-32, always shows)
+  const MiniKeeperCard: React.FC<{ dayKeepers: typeof keepers; dayOfWeek: number; fullDate: string }> = ({ dayKeepers, dayOfWeek, fullDate }) => {
+    const [currentIdx, setCurrentIdx] = useState(0);
+
+    if (dayKeepers.length === 0) {
+      return (
+        <div className="relative h-32 rounded-lg overflow-hidden shadow-sm">
+          <img
+            src={getKicacoEventPhoto('keeper')}
+            alt="No keepers"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/65" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-white text-sm">No keepers due</p>
+          </div>
+          
+          {/* Add Keeper button in bottom right */}
+          <div className="absolute bottom-2 right-2 z-10">
             <button
-              onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length); }}
-              className="bg-black/40 text-white p-0.5 rounded-full hover:bg-black/60 transition-colors"
-              aria-label="Previous event"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/add-keeper', { state: { date: fullDate } });
+              }}
+              className="bg-white/50 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-800 hover:text-gray-900 font-medium transition-all hover:bg-white/60"
             >
-              <ChevronLeft size={12} />
-            </button>
-            <span className="text-[10px] font-medium px-1 text-white/80">
-              {currentIdx + 1}/{dayEvents.length}
-            </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayEvents.length); }}
-              className="bg-black/40 text-white p-0.5 rounded-full hover:bg-black/60 transition-colors"
-              aria-label="Next event"
-            >
-              <ChevronRight size={12} />
+              + Add Keeper
             </button>
           </div>
-        )}
+        </div>
+      );
+    }
+
+    const keeper = dayKeepers[currentIdx];
+    
+    // Get child info for the keeper
+    const childProfile = keeper.childName ? children.find(c => c.name === keeper.childName) : null;
+    const childIndex = keeper.childName ? children.findIndex(c => c.name === keeper.childName) : -1;
+    const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+    
+    // Find the global index of this keeper in the keepers array
+    const globalKeeperIndex = keepers.findIndex(k => 
+      k.keeperName === keeper.keeperName && 
+      k.date === keeper.date && 
+      k.childName === keeper.childName
+    );
+
+    return (
+      <div className="relative h-32 rounded-lg overflow-hidden shadow-sm group hover:shadow-md transition-shadow">
+        <img
+          src={getKicacoEventPhoto(keeper.keeperName || 'keeper')}
+          alt={keeper.keeperName}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        {/* Single dark overlay */}
+        <div className="absolute inset-0 bg-black/65" />
+        
+        {/* Tab overlay at top */}
+        <div className="absolute top-2 left-0 right-0 z-10 h-[40px]">
+          <div className="flex h-full items-center justify-between px-3">
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-1">
+                {keeper.childName && childColor && (
+                  <div
+                    className="w-3 h-3 rounded-full flex items-center justify-center text-gray-700 text-[8px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
+                    style={{ backgroundColor: childColor }}
+                  >
+                    {keeper.childName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-semibold text-white leading-tight">{keeper.keeperName}</span>
+                {/* Carousel controls next to keeper name */}
+                {dayKeepers.length > 1 && (
+                  <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
+                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayKeepers.length) % dayKeepers.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                      <ChevronLeft size={12} />
+                    </button>
+                    <span className="text-gray-800 text-[10px] font-medium">
+                      {currentIdx + 1}/{dayKeepers.length}
+                    </span>
+                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayKeepers.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col justify-center items-end">
+              {keeper.time && (
+                <span className="text-[10px] text-gray-200">{formatTime12(keeper.time)}</span>
+              )}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
+        </div>
+        
+        {/* Notes section below tab */}
+        <div className="absolute inset-x-0 top-[56px] px-3 text-white">
+          <div className="flex justify-between items-center mb-0.5">
+            <h4 className="text-[10px] font-bold text-gray-300">Notes</h4>
+          </div>
+          {keeper.description ? (
+            <p className="text-[10px] text-gray-200 line-clamp-2 leading-tight">
+              {keeper.description}
+            </p>
+          ) : (
+            <p className="text-[10px] italic text-gray-400">—</p>
+          )}
+        </div>
+
+        {/* Edit button in bottom left */}
+        <div className="absolute bottom-2 left-2 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/add-keeper', { 
+                state: { 
+                  keeper: keeper,
+                  keeperIndex: globalKeeperIndex,
+                  isEdit: true 
+                } 
+              });
+            }}
+            className="bg-black/30 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-300 hover:text-white font-medium transition-all hover:bg-black/40"
+          >
+            Edit
+          </button>
+        </div>
+
+        {/* Add Keeper button in bottom right */}
+        <div className="absolute bottom-2 right-2 z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/add-keeper', { state: { date: keeper.date } });
+            }}
+            className="bg-white/50 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-800 hover:text-gray-900 font-medium transition-all hover:bg-white/60"
+          >
+            + Add Keeper
+          </button>
+        </div>
       </div>
     );
   };
@@ -678,12 +859,12 @@ export default function WeeklyCalendar() {
           <div
             className="relative max-w-2xl mx-auto"
             style={{
-              height: `${240 + ((weekDays.length - 1) * 56)}px`,
-              marginBottom: activeDayIndex === weekDays.length - 1 ? '196px' : '40px',
+              height: `${380 + ((weekDays.length - 1) * 56)}px`,
+              marginBottom: activeDayIndex === weekDays.length - 1 ? '336px' : '40px',
               transition: 'margin-bottom 300ms ease-in-out',
             }}
           >
-              {weekDays.slice().reverse().map((day, idx) => {
+              {weekDays.map((day, idx) => {
                 // Stack position starts from 0 at the top of the visual pile
                 const stackPosition = weekDays.length - 1 - idx;
                 const totalInStack = weekDays.length;
@@ -695,7 +876,7 @@ export default function WeeklyCalendar() {
                 const finalAccentSoft = isEmphasized ? `${accentColor}80` : accentColorSoft;
                 const finalBoxShadow = isEmphasized ? `0 0 6px 2px ${finalAccentSoft}` : `0 0 5px 1px ${accentColorSoft}`;
                 const visibleTabHeight = 56;
-                const popOffset = 176; // 240 - 64
+                const popOffset = 316; // 380 - 64
                 let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
                 if (activeDayIndex !== null && activeDayIndex > stackPosition) {
                   cardOffset += popOffset;
@@ -705,6 +886,7 @@ export default function WeeklyCalendar() {
                 }
 
                 const dayEvents = getEventsForDay(day.fullDate);
+                const dayKeepers = getKeepersForDay(day.fullDate);
 
                 return (
                   <div
@@ -719,7 +901,7 @@ export default function WeeklyCalendar() {
                     <div
                       className="bg-white rounded-xl shadow-sm overflow-hidden transition-all relative"
                       style={{
-                        transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
+                        transform: isActive ? 'translateY(-316px) scale(1.02)' : 'translateY(0)',
                         transition: 'all 300ms ease-in-out',
                         borderWidth: '1px',
                         borderStyle: 'solid',
@@ -750,13 +932,56 @@ export default function WeeklyCalendar() {
                                 Today
                               </span>
                             )}
+                          </div>
+                          
+                          {/* Event and Keeper indicators - right aligned */}
+                          <div className="flex items-center gap-2">
+                            {/* Keeper indicators */}
+                            {dayKeepers.length > 0 && (() => {
+                              const keeperChildren = dayKeepers
+                                .filter(k => k.childName)
+                                .map(k => k.childName);
+                              const uniqueKeeperChildren = [...new Set(keeperChildren)];
+                              
+                              if (uniqueKeeperChildren.length > 0) {
+                                return (
+                                  <div className="flex items-center px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
+                                    <span className="text-[10px] font-medium text-gray-700 mr-1">Keepers:</span>
+                                    <div className="flex items-center space-x-1">
+                                      {uniqueKeeperChildren.slice(0, 3).map((childName, idx) => {
+                                        const child = getChildProfile(childName);
+                                        const bg = child?.color || '#6b7280';
+                                        const initial = (childName || '?')[0].toUpperCase();
+                                        return (
+                                          <span
+                                            key={idx}
+                                            className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700 ring-1 ring-gray-400"
+                                            style={{ backgroundColor: bg }}
+                                          >
+                                            {initial}
+                                          </span>
+                                        );
+                                      })}
+                                      {uniqueKeeperChildren.length > 3 && (
+                                        <span className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">
+                                          +{uniqueKeeperChildren.length - 3}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                            
                             {/* Event indicators */}
                             {dayEvents.length > 0 && (
-                              <div className="flex items-center ml-2 px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
+                              <div className="flex items-center px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
+                                <span className="text-[10px] font-medium text-gray-700 mr-1">Events:</span>
                                 <div className="flex items-center space-x-1">
                                   {(() => {
                                     const circles: JSX.Element[] = [];
-                                    const MAX_SHOW = 6;
+                                    const MAX_SHOW = 3;
                                     dayEvents.slice(0, MAX_SHOW).forEach((ev, i) => {
                                       const child = getChildProfile(ev.childName);
                                       const bg = child?.color || '#6b7280';
@@ -782,18 +1007,13 @@ export default function WeeklyCalendar() {
                               </div>
                             )}
                           </div>
-                          <button 
-                            className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-all active:scale-95"
-                            onClick={(e) => { e.stopPropagation(); handleAddEventClick(day.fullDate); }}
-                          >
-                            + Add
-                          </button>
                         </div>
                       </div>
 
-                      {/* Day Events */}
-                      <div className="p-3">
-                        <MiniEventCarousel dayEvents={dayEvents} accentColor={accentColorSoft} />
+                      {/* Day Events and Keepers */}
+                      <div className="p-3 space-y-3">
+                        <MiniEventCarousel dayEvents={dayEvents} accentColor={accentColorSoft} fullDate={day.fullDate} />
+                        <MiniKeeperCard dayKeepers={dayKeepers} dayOfWeek={day.date.getDay()} fullDate={day.fullDate} />
                       </div>
                     </div>
                   </div>

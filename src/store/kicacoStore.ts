@@ -67,6 +67,7 @@ type KicacoState = {
 
   keepers: Keeper[];
   addKeeper: (keeper: Partial<Keeper>) => void;
+  updateKeeper: (index: number, keeper: Partial<Keeper>) => void;
 
   children: ChildProfile[];
   addChild: (child: ChildProfile) => void;
@@ -156,6 +157,7 @@ const mockKeepers: Keeper[] = [
   { keeperName: 'Return library books', childName: 'Alex', date: getMockDate(3), description: '3 books about dinosaurs.' },
   { keeperName: 'Sign permission slip', childName: 'Emma', date: getMockDate(5), description: 'For the trip to the Science Museum.' },
   { keeperName: 'RSVP to birthday party', childName: 'Leo', date: getMockDate(8), description: 'For Noah\'s party.' },
+  { keeperName: 'Submit camp forms', childName: 'Alex', date: getMockDate(8), description: 'Medical forms due' },
   { keeperName: 'Schedule yearly check-up', childName: 'Alex', date: getMockDate(15) },
   { keeperName: 'Buy new soccer cleats', childName: 'Emma', date: getMockDate(22), description: 'Size 10.' },
   { keeperName: 'Pay for summer camp', childName: 'Leo', date: getMockDate(27) },
@@ -196,6 +198,10 @@ export const useKicacoStore = create(
       addKeeper: (keeper: Partial<Keeper>) => {
         set((state) => ({ keepers: [keeper as Keeper, ...state.keepers] }));
       },
+      updateKeeper: (index: number, keeper: Partial<Keeper>) =>
+        set((state) => ({
+          keepers: state.keepers.map((k, i) => i === index ? { ...k, ...keeper } as Keeper : k)
+        })),
 
       children: mockChildren,
       addChild: (child: ChildProfile) =>

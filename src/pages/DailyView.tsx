@@ -133,7 +133,10 @@ const DailyEventCard: React.FC<{
   currentDate: Date;
   navigate: any;
   allEvents: any[];
-}> = ({ event, currentDate, navigate, allEvents }) => {
+  events: any[];
+  displayedEventIndex: number;
+  setDisplayedEventIndex: (fn: (prev: number) => number) => void;
+}> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex }) => {
   const children = useKicacoStore(state => state.children);
   const childProfile = event.childName ? children.find(c => c.name === event.childName) : null;
   const childIndex = event.childName ? children.findIndex(c => c.name === event.childName) : -1;
@@ -192,7 +195,7 @@ const DailyEventCard: React.FC<{
         }}
       />
       {/* Tab header overlay similar to UpcomingEvents */}
-      <div className="absolute top-0 left-0 right-0 z-10 h-[56px]">
+      <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
         <div className="flex h-full items-center justify-between px-4">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">
@@ -205,6 +208,20 @@ const DailyEventCard: React.FC<{
                 </div>
               )}
               <span className="text-sm font-semibold text-white">{displayName}</span>
+              {/* Carousel controls next to event name */}
+              {events.length > 1 && (
+                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-gray-800 text-[10px] font-medium">
+                    {displayedEventIndex + 1}/{events.length}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              )}
             </div>
             {event.location && (
               <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: event.childName && childColor ? '22px' : '0' }}>{event.location}</span>
@@ -601,29 +618,16 @@ export default function DailyView() {
             </div>
             {eventsForDay.length > 0 ? (
               <div className="relative rounded-xl shadow-lg overflow-hidden">
-                {/* Event Carousel Controls */}
-                {eventsForDay.length > 1 && (
-                  <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
-                    <button 
-                      onClick={() => setDisplayedEventIndex(prev => (prev - 1 + eventsForDay.length) % eventsForDay.length)}
-                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
-                      aria-label="Previous event"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">
-                      {displayedEventIndex + 1} / {eventsForDay.length}
-                    </span>
-                    <button 
-                      onClick={() => setDisplayedEventIndex(prev => (prev + 1) % eventsForDay.length)}
-                      className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
-                      aria-label="Next event"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                )}
-                <DailyEventCard event={eventsForDay[displayedEventIndex]} currentDate={currentDate} navigate={navigate} allEvents={events} />
+
+                <DailyEventCard 
+                  event={eventsForDay[displayedEventIndex]} 
+                  currentDate={currentDate} 
+                  navigate={navigate} 
+                  allEvents={events}
+                  events={eventsForDay}
+                  displayedEventIndex={displayedEventIndex}
+                  setDisplayedEventIndex={setDisplayedEventIndex}
+                />
               </div>
             ) : (
               <div className="relative w-full h-[240px] rounded-xl overflow-hidden shadow-lg">
@@ -696,6 +700,22 @@ export default function DailyView() {
                     stackPosition={0}
                     totalInStack={1}
                     isActive={true}
+                    onEdit={() => {
+                      // Find the original index in the full keepers array
+                      const keeper = keepersForDay[displayedKeeperIndex];
+                      const originalKeeperIndex = keepers.findIndex(k => 
+                        k.keeperName === keeper.keeperName && 
+                        k.date === keeper.date &&
+                        k.childName === keeper.childName
+                      );
+                      navigate('/add-keeper', {
+                        state: {
+                          isEdit: true,
+                          keeper: keeper,
+                          keeperIndex: originalKeeperIndex
+                        }
+                      });
+                    }}
                   />
                 </div>
               </div>

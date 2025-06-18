@@ -17,6 +17,7 @@ interface KeeperCardProps {
   priority?: 'high' | 'medium' | 'low';
   index?: number;
   activeIndex?: number | null;
+  onEdit?: () => void;
 }
 
 // Rainbow colors for children (same as EventCard)
@@ -63,7 +64,7 @@ const formatTime = (time?: string) => {
 
 const KeeperCard: React.FC<KeeperCardProps> = ({
   keeperName, childName, date, time, description, image,
-  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex
+  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex, onEdit
 }) => {
   const children = useKicacoStore(state => state.children);
   const childProfile = childName ? children.find(c => c.name === childName) : null;
@@ -120,7 +121,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         <div className="absolute inset-0 bg-black/[.65]" />
         
         {/* Tab overlay on top of the KeeperCard (matching EventDayStackCard) */}
-        <div className="absolute top-0 left-0 right-0 z-10 h-[56px]">
+        <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
           <div className="flex h-full items-center justify-between px-4" onClick={onTabClick}>
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-1.5">
@@ -146,15 +147,26 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         </div>
         
         {/* Info Panel with Notes - always visible like EventCard */}
-        <div className="absolute inset-x-0 top-16 p-4 text-white">
-          <div className="mt-3">
-            <h4 className="text-xs font-bold mb-1 text-gray-300">Notes</h4>
-            {description ? (
-              <p className="text-xs text-gray-200">{description}</p>
-            ) : (
-              <p className="text-xs italic text-gray-400">—</p>
+        <div className="absolute inset-x-0 top-14 p-4 text-white">
+          <div className="flex justify-between items-center mb-1">
+            <h4 className="text-xs font-bold text-gray-300">Notes</h4>
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="text-xs text-gray-300 hover:text-white transition-colors bg-black/30 rounded-full px-1.5 py-0.5"
+              >
+                Edit
+              </button>
             )}
           </div>
+          {description ? (
+            <p className="text-xs text-gray-200">{description}</p>
+          ) : (
+            <p className="text-xs italic text-gray-400">—</p>
+          )}
         </div>
         
         {isTodayKeeper && (

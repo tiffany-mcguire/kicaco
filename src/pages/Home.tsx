@@ -887,28 +887,7 @@ export default function Home() {
                 7-Day Event Outlook
               </h2>
               <div className="relative w-full max-w-md mx-auto">
-              {/* Event Carousel Controls now in the bottom right */}
-              {eventsForSelectedDay.length > 1 && (
-                <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">
-                  <button 
-                    onClick={() => setDisplayedEventIndex(prev => (prev - 1 + eventsForSelectedDay.length) % eventsForSelectedDay.length)}
-                    className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
-                    aria-label="Previous event"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <span className="text-white text-xs font-medium px-2 py-0.5 rounded-full bg-black/40">
-                    {displayedEventIndex + 1} / {eventsForSelectedDay.length}
-                  </span>
-                  <button 
-                    onClick={() => setDisplayedEventIndex(prev => (prev + 1) % eventsForSelectedDay.length)}
-                    className="bg-black/30 text-white p-1 rounded-full hover:bg-black/50 transition-colors"
-                    aria-label="Next event"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
+
 
               {/* Event Content */}
               <div className="relative rounded-xl shadow-lg overflow-hidden">
@@ -940,6 +919,21 @@ export default function Home() {
                           } 
                         });
                       }}
+                      carouselControls={
+                        eventsForSelectedDay.length > 1 ? (
+                          <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
+                            <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + eventsForSelectedDay.length) % eventsForSelectedDay.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                              <ChevronLeft size={12} />
+                            </button>
+                            <span className="text-gray-800 text-[10px] font-medium">
+                              {displayedEventIndex + 1}/{eventsForSelectedDay.length}
+                            </span>
+                            <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % eventsForSelectedDay.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
+                        ) : undefined
+                      }
                     />
                   </>
                 ) : (
