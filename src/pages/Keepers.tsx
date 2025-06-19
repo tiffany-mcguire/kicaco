@@ -376,7 +376,7 @@ export default function Keepers() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}

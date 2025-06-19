@@ -548,7 +548,7 @@ export default function DailyView() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -556,8 +556,11 @@ export default function DailyView() {
         title="Daily View"
         action={<AddEventButton date={format(currentDate, 'yyyy-MM-dd')} />}
       />
-      {/* Day Navigation - similar to weekly calendar */}
-      <div ref={dayNavRef} className="flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full">
+      {/* Day Navigation - made sticky below subheader */}
+      <div ref={dayNavRef} className="sticky z-[95] flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full"
+        style={{ 
+          top: 'calc(4rem + 58px)' // 64px header + ~58px subheader
+        }}>
         <button
           onClick={goToPreviousDay}
           className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"

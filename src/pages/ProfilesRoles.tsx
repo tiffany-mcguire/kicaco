@@ -661,15 +661,9 @@ export default function ProfilesRoles() {
       />
       <div
         ref={pageScrollRef}
-        className="profiles-roles-content-scroll bg-gray-50"
+        className="profiles-roles-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0),
-          left: 0,
-          right: 0,
-          overflowY: oldScrollOverflow,
-
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
         }}
       >
         <div className="profiles-roles-content-inner px-6 pt-6 pb-24 max-w-2xl mx-auto">

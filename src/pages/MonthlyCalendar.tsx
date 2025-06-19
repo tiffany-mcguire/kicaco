@@ -409,7 +409,7 @@ export default function MonthlyCalendar() {
 
   if (!isMounted || !isLayoutReady) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <GlobalHeader />
         <GlobalSubheader
           ref={subheaderRef}
@@ -423,7 +423,7 @@ export default function MonthlyCalendar() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader />
       <GlobalSubheader
         ref={subheaderRef}

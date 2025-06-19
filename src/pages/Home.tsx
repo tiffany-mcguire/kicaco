@@ -454,7 +454,7 @@ export default function Home() {
 
   if (!isMounted || !isLayoutReady) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <GlobalHeader ref={headerRef} />
         <GlobalSubheader
           ref={upcomingEventsTitleRef}
@@ -473,7 +473,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
 
       <GlobalSubheader
@@ -483,34 +483,20 @@ export default function Home() {
       />
       
       {/* Scrollable Page Content Area */}
-      {(() => {
-        // Original console log for subheader rendering condition can be kept or removed
-        // console.log("[Home Rendering Debug] Subheader rendering condition:", { /* ... */ });
-        return (
-          <div 
-            ref={pageContentRef} // This was 'subheaderRef' from your restored version
-            className="w-full bg-gray-50" // Removed z-10 and profiles-roles-subheader
-            style={{
-              position: 'absolute',
-              top: `${contentAreaTop}px`, // Dynamically set below fixed title section
-              bottom: `${(footerRef.current?.offsetHeight || 0)}px`,
-              left: '0px',
-              right: '0px',
-              overflowY: 'auto',
-              paddingLeft: '1rem', // px-4
-              paddingRight: '1rem', // px-4
-              zIndex: 1, // Ensure it's below the chat drawer
-              paddingBottom: currentDrawerHeight <= 32 ? '0px' : '8px', // Remove bottom padding when drawer is closed
-            }}
-          >
-            {/* 7-Day Event Outlook Section */}
-            <SevenDayEventOutlook />
+      <div 
+        ref={pageContentRef}
+        className="flex-1 w-full bg-gray-50 overflow-y-auto px-4"
+        style={{
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.offsetHeight || 0) + 8}px`,
+          zIndex: 1, // Ensure it's below the chat drawer
+        }}
+      >
+        {/* 7-Day Event Outlook Section */}
+        <SevenDayEventOutlook />
 
-            {/* Keepers Section */}
-            <ThirtyDayKeeperOutlook />
-          </div>
-        );
-      })()}
+        {/* Keepers Section */}
+        <ThirtyDayKeeperOutlook />
+      </div>
       <GlobalChatDrawer
         drawerHeight={currentDrawerHeight}
         maxDrawerHeight={maxDrawerHeight}

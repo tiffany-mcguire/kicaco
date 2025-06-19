@@ -14,11 +14,18 @@
 
   html {
     scroll-padding-bottom: 200px; /* Fallback for mobile scroll behavior */
+    /* Prevent rubber band scrolling */
+    overscroll-behavior: none;
   }
 
   body {
     @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
     font-family: 'Work Sans', sans-serif;
+    min-height: 100vh;
+    /* Prevent rubber band scrolling on body */
+    overscroll-behavior: none;
+    /* Prevent pull-to-refresh */
+    overscroll-behavior-y: contain;
   }
 }
 
@@ -260,6 +267,34 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile-specific fixes for sticky headers and scroll behavior */
+@media (max-width: 768px) {
+  /* Ensure sticky elements work properly on mobile */
+  .sticky {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+  
+  /* Prevent momentum scrolling from breaking sticky elements */
+  body {
+    -webkit-overflow-scrolling: auto;
+  }
+  
+  /* Performance optimization for navigation */
+  .global-header,
+  .profiles-roles-subheader {
+    will-change: auto;
+  }
+  
+  /* Prevent rubber band scrolling in content areas */
+  .flex-1[class*="overflow-y-auto"],
+  div[class*="overflow-y-auto"],
+  [class*="content-scroll"] {
+    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
+  }
 }
 
 code {

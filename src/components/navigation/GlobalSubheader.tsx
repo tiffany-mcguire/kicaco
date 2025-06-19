@@ -12,7 +12,7 @@ const GlobalSubheader = forwardRef<HTMLDivElement, GlobalSubheaderProps>(
     return (
       <div
         ref={ref}
-        className={`profiles-roles-subheader w-full bg-gray-50 ${className}`}
+        className={`profiles-roles-subheader w-full bg-gray-50 sticky top-16 z-[100] ${className}`}
       >
         <section className="px-6 pt-4 pb-3">
           <div className="flex items-end justify-between w-full">

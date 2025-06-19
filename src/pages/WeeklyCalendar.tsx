@@ -801,7 +801,7 @@ export default function WeeklyCalendar() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
       <GlobalSubheader
         ref={subheaderRef}
@@ -809,8 +809,11 @@ export default function WeeklyCalendar() {
         title="Weekly Calendar"
         action={<AddByDayButton onClick={() => handleAddEventClick(null)} />}
       />
-      {/* Week Navigation - moved out to be static */}
-      <div ref={weekNavRef} className="flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full">
+      {/* Week Navigation - made sticky below subheader */}
+      <div ref={weekNavRef} className="sticky z-[95] flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full"
+        style={{ 
+          top: 'calc(4rem + 58px)' // 64px header + ~58px subheader
+        }}>
         <button
           onClick={goToPreviousWeek}
           className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
