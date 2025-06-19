@@ -1,4 +1,4 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2, StackedChildBadges } from '../components/common';
 import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
@@ -19,6 +19,7 @@ import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { parse, format, startOfDay, isAfter, isSameDay } from 'date-fns';
 
+import { generateUUID } from '../utils/uuid';
 // Day Colors for Tabs (copied from Home.tsx)
 const dayColors: { [key: number]: string } = {
   0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
@@ -136,9 +137,9 @@ const EventDayStackCard: React.FC<{
   
   // Get child info for the event
   const children = useKicacoStore(state => state.children);
-  const childProfile = currentEvent.childName ? children.find(c => c.name === currentEvent.childName) : null;
-  const childIndex = currentEvent.childName ? children.findIndex(c => c.name === currentEvent.childName) : -1;
-  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  
+  // Parse multiple children from comma-separated string (kept for birthday name logic)
+  const childNames = currentEvent.childName ? currentEvent.childName.split(',').map((name: string) => name.trim()).filter((name: string) => name) : [];
   
   // Find the global index of this event
   const globalEventIndex = allEvents.findIndex(e => 
@@ -204,15 +205,13 @@ const EventDayStackCard: React.FC<{
         <div className="flex h-full items-center justify-between px-4">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">
-              {currentEvent.childName && childColor && (
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                  style={{ backgroundColor: childColor }}
-                >
-                  {currentEvent.childName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="text-sm font-semibold text-white">{displayName}</span>
+              <StackedChildBadges childName={currentEvent.childName} size="md" maxVisible={3} />
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-white">{displayName}</span>
+                {currentEvent.location && (
+                  <span className="text-xs text-gray-200 mt-0.5">{currentEvent.location}</span>
+                )}
+              </div>
               {/* Carousel controls next to event name */}
               {events.length > 1 && (
                 <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
@@ -228,9 +227,6 @@ const EventDayStackCard: React.FC<{
                 </div>
               )}
             </div>
-            {currentEvent.location && (
-              <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: currentEvent.childName && childColor ? '22px' : '0' }}>{currentEvent.location}</span>
-            )}
           </div>
           <div className="flex flex-col justify-center items-end">
             <span className="text-sm font-medium text-white">{format(eventDate, 'EEEE, MMMM d')}</span>
@@ -290,6 +286,34 @@ export default function UpcomingEvents() {
       }
     });
   }, [setChatScrollPosition, scrollRefReady]);
+
+  // Helper function to parse time for sorting (same as WeeklyCalendar)
+  const parseTimeForSorting = (timeStr?: string): number => {
+    if (!timeStr) return 2400; // Events without a time go last
+
+    let normalized = timeStr.trim().toLowerCase();
+    normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+    if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+      normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+    }
+
+    const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+    for (const pattern of patterns) {
+      try {
+        const dateObj = parse(normalized, pattern, new Date());
+        if (!isNaN(dateObj.getTime())) {
+          return parseInt(format(dateObj, 'HHmm'), 10);
+        }
+      } catch {}
+    }
+    
+    const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+    if (!isNaN(dateObj.getTime())) {
+      return parseInt(format(dateObj, 'HHmm'), 10);
+    }
+
+    return 2400;
+  };
 
   useLayoutEffect(() => {
     function updatePageSpecificMaxHeight() {
@@ -381,11 +405,7 @@ export default function UpcomingEvents() {
     }, {} as Record<string, any[]>);
     // Sort events within each day by time
     Object.keys(grouped).forEach(date => {
-        grouped[date].sort((a, b) => {
-            const timeA = a.time ? parse(a.time, 'h:mm a', new Date()).getTime() : 0;
-            const timeB = b.time ? parse(b.time, 'h:mm a', new Date()).getTime() : 0;
-            return timeA - timeB;
-        });
+        grouped[date].sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
     });
     return grouped;
   }, [events]);
@@ -412,17 +432,17 @@ export default function UpcomingEvents() {
   // Assistant-enabled handleSend
   const handleSend = async () => {
     if (!input.trim() || !threadId) return;
-    const userMessage = { id: crypto.randomUUID(), sender: 'user' as const, content: input };
+    const userMessage = { id: generateUUID(), sender: 'user' as const, content: input };
     addMessage(userMessage);
     const thinkingId = 'thinking-upcoming';
     addMessage({ id: thinkingId, sender: 'assistant', content: 'Kicaco is thinking' });
     try {
       const response = await sendMessageToAssistant(threadId, input);
       removeMessageById(thinkingId);
-      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: response });
+      addMessage({ id: generateUUID(), sender: 'assistant', content: response });
     } catch (error) {
       removeMessageById(thinkingId);
-      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: 'An error occurred.' });
+      addMessage({ id: generateUUID(), sender: 'assistant', content: 'An error occurred.' });
     }
     setInput('');
   };
@@ -536,7 +556,7 @@ export default function UpcomingEvents() {
                       style={{
                           height: `${expandedCardHeight + ((reversedMonthDates.length - 1) * visibleTabHeight)}px`,
                           marginBottom: activeDayDate === reversedMonthDates[reversedMonthDates.length - 1] ? '196px' : '20px',
-                          transition: 'margin-bottom 300ms ease-in-out',
+                          transition: 'margin-bottom 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                       }}
                     >
                       {reversedMonthDates.map((date, idx) => {
@@ -564,15 +584,15 @@ export default function UpcomingEvents() {
                                   style={{
                                       top: `${cardOffset}px`,
                                       zIndex: reversedMonthDates.length - stackPosition,
-                                      transition: 'all 300ms ease-in-out',
+                                      transition: 'top 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                                   }}
                                   onClick={() => setActiveDayDate(isActive ? null : date)}
                               >
                                   <div 
                                     className="relative w-full h-full"
                                     style={{
-                                      transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
-                                      transition: 'all 300ms ease-in-out',
+                                      transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0) scale(1)',
+                                      transition: 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                                     }}
                                   >
                                     <EventDayStackCard

@@ -12,6 +12,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  html {
+    scroll-padding-bottom: 200px; /* Fallback for mobile scroll behavior */
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
     font-family: 'Work Sans', sans-serif;
@@ -78,6 +82,47 @@ input[type="checkbox"]:checked {
 
 /* DCC Styling */
 
+/* Prevent auto-zoom on mobile devices */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+  font-size: 16px !important; /* Prevents zoom on iOS Safari */
+  -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape */
+}
+
+/* Ensure date and time inputs also don't trigger zoom */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Override any smaller font sizes on mobile */
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* Ensure chat input maintains proper size */
+  .footer-chat {
+    font-size: 16px !important;
+  }
+  
+  /* But allow smaller placeholder text */
+  .footer-chat::placeholder {
+    font-size: 14px !important;
+  }
+}
+
 .subheader-z-index {
   z-index: 2;
 }
@@ -85,6 +130,23 @@ input[type="checkbox"]:checked {
 .footer-chat {
   color: #000;
   font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Style placeholder text separately from input text */
+.footer-chat::placeholder {
+  font-size: 14px !important;
+  color: #9ca3af; /* Tailwind gray-400 */
+}
+
+/* Ensure the input text remains 16px to prevent zoom */
+.footer-chat:not(:placeholder-shown) {
+  font-size: 16px !important;
+}
+
+/* For all other inputs, apply the same pattern */
+input::placeholder,
+textarea::placeholder {
+  font-size: 14px !important;
 }
 
 .typing-bubble {

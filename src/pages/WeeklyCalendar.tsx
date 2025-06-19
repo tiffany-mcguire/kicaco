@@ -1,6 +1,6 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2, StackedChildBadges } from '../components/common';
 import { IconButton } from '../components/common';
-import { ChatBubble } from '../components/chat';
+import { ChatBubble, ChatMessageList } from '../components/chat';
 import { HamburgerMenu } from '../components/navigation';
 import { CalendarMenu } from '../components/calendar';
 import { ThreeDotMenu } from '../components/navigation';
@@ -19,6 +19,7 @@ import { parse as parseDate, format as formatDateFns } from 'date-fns';
 import { EventCard } from '../components/calendar';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
+import { generateUUID } from '../utils/uuid';
 const WeeklyIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
     <path d="M160 32V64H288V32C288 14.33 302.3 0 320 0C337.7 0 352 14.33 352 32V64H400C426.5 64 448 85.49 448 112V160H0V112C0 85.49 21.49 64 48 64H96V32C96 14.33 110.3 0 128 0C145.7 0 160 14.33 160 32zM0 192H448V464C448 490.5 426.5 512 400 512H48C21.49 512 0 490.5 0 464V192zM80 256C71.16 256 64 263.2 64 272V336C64 344.8 71.16 352 80 352H368C376.8 352 384 344.8 384 336V272C384 263.2 376.8 256 368 256H80z" />
@@ -413,14 +414,14 @@ export default function WeeklyCalendar() {
     if (!threadId) {
       console.error("WeeklyCalendar: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -442,7 +443,7 @@ export default function WeeklyCalendar() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -450,7 +451,7 @@ export default function WeeklyCalendar() {
       console.error("Error sending message from WeeklyCalendar:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -521,10 +522,8 @@ export default function WeeklyCalendar() {
     const eventDate = evt.date ? parseDate(evt.date, 'yyyy-MM-dd', new Date()) : new Date();
     const dayOfWeek = eventDate.getDay();
     
-    // Get child info for the event
-    const childProfile = evt.childName ? children.find(c => c.name === evt.childName) : null;
-    const childIndex = evt.childName ? children.findIndex(c => c.name === evt.childName) : -1;
-    const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+    // Get child info for the event - simplified since we're using StackedChildBadges
+    const childNames = evt.childName ? evt.childName.split(',').map((name: string) => name.trim()).filter((name: string) => name) : [];
     
     // Find the global index of this event in the events array
     const globalEventIndex = events.findIndex(e => 
@@ -569,34 +568,31 @@ export default function WeeklyCalendar() {
         {/* Tab overlay at top (matching EventDayStackCard style but smaller) */}
         <div className="absolute top-2 left-0 right-0 z-10 h-[40px]">
           <div className="flex h-full items-center justify-between px-3">
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-1">
-                {evt.childName && childColor && (
-                  <div
-                    className="w-3 h-3 rounded-full flex items-center justify-center text-gray-700 text-[8px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                    style={{ backgroundColor: childColor }}
-                  >
-                    {evt.childName.charAt(0).toUpperCase()}
-                  </div>
-                )}
+            <div className="flex items-center gap-1.5">
+              <StackedChildBadges 
+                childName={evt.childName} 
+                size="sm" 
+                maxVisible={3}
+              />
+              <div className="flex flex-col">
                 <span className="text-xs font-semibold text-white leading-tight">{displayName}</span>
-                {/* Carousel controls next to event name */}
-                {dayEvents.length > 1 && (
-                  <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
-                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                      <ChevronLeft size={12} />
-                    </button>
-                    <span className="text-gray-800 text-[10px] font-medium">
-                      {currentIdx + 1}/{dayEvents.length}
-                    </span>
-                    <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                      <ChevronRight size={12} />
-                    </button>
-                  </div>
+                {evt.location && (
+                  <span className="text-[10px] text-gray-200 mt-0.5">{evt.location}</span>
                 )}
               </div>
-              {evt.location && (
-                <span className="text-[10px] text-gray-200 mb-1" style={{ marginLeft: evt.childName && childColor ? '16px' : '0' }}>{evt.location}</span>
+              {/* Carousel controls - hugging the event content */}
+              {dayEvents.length > 1 && (
+                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-2">
+                  <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-gray-800 text-[10px] font-medium">
+                    {currentIdx + 1}/{dayEvents.length}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); setCurrentIdx((currentIdx + 1) % dayEvents.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
               )}
             </div>
             <div className="flex flex-col justify-center items-end">
@@ -692,11 +688,6 @@ export default function WeeklyCalendar() {
 
     const keeper = dayKeepers[currentIdx];
     
-    // Get child info for the keeper
-    const childProfile = keeper.childName ? children.find(c => c.name === keeper.childName) : null;
-    const childIndex = keeper.childName ? children.findIndex(c => c.name === keeper.childName) : -1;
-    const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
-    
     // Find the global index of this keeper in the keepers array
     const globalKeeperIndex = keepers.findIndex(k => 
       k.keeperName === keeper.keeperName && 
@@ -719,14 +710,11 @@ export default function WeeklyCalendar() {
           <div className="flex h-full items-center justify-between px-3">
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-1">
-                {keeper.childName && childColor && (
-                  <div
-                    className="w-3 h-3 rounded-full flex items-center justify-center text-gray-700 text-[8px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                    style={{ backgroundColor: childColor }}
-                  >
-                    {keeper.childName.charAt(0).toUpperCase()}
-                  </div>
-                )}
+                <StackedChildBadges 
+                  childName={keeper.childName} 
+                  size="sm" 
+                  maxVisible={3}
+                />
                 <span className="text-xs font-semibold text-white leading-tight">{keeper.keeperName}</span>
                 {/* Carousel controls next to keeper name */}
                 {dayKeepers.length > 1 && (
@@ -841,16 +829,12 @@ export default function WeeklyCalendar() {
       </div>
       <div
         ref={pageScrollRef}
-        className="weekly-calendar-content-scroll bg-gray-50 overflow-y-auto"
+                  className="weekly-calendar-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: weekNavBottom,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
           WebkitOverflowScrolling: 'touch',
           overflowY: 'auto',
-          transition: isPositioned ? 'top 0.2s, bottom 0.2s' : 'none',
+
           opacity: isPositioned ? 1 : 0,
         }}
       >
@@ -937,72 +921,45 @@ export default function WeeklyCalendar() {
                           {/* Event and Keeper indicators - right aligned */}
                           <div className="flex items-center gap-2">
                             {/* Keeper indicators */}
-                            {dayKeepers.length > 0 && (() => {
-                              const keeperChildren = dayKeepers
-                                .filter(k => k.childName)
-                                .map(k => k.childName);
-                              const uniqueKeeperChildren = [...new Set(keeperChildren)];
-                              
-                              if (uniqueKeeperChildren.length > 0) {
-                                return (
-                                  <div className="flex items-center px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
-                                    <span className="text-[10px] font-medium text-gray-700 mr-1">Keepers:</span>
-                                    <div className="flex items-center space-x-1">
-                                      {uniqueKeeperChildren.slice(0, 3).map((childName, idx) => {
-                                        const child = getChildProfile(childName);
-                                        const bg = child?.color || '#6b7280';
-                                        const initial = (childName || '?')[0].toUpperCase();
-                                        return (
-                                          <span
-                                            key={idx}
-                                            className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700 ring-1 ring-gray-400"
-                                            style={{ backgroundColor: bg }}
-                                          >
-                                            {initial}
-                                          </span>
-                                        );
-                                      })}
-                                      {uniqueKeeperChildren.length > 3 && (
-                                        <span className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">
-                                          +{uniqueKeeperChildren.length - 3}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
+                            {dayKeepers.length > 0 && (
+                              <div className="flex items-center px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
+                                <span className="text-[10px] font-medium text-gray-700 mr-1">Keepers:</span>
+                                <div className="flex items-center space-x-1">
+                                  {dayKeepers.slice(0, 3).map((keeper, idx) => (
+                                    <StackedChildBadges
+                                      key={`keeper-${idx}`}
+                                      childName={keeper.childName}
+                                      size="sm"
+                                      maxVisible={10}
+                                    />
+                                  ))}
+                                  {dayKeepers.length > 3 && (
+                                    <span className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">
+                                      +{dayKeepers.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Event indicators */}
                             {dayEvents.length > 0 && (
                               <div className="flex items-center px-1.5 py-0.5 rounded-full bg-white/50 backdrop-blur-sm">
                                 <span className="text-[10px] font-medium text-gray-700 mr-1">Events:</span>
                                 <div className="flex items-center space-x-1">
-                                  {(() => {
-                                    const circles: JSX.Element[] = [];
-                                    const MAX_SHOW = 3;
-                                    dayEvents.slice(0, MAX_SHOW).forEach((ev, i) => {
-                                      const child = getChildProfile(ev.childName);
-                                      const bg = child?.color || '#6b7280';
-                                      const initial = (ev.childName || '?')[0].toUpperCase();
-                                      circles.push(
-                                        <span
-                                          key={`${ev.eventName}-${i}`}
-                                          className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-semibold text-gray-700 ring-1 ring-gray-400"
-                                          style={{ backgroundColor: bg }}
-                                        >
-                                          {initial}
-                                        </span>
-                                      );
-                                    });
-                                    if (dayEvents.length > MAX_SHOW) {
-                                      circles.push(
-                                        <span key="more" className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">+{dayEvents.length - MAX_SHOW}</span>
-                                      );
-                                    }
-                                    return circles;
-                                  })()}
+                                  {dayEvents.slice(0, 3).map((event, idx) => (
+                                    <StackedChildBadges
+                                      key={`event-${idx}`}
+                                      childName={event.childName}
+                                      size="sm"
+                                      maxVisible={10}
+                                    />
+                                  ))}
+                                  {dayEvents.length > 3 && (
+                                    <span className="w-4 h-4 rounded-full bg-gray-500 flex items-center justify-center text-[10px] text-white ring-1 ring-gray-400">
+                                      +{dayEvents.length - 3}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1028,26 +985,19 @@ export default function WeeklyCalendar() {
         maxDrawerHeight={maxDrawerHeight}
         scrollContainerRefCallback={chatContentScrollRef}
       >
-        <div 
-          ref={messagesContentRef}
-          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
-        >
-          {/* Render Messages */}
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="w-full"
-            >
-              <ChatBubble
-                side={msg.sender === 'user' ? 'right' : 'left'}
-              >
-                {msg.content}
-              </ChatBubble>
-            </motion.div>
-          ))}
+        <div ref={messagesContentRef}>
+          <ChatMessageList
+            messages={messages}
+            onCreateAccount={() => {
+              // Handle account creation if needed
+              console.log('Account creation requested from WeeklyCalendar');
+            }}
+            onRemindLater={() => {
+              // Handle remind later if needed
+              console.log('Remind later requested from WeeklyCalendar');
+            }}
+            latestChildName={children[0]?.name || 'your child'}
+          />
         </div>
       </GlobalChatDrawer>
       <GlobalFooter

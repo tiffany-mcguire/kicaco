@@ -4,4 +4,7 @@ export { default as IconButton } from './IconButton';
 export { default as PasswordModal } from './PasswordModal';
 export { default as Portal } from './Portal';
 export { default as PostSignupOptions } from './PostSignupOptions';
+export { MobileDebugPanel } from './MobileDebugPanel';
+export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as StackedChildBadges } from './StackedChildBadges';
 export * from './icons'; 

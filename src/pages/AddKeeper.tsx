@@ -15,6 +15,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { BellPlus, Calendar, Clock, MapPin, AlertCircle } from "lucide-react";
 
+import { generateUUID } from '../utils/uuid';
 // Notebook/Binder Icon (Lucide style, simple)
 const AddKeeperIcon = () => {
   const styles = {
@@ -352,14 +353,14 @@ export default function AddKeeper() {
     if (!threadId) {
       console.error("AddKeeper: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -381,7 +382,7 @@ export default function AddKeeper() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -389,7 +390,7 @@ export default function AddKeeper() {
       console.error("Error sending message from AddKeeper:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -548,16 +549,10 @@ export default function AddKeeper() {
       />
       <div
         ref={pageScrollRef}
-        className="add-keeper-content-scroll bg-gray-50 overflow-y-auto"
+                  className="add-keeper-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
           WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto',
-          transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

@@ -1,4 +1,4 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
+import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2, StackedChildBadges } from '../components/common';
 import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
 import { HamburgerMenu } from '../components/navigation';
@@ -16,13 +16,14 @@ import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parse, getDaysInMonth, isPast, startOfDay } from 'date-fns';
 
+import { generateUUID } from '../utils/uuid';
 const CalendarIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
     <path d="M160 32V64H288V32C288 14.33 302.3 0 320 0C337.7 0 352 14.33 352 32V64H400C426.5 64 448 85.49 448 112V160H0V112C0 85.49 21.49 64 48 64H96V32C96 14.33 110.3 0 128 0C145.7 0 160 14.33 160 32zM0 192H448V464C448 490.5 426.5 512 400 512H48C21.49 512 0 490.5 0 464V192zM64 304C64 312.8 71.16 320 80 320H112C120.8 320 128 312.8 128 304V272C128 263.2 120.8 256 112 256H80C71.16 256 64 263.2 64 272V304zM192 304C192 312.8 199.2 320 208 320H240C248.8 320 256 312.8 256 304V272C256 263.2 248.8 256 240 256H208C199.2 256 192 263.2 192 272V304zM336 256C327.2 256 320 263.2 320 272V304C320 312.8 327.2 320 336 320H368C376.8 320 384 312.8 384 304V272C384 263.2 376.8 256 368 256H336zM64 432C64 440.8 71.16 448 80 448H112C120.8 448 128 440.8 128 432V400C128 391.2 120.8 384 112 384H80C71.16 384 64 391.2 64 400V432zM208 384C199.2 384 192 391.2 192 400V432C192 440.8 199.2 448 208 448H240C248.8 448 256 440.8 256 432V400C256 391.2 248.8 384 240 384H208zM320 432C320 440.8 327.2 448 336 448H368C376.8 448 384 440.8 384 432V400C384 391.2 376.8 384 368 384H336C327.2 384 320 391.2 320 400V432z" />
   </svg>
 );
 
-const AddByDateButton = (props: { label?: string }) => {
+const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) => {
   const navigate = useNavigate();
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
@@ -36,7 +37,7 @@ const AddByDateButton = (props: { label?: string }) => {
       border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
-      fontWeight: 400,
+      fontWeight: 500,
       fontSize: '14px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
@@ -60,7 +61,10 @@ const AddByDateButton = (props: { label?: string }) => {
   };
 
   const handleClick = () => {
-    setTimeout(() => navigate('/add-event'), 150);
+    const navigationState = props.selectedDate 
+      ? { date: dateFormat(props.selectedDate, 'yyyy-MM-dd') }
+      : undefined;
+    setTimeout(() => navigate('/add-event', { state: navigationState }), 150);
   };
 
   return (
@@ -85,33 +89,35 @@ const AddByDateButton = (props: { label?: string }) => {
 };
 
 export default function MonthlyCalendar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const headerRef = useRef<HTMLDivElement>(null);
+  const subheaderRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
+  const [subheaderBottom, setSubheaderBottom] = useState(108); // More accurate initial estimate (64px header + ~44px subheader)
+  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [highlightedDate, setHighlightedDate] = useState<Date | null>(null);
+  const [fadeOutDate, setFadeOutDate] = useState<Date | null>(null);
+  const { messages, threadId, addMessage, removeMessageById, events, keepers, children, drawerHeight: storedDrawerHeight, setDrawerHeight: setStoredDrawerHeight } = useKicacoStore();
   const [isMounted, setIsMounted] = useState(false);
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const navigate = useNavigate();
-  const footerRef = useRef<HTMLDivElement>(null);
-  const subheaderRef = useRef<HTMLDivElement>(null);
-  const [subheaderBottom, setSubheaderBottom] = useState(120); // Better initial estimate
-  const { 
-    events, 
-    children,
-    messages,
-    threadId,
-    addMessage,
-    removeMessageById,
-    drawerHeight: storedDrawerHeight,
-    setDrawerHeight: setStoredDrawerHeight,
-    keepers,
-  } = useKicacoStore();
+  const goToPreviousMonth = () => {
+    setCurrentMonth(subMonths(currentMonth, 1));
+    setSelectedDate(null);
+  };
   
-  const [input, setInput] = useState("");
-  const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
-
-  const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const goToNextMonth = () => {
+    setCurrentMonth(addMonths(currentMonth, 1));
+    setSelectedDate(null);
+  };
 
   const getChildProfile = (childName?: string) => children.find(c => c.name === childName);
 
@@ -241,7 +247,7 @@ export default function MonthlyCalendar() {
   
   const handleSendMessage = async () => {
     if (!input.trim() || !threadId) return;
-    const userMessage = { id: crypto.randomUUID(), sender: 'user' as const, content: input };
+    const userMessage = { id: generateUUID(), sender: 'user' as const, content: input };
     addMessage(userMessage);
     const messageToSend = input;
     setInput('');
@@ -252,18 +258,19 @@ export default function MonthlyCalendar() {
     try {
       const assistantResponse = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingId);
-      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: assistantResponse });
+      addMessage({ id: generateUUID(), sender: 'assistant', content: assistantResponse });
     } catch (error) {
       console.error("Error sending message from MonthlyCalendar:", error);
       removeMessageById(thinkingId);
-      addMessage({ id: crypto.randomUUID(), sender: 'assistant', content: "I had an issue. Please try again." });
+      addMessage({ id: generateUUID(), sender: 'assistant', content: "I had an issue. Please try again." });
     }
   };
 
   useLayoutEffect(() => {
     const updateSubheaderBottom = () => {
       if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
+        const rect = subheaderRef.current.getBoundingClientRect();
+        setSubheaderBottom(rect.bottom);
       }
     };
 
@@ -279,19 +286,42 @@ export default function MonthlyCalendar() {
       }
     };
     
-    updateSubheaderBottom();
-    calculateMaxDrawerHeight();
-    window.addEventListener('resize', updateSubheaderBottom);
-    window.addEventListener('resize', calculateMaxDrawerHeight);
-    
-    return () => {
-      window.removeEventListener('resize', updateSubheaderBottom);
-      window.removeEventListener('resize', calculateMaxDrawerHeight);
+    const updateLayout = () => {
+      updateSubheaderBottom();
+      calculateMaxDrawerHeight();
+      setIsLayoutReady(true);
     };
-  }, [subheaderRef.current, footerRef.current]);
+    
+    if (isMounted) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      const rafId = requestAnimationFrame(() => {
+        updateLayout();
+      });
+      
+      window.addEventListener('resize', updateSubheaderBottom);
+      window.addEventListener('resize', calculateMaxDrawerHeight);
+      
+      return () => {
+        cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', updateSubheaderBottom);
+        window.removeEventListener('resize', calculateMaxDrawerHeight);
+      };
+    }
+  }, [isMounted]); // Changed dependency to isMounted instead of refs
 
-  if (!isMounted) {
-    return null; // or a loading spinner
+  if (!isMounted || !isLayoutReady) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <GlobalHeader />
+        <GlobalSubheader
+          ref={subheaderRef}
+          icon={<Calendar />}
+          title="Monthly Calendar"
+          action={<AddByDateButton selectedDate={selectedDate} />}
+        />
+        <GlobalFooter ref={footerRef} value="" onChange={() => {}} onSend={() => {}} disabled />
+      </div>
+    ); // Show basic layout while measuring
   }
 
   return (
@@ -301,19 +331,13 @@ export default function MonthlyCalendar() {
         ref={subheaderRef}
         icon={<Calendar />}
         title="Monthly Calendar"
-        action={<AddByDateButton />}
+        action={<AddByDateButton selectedDate={selectedDate} />}
       />
       <div 
-        className="monthly-calendar-content-scroll bg-gray-50 overflow-y-auto"
+        className="monthly-calendar-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
           WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto',
-          transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         <div className="max-w-md mx-auto p-4">
@@ -389,54 +413,125 @@ export default function MonthlyCalendar() {
                 return (
                   <div 
                     key={day.toString()}
-                    className={`relative p-1.5 h-20 flex flex-col items-center justify-start border-r border-b
-                      ${(index + 1) % 7 === 0 ? 'border-r-0' : 'border-gray-100'}
-                      ${index > 34 ? 'border-b-0' : 'border-gray-100'}
+                    onClick={() => setSelectedDate(day)}
+                    className={`relative p-1.5 h-20 flex flex-col items-center justify-start border-r border-b cursor-pointer hover:bg-opacity-70 transition-colors
+                      ${(index + 1) % 7 === 0 ? 'border-r-0' : 'border-gray-200'}
+                      ${index > 34 ? 'border-b-0' : 'border-gray-200'}
+                      ${selectedDate && isSameDay(day, selectedDate) ? 'ring-2 ring-[#217e8f] ring-inset' : ''}
                     `}
                     style={{ backgroundColor: dayColorTints[day.getDay()] }}
                   >
                     <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full 
                       ${isCurrentDay 
                         ? 'bg-[#217e8f] text-white' 
+                        : selectedDate && isSameDay(day, selectedDate)
+                        ? 'bg-[#217e8f]/20 text-[#217e8f] font-bold'
                         : (isCurrentMonth ? 'text-gray-800' : 'text-gray-400')
                       }`
                     }>
                       {dateFormat(day, "d")}
                     </span>
                     {totalItems > 0 && (
-                      <div className="flex flex-wrap items-center justify-center mt-1 gap-0.5">
+                      <div className="flex flex-wrap items-center justify-center mt-1 gap-0.5 max-w-full">
                         {/* Show event children first */}
-                        {dayEvents.slice(0, 2).map((event, i) => {
-                          const child = getChildProfile(event.childName);
-                          return (
-                            <span
-                              key={`event-${i}`}
-                              className="w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold text-gray-700 ring-1 ring-gray-400"
-                              style={{ backgroundColor: child?.color || '#6b7280' }}
-                            >
-                              {(event.childName || '?')[0].toUpperCase()}
-                            </span>
-                          );
-                        })}
-                        {/* Show keeper children if space allows */}
-                        {dayEvents.length < 2 && dayKeepers.slice(0, 2 - dayEvents.length).map((keeper, i) => {
-                          const child = getChildProfile(keeper.childName);
-                          return (
-                            <span
-                              key={`keeper-${i}`}
-                              className="w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold text-gray-700 ring-1 ring-gray-400"
-                              style={{ backgroundColor: child?.color || '#6b7280' }}
-                            >
-                              {(keeper.childName || '?')[0].toUpperCase()}
-                            </span>
-                          );
-                        })}
-                        {totalItems > 2 && (
-                          <span className="text-[9px] font-bold text-gray-400">
-                            +{totalItems - 2}
-                          </span>
-                        )}
+                        {dayEvents.map((event, i) => (
+                          <StackedChildBadges 
+                            key={`event-${i}`}
+                            childName={event.childName} 
+                            size="sm" 
+                            maxVisible={10} 
+                          />
+                        ))}
+                        {/* Show all keeper children */}
+                        {dayKeepers.map((keeper, i) => (
+                          <StackedChildBadges 
+                            key={`keeper-${i}`}
+                            childName={keeper.childName} 
+                            size="sm" 
+                            maxVisible={10} 
+                          />
+                        ))}
                       </div>
+                    )}
+                    {/* Jump button - appears when date is selected */}
+                    {selectedDate && isSameDay(day, selectedDate) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent date selection when clicking jump button
+                          
+                          // Check if the selected date is in a different month
+                          if (!isSameMonth(day, currentMonth)) {
+                            // Navigate to the correct month first
+                            setCurrentMonth(day);
+                            // Clear any existing highlights
+                            setHighlightedDate(null);
+                            setFadeOutDate(null);
+                            // Set the new highlight after a brief delay to allow month change
+                            setTimeout(() => {
+                              setHighlightedDate(day);
+                              
+                              // Then scroll to the date in the new month's list view
+                              setTimeout(() => {
+                                const listViewElement = document.getElementById(`list-day-${day.getDate()}`);
+                                const scrollContainer = document.querySelector('.monthly-calendar-content-scroll');
+                                
+                                if (listViewElement && scrollContainer) {
+                                  const containerRect = scrollContainer.getBoundingClientRect();
+                                  const elementRect = listViewElement.getBoundingClientRect();
+                                  const relativeTop = elementRect.top - containerRect.top + scrollContainer.scrollTop;
+                                  
+                                  scrollContainer.scrollTo({
+                                    top: relativeTop - 20, // 20px padding from top
+                                    behavior: 'smooth'
+                                  });
+                                  
+                                  // Start fade out after 2.5 seconds
+                                  setTimeout(() => {
+                                    setFadeOutDate(day);
+                                    // Don't clean up the highlight state - let it stay faded
+                                  }, 2500); // 2.5 second highlight duration
+                                }
+                              }, 100); // Small delay to ensure DOM is updated
+                            }, 50); // Small delay to ensure month change is processed
+                          } else {
+                            // Same month logic - always reset highlights first for fresh animation
+                            setHighlightedDate(null);
+                            setFadeOutDate(null);
+                            
+                            // Apply highlight after brief reset
+                            setTimeout(() => {
+                              setHighlightedDate(day);
+                              
+                              const listViewElement = document.getElementById(`list-day-${day.getDate()}`);
+                              const scrollContainer = document.querySelector('.monthly-calendar-content-scroll');
+                              
+                              if (listViewElement && scrollContainer) {
+                                const containerRect = scrollContainer.getBoundingClientRect();
+                                const elementRect = listViewElement.getBoundingClientRect();
+                                const relativeTop = elementRect.top - containerRect.top + scrollContainer.scrollTop;
+                                
+                                scrollContainer.scrollTo({
+                                  top: relativeTop - 20, // 20px padding from top
+                                  behavior: 'smooth'
+                                });
+                                
+                                // Start fade out after 2.5 seconds
+                                setTimeout(() => {
+                                  setFadeOutDate(day);
+                                  // Don't clean up the highlight state - let it stay faded
+                                }, 2500); // 2.5 second highlight duration
+                              }
+                            }, 10); // Very brief delay to ensure reset is processed
+                          }
+                        }}
+                        className="absolute bottom-0 left-0 right-0 bg-[#217e8f]/80 hover:bg-[#217e8f] text-white text-[9px] font-medium py-0.5 transition-colors flex items-center justify-center gap-0.5"
+                        style={{ borderBottomLeftRadius: '2px', borderBottomRightRadius: '2px' }}
+                      >
+                        <span>View</span>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+                        </svg>
+                      </button>
                     )}
                   </div>
                 );
@@ -456,16 +551,25 @@ export default function MonthlyCalendar() {
                   {firstColumn.map(({ day, events, keepers }) => {
                     const isPastDay = isPast(startOfDay(day)) && !isToday(day);
                     return (
-                      <div key={day.getDate()} className="flex items-start gap-1.5 text-xs">
+                      <div 
+                        key={day.getDate()} 
+                        id={`list-day-${day.getDate()}`} 
+                        className={`flex items-start gap-1.5 text-xs ${
+                          highlightedDate && isSameDay(day, highlightedDate) 
+                            ? fadeOutDate && isSameDay(day, fadeOutDate)
+                              ? '-mx-2 px-2 py-1 animate-fade-out'
+                              : '-mx-2 px-2 py-1 rounded-lg shadow-md bg-[#217e8f]/20'
+                            : ''
+                        }`}
+                      >
                         <span className="font-medium text-gray-600 min-w-[16px] text-right">
                           {day.getDate()}
                         </span>
                         <div className="flex-1">
                           {(events.length > 0 || keepers.length > 0) ? (
-                            <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.6)' } : {}}>
+                            <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.3)' } : {}}>
                               {events.map((event, index) => {
                                 const { name: displayName } = compactEventName(event.eventName, event.childName);
-                                const child = getChildProfile(event.childName);
                                 return (
                                   <Link
                                     key={`event-${index}`}
@@ -474,22 +578,21 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
+                                    className={`flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight ${isPastDay ? 'opacity-70' : ''}`}
                                   >
                                     {event.childName && (
-                                      <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
-                                        style={{ backgroundColor: child?.color || '#6b7280' }}
-                                      >
-                                        {event.childName[0].toUpperCase()}
-                                      </span>
+                                      <StackedChildBadges 
+                                        childName={event.childName} 
+                                        size="sm" 
+                                        maxVisible={10} 
+                                        className="mt-0.5"
+                                      />
                                     )}
                                     <span>{displayName}</span>
                                   </Link>
                                 );
                               })}
                               {keepers.map((keeper, index) => {
-                                const child = getChildProfile(keeper.childName);
                                 return (
                                   <Link
                                     key={`keeper-${index}`}
@@ -498,15 +601,15 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
+                                    className={`flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight ${isPastDay ? 'opacity-70' : ''}`}
                                   >
                                     {keeper.childName && (
-                                      <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
-                                        style={{ backgroundColor: child?.color || '#6b7280' }}
-                                      >
-                                        {keeper.childName[0].toUpperCase()}
-                                      </span>
+                                      <StackedChildBadges 
+                                        childName={keeper.childName} 
+                                        size="sm" 
+                                        maxVisible={10} 
+                                        className="mt-0.5"
+                                      />
                                     )}
                                     <span>{keeper.keeperName}</span>
                                   </Link>
@@ -527,16 +630,25 @@ export default function MonthlyCalendar() {
                   {secondColumn.map(({ day, events, keepers }) => {
                     const isPastDay = isPast(startOfDay(day)) && !isToday(day);
                     return (
-                      <div key={day.getDate()} className="flex items-start gap-1.5 text-xs">
+                      <div 
+                        key={day.getDate()} 
+                        id={`list-day-${day.getDate()}`} 
+                        className={`flex items-start gap-1.5 text-xs ${
+                          highlightedDate && isSameDay(day, highlightedDate) 
+                            ? fadeOutDate && isSameDay(day, fadeOutDate)
+                              ? '-mx-2 px-2 py-1 animate-fade-out'
+                              : '-mx-2 px-2 py-1 rounded-lg shadow-md bg-[#217e8f]/20'
+                            : ''
+                        }`}
+                      >
                         <span className="font-medium text-gray-600 min-w-[16px] text-right">
                           {day.getDate()}
                         </span>
                         <div className="flex-1">
                           {(events.length > 0 || keepers.length > 0) ? (
-                            <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.6)' } : {}}>
+                            <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.3)' } : {}}>
                               {events.map((event, index) => {
                                 const { name: displayName } = compactEventName(event.eventName, event.childName);
-                                const child = getChildProfile(event.childName);
                                 return (
                                   <Link
                                     key={`event-${index}`}
@@ -545,22 +657,21 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight"
+                                    className={`flex items-start gap-1 text-[#217e8f] hover:text-[#1a6e7e] hover:underline transition-colors leading-tight ${isPastDay ? 'opacity-70' : ''}`}
                                   >
                                     {event.childName && (
-                                      <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
-                                        style={{ backgroundColor: child?.color || '#6b7280' }}
-                                      >
-                                        {event.childName[0].toUpperCase()}
-                                      </span>
+                                      <StackedChildBadges 
+                                        childName={event.childName} 
+                                        size="sm" 
+                                        maxVisible={10} 
+                                        className="mt-0.5"
+                                      />
                                     )}
                                     <span>{displayName}</span>
                                   </Link>
                                 );
                               })}
                               {keepers.map((keeper, index) => {
-                                const child = getChildProfile(keeper.childName);
                                 return (
                                   <Link
                                     key={`keeper-${index}`}
@@ -569,15 +680,15 @@ export default function MonthlyCalendar() {
                                     onClick={() => {
                                       navigate('/daily-view', { state: { date: dateFormat(day, 'yyyy-MM-dd') } });
                                     }}
-                                    className="flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight"
+                                    className={`flex items-start gap-1 text-[#b91142] hover:text-[#8a0d33] hover:underline transition-colors leading-tight ${isPastDay ? 'opacity-70' : ''}`}
                                   >
                                     {keeper.childName && (
-                                      <span
-                                        className="inline-flex w-3 h-3 rounded-full items-center justify-center text-[8px] font-bold text-gray-700 flex-shrink-0 ring-1 ring-gray-400 mt-0.5"
-                                        style={{ backgroundColor: child?.color || '#6b7280' }}
-                                      >
-                                        {keeper.childName[0].toUpperCase()}
-                                      </span>
+                                      <StackedChildBadges 
+                                        childName={keeper.childName} 
+                                        size="sm" 
+                                        maxVisible={10} 
+                                        className="mt-0.5"
+                                      />
                                     )}
                                     <span>{keeper.keeperName}</span>
                                   </Link>

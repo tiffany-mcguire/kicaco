@@ -15,6 +15,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { UserCog } from 'lucide-react';
 
+import { generateUUID } from '../utils/uuid';
 // Rainbow colors palette
 const rainbowColors = [
   { name: 'Pink', value: '#f8b6c2', dark: '#f48fb1' },
@@ -233,7 +234,7 @@ export default function EditChild() {
     } else {
       // Add new child
       const newChild = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         name: fullName,
         dob,
         school,
@@ -440,14 +441,14 @@ export default function EditChild() {
     if (!threadId) {
       console.error("EditChild: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -469,7 +470,7 @@ export default function EditChild() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -477,7 +478,7 @@ export default function EditChild() {
       console.error("Error sending message from EditChild:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -570,15 +571,9 @@ export default function EditChild() {
       />
       <div
         ref={pageScrollRef}
-        className="edit-child-content-scroll bg-gray-50"
+        className="edit-child-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom > 0 ? subheaderBottom : 'auto',
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0),
-          left: 0,
-          right: 0,
-          overflowY: mainContentScrollOverflow,
-          transition: 'top 0.2s, bottom 0.2s',
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0)}px`,
         }}
       >
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

@@ -16,6 +16,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Settings } from "lucide-react";
 
+import { generateUUID } from '../utils/uuid';
 const ChatDefaultsIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 24 24">
     <path d="M0 0h24v24H0z" fill="none"></path>
@@ -197,14 +198,14 @@ export default function ChatDefaults() {
     if (!threadId) {
       console.error("ChatDefaults: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -226,7 +227,7 @@ export default function ChatDefaults() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -234,7 +235,7 @@ export default function ChatDefaults() {
       console.error("Error sending message from ChatDefaults:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -408,15 +409,9 @@ export default function ChatDefaults() {
       />
       <div
         ref={pageScrollRef}
-        className="chat-defaults-content-scroll bg-gray-50"
+        className="chat-defaults-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom > 0 ? subheaderBottom : 'auto',
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
-          overflowY: scrollOverflow,
-          transition: 'top 0.2s, bottom 0.2s',
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
         }}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

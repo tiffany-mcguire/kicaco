@@ -1,29 +1,22 @@
-// import React from 'react';
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChatBubble } from '../components/chat';
-import { IconButton } from '../components/common';
-import React, { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import { ChatMessageList } from '../components/chat';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
 import { GlobalChatDrawer } from '../components/chat';
-import { extractJsonFromMessage } from '../utils/parseAssistantResponse';
+import { useChatScrollManagement } from '../hooks/useChatScrollManagement';
+import { useEventCreation } from '../hooks/useEventCreation';
 import { useKicacoStore } from '../store/kicacoStore';
 import { EventConfirmationCard } from '../components/calendar';
-import { runAssistantFunction } from '../utils/runAssistantFunction';
-import { sendMessageToAssistant, createOpenAIThread } from '../utils/talkToKicaco';
-import { extractKnownFields, getNextFieldToPrompt, isFirstMessage } from '../utils/kicacoFlow';
-import { ParsedFields } from '../utils/kicacoFlow';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { EventCard } from '../components/calendar';
-import { KeeperCard } from '../components/calendar';
-import { SevenDayEventOutlook } from '../components/calendar';
-import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
-import { parse, format, addDays, startOfDay, isSameDay, parseISO, isWithinInterval, endOfDay, differenceInDays } from 'date-fns';
+import { createOpenAIThread } from '../utils/talkToKicaco';
+import { getApiClientInstance } from '../utils/apiClient';
+import { useNavigate } from 'react-router-dom';
+import { SevenDayEventOutlook, ThirtyDayKeeperOutlook } from '../components/calendar';
+import { parse, format } from 'date-fns';
 import { PasswordModal } from '../components/common';
 import { PostSignupOptions } from '../components/common';
 import { Home as HomeIcon } from "lucide-react";
 import { GlobalSubheader } from '../components/navigation';
+import { generateUUID } from '../utils/uuid';
 
 // Add NodeJS type definition
 declare global {
@@ -113,11 +106,6 @@ export default function Home() {
   const [currentWindowHeight, setCurrentWindowHeight] = useState(window.innerHeight);
   const introStartedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [scrollRefReady, setScrollRefReady] = useState(false);
-  const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const autoscrollFlagRef = useRef(false); // For managing autoscroll after new message
-  const mutationObserverRef = useRef<MutationObserver | null>(null); // Ref for the new MutationObserver
   const { 
     threadId,
     setThreadId,
@@ -137,16 +125,25 @@ export default function Home() {
   const pageContentRef = useRef<HTMLDivElement>(null); // Renamed from subheaderRef
   const upcomingEventsTitleRef = useRef<HTMLDivElement>(null); // New ref for the fixed title section
   const footerRef = useRef<HTMLDivElement>(null);
-  const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [initialHomePageDrawerHeightCalculated, setInitialHomePageDrawerHeightCalculated] = useState(false);
-  const [contentAreaTop, setContentAreaTop] = useState(0);
+  const [contentAreaTop, setContentAreaTop] = useState(108); // Better initial estimate
   const keepersBlurbRef = useRef<HTMLDivElement>(null); // Ref for Keepers blurb
   const [pageContentLoadedAndMeasured, setPageContentLoadedAndMeasured] = useState(false); // New state
-  // const [upcomingEventsSectionHeight, setUpcomingEventsSectionHeight] = useState(0); // Not strictly needed if used directly
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
 
   // Animated message reveal state
   const [visibleCount, setVisibleCount] = useState(0);
+
+  // Use custom hooks
+  const { chatContentScrollRef, messagesContentRef, scrollRefReady } = useChatScrollManagement({
+    messages,
+    chatScrollPosition,
+    setChatScrollPosition,
+    pageName: 'Home'
+  });
+  
+  const { handleEventMessage, eventCreationMessage, currentEventFields } = useEventCreation();
 
   // --- NEW: Track if blurb has been shown/should be hidden forever ---
   const [blurbGone, setBlurbGone] = useState(() => {
@@ -154,30 +151,6 @@ export default function Home() {
   });
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
-
-  // Filter keepers for next 30 days
-  const keepersNext30Days = useMemo(() => {
-    const today = startOfDay(new Date());
-    const thirtyDaysFromNow = endOfDay(addDays(today, 30));
-    
-    return keepers.filter(keeper => {
-      if (!keeper.date) return false;
-      try {
-        const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
-        return isWithinInterval(keeperDate, { start: today, end: thirtyDaysFromNow });
-      } catch (e) {
-        console.error('Error parsing date for keeper:', keeper, e);
-        return false;
-      }
-    }).sort((a, b) => {
-      const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
-      const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [keepers]);
-
-  // State for keeper card interactions
-  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number | null>(null);
 
   useEffect(() => {
     console.log('Events:', events);
@@ -207,7 +180,7 @@ export default function Home() {
 
         removeMessageById(thinkingId);
         addMessage({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           sender: 'assistant',
           content: intro[i]
         });
@@ -231,7 +204,8 @@ export default function Home() {
       try {
         setIsInitializing(true);
         console.log('Initializing thread...');
-        const response = await createOpenAIThread();
+        const apiClient = getApiClientInstance();
+        const response = await apiClient.createThread(intro.join('\n'));
         console.log('Thread creation response:', response);
         if (!response) {
           throw new Error('No response from thread creation');
@@ -241,12 +215,25 @@ export default function Home() {
           console.log('Zustand threadId after set:', useKicacoStore.getState().threadId);
         }, 0);
         console.log('Thread initialized with ID:', response);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to initialize thread:', error);
+        
+        // Show more specific error message based on the error
+        let errorMessage = 'I\'m having trouble starting our conversation. ';
+        if (error.message?.includes('API key')) {
+          errorMessage += 'The API key is not configured properly.';
+        } else if (error.message?.includes('Network') || error.message?.includes('network')) {
+          errorMessage += 'Please check your internet connection and try again.';
+        } else if (error.message?.includes('CORS')) {
+          errorMessage += 'This browser is blocking the connection. Try using a different browser or the desktop version.';
+        } else {
+          errorMessage += 'Please refresh the page and try again.';
+        }
+        
         addMessage({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           sender: 'assistant',
-          content: 'I\'m having trouble starting our conversation. Please refresh the page and try again.'
+          content: errorMessage
         });
       } finally {
         setIsInitializing(false);
@@ -262,8 +249,6 @@ export default function Home() {
   }, [threadId, setThreadId, addMessage]);
 
   const [pendingEvent, setPendingEvent] = useState<any>(null);
-  const [eventCreationMessage, setEventCreationMessage] = useState<string>("");
-  const [currentEventFields, setCurrentEventFields] = useState<any>({});
   const [showSignup, setShowSignup] = useState(false);
   const [signupStep, setSignupStep] = useState<number | null>(null);
   const [signupData, setSignupData] = useState<{ name?: string; email?: string; password?: string }>({});
@@ -338,6 +323,11 @@ export default function Home() {
       // On subsequent resizes, clamp the height if it exceeds the new max.
       setStoredDrawerHeight(calculatedMaxDrawerHeight);
     }
+
+    // Mark layout as ready once we have valid measurements
+    if (globalHeaderH > 0 && upcomingTitleH > 0 && globalFooterH > 0) {
+      setIsLayoutReady(true);
+    }
   }, [
     currentWindowHeight,
     storedDrawerHeight,
@@ -362,218 +352,20 @@ export default function Home() {
     setStoredDrawerHeight(newHeight);
   };
 
-  const executeScrollToBottom = useCallback(() => {
-    const sc = internalChatContentScrollRef.current;
-    if (!sc || !scrollRefReady) {
-      console.log("  [executeScrollToBottom] Aborted: Scroll container not ready.");
-      return;
-    }
 
-    requestAnimationFrame(() => {
-      if (internalChatContentScrollRef.current) { // Re-check ref
-        const currentSc = internalChatContentScrollRef.current;
-        const targetScrollTop = Math.max(0, currentSc.scrollHeight - currentSc.clientHeight);
-        currentSc.scrollTop = targetScrollTop;
-        // Update position after scroll attempt
-        setChatScrollPosition(targetScrollTop);
-        console.log(`  [executeScrollToBottom] First scroll attempt to: ${targetScrollTop}, scrollHeight: ${currentSc.scrollHeight}, clientHeight: ${currentSc.clientHeight}`);
 
-        // Second scroll attempt in the next frame to handle pending rendering changes
-        requestAnimationFrame(() => {
-          if (internalChatContentScrollRef.current) {
-            const currentScAfterSecondRaf = internalChatContentScrollRef.current;
-            const targetScrollTopAfterSecondRaf = Math.max(0, currentScAfterSecondRaf.scrollHeight - currentScAfterSecondRaf.clientHeight);
-            if (Math.abs(currentScAfterSecondRaf.scrollTop - targetScrollTopAfterSecondRaf) > 1) { // Only scroll if not already at/near bottom
-                 currentScAfterSecondRaf.scrollTop = targetScrollTopAfterSecondRaf;
-                 setChatScrollPosition(targetScrollTopAfterSecondRaf);
-                 console.log(`  [executeScrollToBottom] Second scroll attempt to: ${targetScrollTopAfterSecondRaf}, scrollHeight: ${currentScAfterSecondRaf.scrollHeight}, clientHeight: ${currentScAfterSecondRaf.clientHeight}`);
-            } else {
-              console.log(`  [executeScrollToBottom] Second scroll attempt: Already at bottom or close. Current: ${currentScAfterSecondRaf.scrollTop}, Target: ${targetScrollTopAfterSecondRaf}`);
-            }
-          } else {
-            console.log("  [executeScrollToBottom] Aborted second scroll in rAF: Scroll container ref lost.");
-          }
-        });
-      } else {
-        console.log("  [executeScrollToBottom] Aborted first scroll in rAF: Scroll container ref lost.");
-      }
-    });
-  }, [setChatScrollPosition, scrollRefReady]);
 
-  // Callback ref for the messages content div to attach MutationObserver
-  const messagesContentRef = useCallback((node: HTMLDivElement | null) => {
-    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
-    
-    // Disconnect previous observer if any
-    if (mutationObserverRef.current) {
-      mutationObserverRef.current.disconnect();
-      mutationObserverRef.current = null;
-      console.log(`  [${pageName}] Mutation Observer: DISCONNECTED (due to ref callback re-run or node removal).`);
-    }
 
-    if (node && scrollRefReady) { // Only observe if node exists and scroll container is ready
-      console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node. Setting up Mutation Observer.`);
-      const observer = new MutationObserver((mutationsList) => {
-        // Check if autoscroll is intended and if there were actual mutations
-        if (autoscrollFlagRef.current && mutationsList.length > 0) {
-          console.log(`    [${pageName}] Mutation Observer: Autoscroll flag TRUE, content mutated (${mutationsList.length} mutations). Scrolling.`);
-          executeScrollToBottom();
-        } else if (mutationsList.length > 0) {
-           console.log(`    [${pageName}] Mutation Observer: Autoscroll flag FALSE or no mutations, content mutated (${mutationsList.length} mutations). No scroll by MutationObserver.`);
-        }
-      });
-      
-      observer.observe(node, { childList: true, subtree: true, characterData: true });
-      mutationObserverRef.current = observer; // Store the new observer
-      console.log(`  [${pageName}] Mutation Observer: ATTACHED to new messagesContentRef node.`);
-    } else if (node) {
-        console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with node, but scrollRefReady is FALSE (${scrollRefReady}). Observer not attached yet.`);
-    } else {
-        console.log(`  [${pageName}] messagesContentRef CALLBACK FIRED with NULL node. Observer not attached.`);
-    }
-  }, [scrollRefReady, executeScrollToBottom]);
 
-  // Replace the first scroll management useEffect (EFFECT 1)
-  useEffect(() => {
-    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
-    console.log(`%c[${pageName}] EFFECT 1 TRIGGERED (Scroll/Restore/Autoscroll Intent)`, "color: blue; font-weight: bold;");
-    console.log(`  [${pageName}]   Deps: messages.length: ${messages.length}, chatScrollPosition: ${chatScrollPosition}, scrollRefReady: ${scrollRefReady}`);
-    console.log(`  [${pageName}]   Prev. messages.length (ref before logic): ${previousMessagesLengthRef.current}`);
 
-    const scrollContainer = internalChatContentScrollRef.current;
 
-    if (!scrollRefReady || !scrollContainer) {
-      console.warn(`  [${pageName}]   EFFECT 1: Scroll container ref NOT READY or NULL. scrollRefReady: ${scrollRefReady}.`);
-      console.log(`%c[${pageName}] EFFECT 1 END (No scrollContainer or not ready)`, "color: blue;");
-      return;
-    }
-    console.log(`  [${pageName}]   EFFECT 1: Actual scrollContainer.scrollTop BEFORE logic: ${scrollContainer.scrollTop}`);
-
-    const newMessagesAdded = messages.length > previousMessagesLengthRef.current;
-    console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded: ${newMessagesAdded}`);
-
-    if (newMessagesAdded) {
-      console.log(`  [${pageName}]   EFFECT 1: newMessagesAdded TRUE. Setting autoscrollFlag TRUE.`);
-      autoscrollFlagRef.current = true;
-      executeScrollToBottom(); // Use the new helper
-    } else {
-      // This branch runs if not newMessagesAdded (e.g., scroll restoration or re-runs due to chatScrollPosition/scrollRefReady changes).
-      if (chatScrollPosition !== null && scrollContainer) {
-        console.log(`  [${pageName}]   EFFECT 1 (no new messages): Potentially restoring scroll. Stored chatScrollPosition: ${chatScrollPosition}, Current scrollTop: ${scrollContainer.scrollTop}`);
-        if (Math.abs(scrollContainer.scrollTop - chatScrollPosition) > 1.5) {
-          console.log(`    [${pageName}]   EFFECT 1: Restoring scrollTop to ${chatScrollPosition}.`);
-          requestAnimationFrame(() => {
-            if (internalChatContentScrollRef.current) {
-              internalChatContentScrollRef.current.scrollTop = chatScrollPosition;
-            }
-          });
-        } else {
-          console.log(`    [${pageName}]   EFFECT 1: ScrollTop already matches stored position or is close. No restoration needed.`);
-        }
-      } else {
-        console.log(`  [${pageName}]   EFFECT 1 (no new messages): chatScrollPosition is null or scrollContainer lost. No scroll restoration action.`);
-      }
-      console.log(`  [${pageName}]   EFFECT 1 (no new messages): Finished. autoscrollFlagRef.current is: ${autoscrollFlagRef.current}`);
-    }
-
-    previousMessagesLengthRef.current = messages.length;
-    console.log(`  [${pageName}]   EFFECT 1: Updated previousMessagesLengthRef.current to: ${previousMessagesLengthRef.current}`);
-    console.log(`%c[${pageName}] EFFECT 1 END (Processed logic)`, "color: blue;");
-  }, [messages, chatScrollPosition, setChatScrollPosition, scrollRefReady, executeScrollToBottom]);
-
-  // Add ResizeObserver useEffect
-  useEffect(() => {
-    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
-    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT TRIGGERED. scrollRefReady: ${scrollRefReady}`, "color: purple; font-weight: bold;");
-
-    const scrollContainer = internalChatContentScrollRef.current;
-
-    if (scrollRefReady && scrollContainer) {
-      console.log(`  [${pageName}] Resize Observer: Scroll container is READY. Setting up observer.`);
-      const observer = new ResizeObserver((entries) => {
-        const pageNameObs = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home"; // Use a different var name to avoid shadow
-        
-        if (autoscrollFlagRef.current && entries.length > 0 && internalChatContentScrollRef.current) {
-          console.log(`    [${pageNameObs}] Resize Observer: Autoscroll flag is TRUE and content resized.`);
-          executeScrollToBottom(); // Use the new helper
-        } else if (entries.length > 0) {
-          console.log(`    [${pageNameObs}] Resize Observer CALLED (autoscrollFlag: ${autoscrollFlagRef.current}). Content may have resized.`);
-        }
-      });
-      observer.observe(scrollContainer);
-      resizeObserverRef.current = observer;
-      console.log(`  [${pageName}] Resize Observer: ATTACHED to scrollContainer.`);
-      return () => {
-        if (observer) {
-          observer.disconnect();
-          resizeObserverRef.current = null;
-          console.log(`  [${pageName}] Resize Observer: DISCONNECTED.`);
-        }
-      };
-    } else {
-      console.warn(`  [${pageName}] Resize Observer: Scroll container not ready (scrollRefReady: ${scrollRefReady}) or ref is null. Observer not set up.`);
-    }
-    console.log(`%c[${pageName}] RESIZE OBSERVER EFFECT END`, "color: purple;");
-  }, [scrollRefReady, setChatScrollPosition, executeScrollToBottom]);
-
-  // Add EFFECT 2 (Manual Scroll Listener)
-  useEffect(() => {
-    const pageName = window.location.pathname.includes('upcoming-events') ? "UpcomingEvents" : "Home";
-    const scrollContainer = internalChatContentScrollRef.current;
-
-    if (!scrollRefReady || !scrollContainer) {
-      console.warn(`  [${pageName}] Manual Scroll EFFECT: Scroll container NOT READY. scrollRefReady: ${scrollRefReady}. Listener not attached.`);
-      return;
-    }
-
-    console.log(`%c[${pageName}] EFFECT 2 ATTEMPTING ATTACH (Manual Scroll Listener Setup)`, "color: green; font-weight: bold;");
-    let scrollTimeout: number;
-
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = window.setTimeout(() => {
-        if (internalChatContentScrollRef.current) {
-          const sc = internalChatContentScrollRef.current;
-          const currentScrollTop = sc.scrollTop;
-          console.log(`  [${pageName}] Manual Scroll DEBOUNCED: Updating store chatScrollPosition to: ${currentScrollTop}`);
-          setChatScrollPosition(currentScrollTop);
-
-          // Update autoscrollFlag based on scroll position
-          const isAtBottom = sc.scrollHeight - currentScrollTop - sc.clientHeight < 5; // 5px tolerance
-          if (autoscrollFlagRef.current !== isAtBottom) {
-            console.log(`    [${pageName}] Manual Scroll: autoscrollFlagRef changed from ${autoscrollFlagRef.current} to ${isAtBottom}`);
-            autoscrollFlagRef.current = isAtBottom;
-          }
-        } else {
-          console.warn(`  [${pageName}] Manual Scroll DEBOUNCED: Scroll container ref lost inside timeout.`);
-        }
-      }, 150);
-    };
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-    console.log(`  [${pageName}] Manual Scroll: Listener ATTACHED.`);
-    
-    return () => {
-      scrollContainer.removeEventListener('scroll', handleScroll);
-      console.log(`  [${pageName}] Manual Scroll: Listener REMOVED.`);
-    };
-  }, [setChatScrollPosition, scrollRefReady]);
-
-  // Update chatContentScrollRef to use useCallback
-  const chatContentScrollRef = useCallback((node: HTMLDivElement | null) => {
-    internalChatContentScrollRef.current = node;
-    setScrollRefReady(!!node);
-    if (node) {
-      console.log("[Home] chatContentScrollRef CALLBACK FIRED with node.");
-    }
-  }, []); // Empty dependency array for stable ref callback
 
   const handleSend = async () => {
     console.log('Current threadId:', threadId, 'isInitializing:', isInitializing);
     if (!input.trim()) return;
     if (isInitializing || !threadId) {
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: isInitializing
           ? 'Please wait while I initialize our conversation...'
@@ -587,7 +379,7 @@ export default function Home() {
       if (signupStep === 0) {
         setSignupData(prev => ({ ...prev, name: input.trim() }));
         addMessage({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           sender: 'user',
           content: input.trim()
         });
@@ -595,7 +387,7 @@ export default function Home() {
         setSignupStep(1);
         setTimeout(() => {
           addMessage({
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             sender: 'assistant',
             content: 'Great! What email would you like to use?'
           });
@@ -605,7 +397,7 @@ export default function Home() {
       if (signupStep === 1) {
         setSignupData(prev => ({ ...prev, email: input.trim() }));
         addMessage({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           sender: 'user',
           content: input.trim()
         });
@@ -617,7 +409,7 @@ export default function Home() {
         setSignupStep(3);
         setTimeout(() => {
           addMessage({
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             sender: 'assistant',
             content: `Is this calendar just for ${latestChildName}'s schedule or would you like to add another child profile?`
           });
@@ -630,127 +422,8 @@ export default function Home() {
     const userText = input.trim();
     setInput('');
 
-    // Track the original event-creation message (the one that started the event flow)
-    const eventKeywords = [
-      'have', 'attend', 'go to', 'set', 'schedule', 'add', 'plan', 'join', 'host',
-      'tomorrow', 'tonight', 'next week', 'next friday', 'this friday',
-      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
-    ];
-    const isNewEvent = eventKeywords.some(kw => userText.toLowerCase().includes(kw)) && !eventCreationMessage;
-
-    if (isNewEvent) {
-      setEventCreationMessage(userText);
-    }
-
-    // Add user message
-    const userMessage = {
-      id: crypto.randomUUID(),
-      sender: 'user' as const,
-      content: userText
-    };
-    console.log('Adding user message:', userMessage);
-    addMessage(userMessage);
-
-    // Add thinking message
-    const thinkingMessage = {
-      id: 'thinking',
-      sender: 'assistant' as const,
-      content: 'Kicaco is thinking',
-    };
-    addMessage(thinkingMessage);
-
-    // Determine the base fields for the current operation.
-    // If it's a new event, start with a blank slate. Otherwise, use the existing fields.
-    const baseFields = isNewEvent ? {} : currentEventFields;
-    const extractedFields = extractKnownFields(userText, baseFields);
-    const updatedFields = { ...baseFields, ...extractedFields };
-
-    // Update state for the NEXT turn.
-    setCurrentEventFields(updatedFields);
-
-    // Process message with kicacoFlow
-    console.time("Total Message Lifecycle");
-    console.time("API Response Time");
-    
-    try {
-      const assistantResponse = await sendMessageToAssistant(threadId, userText);
-      
-      // Robust event extraction from code block or plain JSON
-      let eventObj = null;
-      try {
-        // Try to extract JSON from code block
-        const codeBlockMatch = assistantResponse.match(/```json\s*([\s\S]*?)\s*```/i);
-        if (codeBlockMatch) {
-          const parsed = JSON.parse(codeBlockMatch[1]);
-          if (parsed.event) eventObj = parsed.event;
-        } else {
-          // Try plain JSON
-          try {
-            const parsed = JSON.parse(assistantResponse);
-            if (parsed.event) eventObj = parsed.event;
-          } catch {
-            // Try to extract JSON from anywhere in the message
-            const firstBrace = assistantResponse.indexOf('{');
-            if (firstBrace !== -1) {
-              const jsonSubstring = assistantResponse.slice(firstBrace);
-              try {
-                const parsed = JSON.parse(jsonSubstring);
-                if (parsed.event) eventObj = parsed.event;
-              } catch {}
-            }
-          }
-        }
-      } catch {
-        // Not JSON — just chat
-      }
-      if (eventObj) {
-        // Overwrite eventObj fields with locally tracked currentEventFields
-        const finalEvent = { ...eventObj, ...updatedFields };
-        addEvent(finalEvent);
-        console.log('Event added to store:', finalEvent);
-
-        // Reset for the next conversation
-        setCurrentEventFields({});
-        setEventCreationMessage("");
-        setLatestEvent(finalEvent);
-        
-        // Remove thinking message before adding the real response
-        removeMessageById('thinking');
-
-        // Generate the confirmation message from the locally resolved event object
-        const assistantMessage = {
-          id: crypto.randomUUID(),
-          sender: 'assistant' as const,
-          type: 'event_confirmation',
-          content: '',
-          event: finalEvent
-        };
-        addMessage(assistantMessage);
-
-      } else {
-        // Remove thinking message before adding the real response
-        removeMessageById('thinking');
-
-        const assistantMessage = {
-          id: crypto.randomUUID(),
-          sender: 'assistant' as const,
-          content: assistantResponse
-        };
-        addMessage(assistantMessage);
-      }
-    } catch (error) {
-      console.error('Error in message handling:', error);
-      removeMessageById('thinking');
-      addMessage({
-        id: crypto.randomUUID(),
-        sender: 'assistant' as const,
-        content: 'Sorry, I encountered an error. Please try again.'
-      });
-    }
-
-    console.timeEnd("API Response Time");
-    console.timeEnd("Total Message Lifecycle");
+    // Use the event creation hook
+    await handleEventMessage(userText);
   };
 
   // Log messages and visibleCount changes
@@ -779,8 +452,24 @@ export default function Home() {
     storedDrawerHeight
   });
 
-  if (!isMounted) {
-    return null; // or a loading spinner
+  if (!isMounted || !isLayoutReady) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <GlobalHeader ref={headerRef} />
+        <GlobalSubheader
+          ref={upcomingEventsTitleRef}
+          icon={<HomeIcon size={16} className="text-gray-500" />}
+          title="Home"
+        />
+        <GlobalFooter
+          ref={footerRef}
+          value=""
+          onChange={() => {}}
+          onSend={() => {}}
+          disabled
+        />
+      </div>
+    ); // Show basic layout while measuring
   }
 
   return (
@@ -804,84 +493,21 @@ export default function Home() {
             style={{
               position: 'absolute',
               top: `${contentAreaTop}px`, // Dynamically set below fixed title section
-              bottom: `${(currentDrawerHeight || 32) + (footerRef.current?.offsetHeight || 0) + 8}px`, // 8px buffer
+              bottom: `${(footerRef.current?.offsetHeight || 0)}px`,
               left: '0px',
               right: '0px',
               overflowY: 'auto',
               paddingLeft: '1rem', // px-4
               paddingRight: '1rem', // px-4
+              zIndex: 1, // Ensure it's below the chat drawer
+              paddingBottom: currentDrawerHeight <= 32 ? '0px' : '8px', // Remove bottom padding when drawer is closed
             }}
           >
             {/* 7-Day Event Outlook Section */}
             <SevenDayEventOutlook />
 
             {/* Keepers Section */}
-            <div className="mt-8 mb-4">
-              <h2 className="text-sm font-medium text-gray-600 mb-4 ml-1 max-w-md mx-auto">
-                30-Day Keeper Outlook
-              </h2>
-              {keepersNext30Days.length > 0 ? (
-                <div 
-                  className="relative w-full max-w-md mx-auto"
-                  style={{
-                    height: `${240 + ((keepersNext30Days.length - 1) * 56)}px`,
-                    marginBottom: '20px',
-                  }}
-                >
-                  {keepersNext30Days.map((keeper, index) => {
-                    const stackPosition = keepersNext30Days.length - 1 - index;
-                    return (
-                      <KeeperCard
-                        key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
-                        image={getKicacoEventPhoto(keeper.keeperName)}
-                        keeperName={keeper.keeperName}
-                        childName={keeper.childName}
-                        date={keeper.date}
-                        time={keeper.time}
-                        description={keeper.description}
-                        index={stackPosition}
-                        stackPosition={stackPosition}
-                        totalInStack={keepersNext30Days.length}
-                        isActive={activeKeeperIndex === stackPosition}
-                        activeIndex={activeKeeperIndex}
-                        onTabClick={() => setActiveKeeperIndex(activeKeeperIndex === stackPosition ? null : stackPosition)}
-                        onEdit={() => {
-                          const globalKeeperIndex = keepers.findIndex(k => 
-                            k.keeperName === keeper.keeperName && 
-                            k.date === keeper.date && 
-                            k.childName === keeper.childName &&
-                            k.time === keeper.time
-                          );
-                          navigate('/add-keeper', { 
-                            state: { 
-                              keeper: keeper,
-                              keeperIndex: globalKeeperIndex,
-                              isEdit: true 
-                            } 
-                          });
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="relative w-full max-w-md mx-auto h-[240px] rounded-xl overflow-hidden shadow-lg">
-                  {/* Background image */}
-                  <img
-                    src={getKicacoEventPhoto('keeper')}
-                    alt="No keepers"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  {/* Full-card overlay */}
-                  <div className="absolute inset-0 bg-black/[.65]" />
-                  
-                  {/* Text centered */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-white text-base font-normal">No keepers in the next 30 days.</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ThirtyDayKeeperOutlook />
           </div>
         );
       })()}
@@ -899,84 +525,22 @@ export default function Home() {
             scrollRefReady
           });
           return (
-            <div
-              ref={messagesContentRef}
-              className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
-            >
-              {messages.map((msg, idx) => {
-                if (msg.type === 'event_confirmation' && msg.event) {
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="w-full"
-                    >
-                      <ChatBubble side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                        <div>
-                          <EventCard
-                            image={getKicacoEventPhoto(msg.event.eventName)}
-                            name={msg.event.eventName}
-                            childName={msg.event.childName}
-                            date={msg.event.date}
-                            time={msg.event.time}
-                            location={msg.event.location}
-                          />
-                          <div className="mt-2 text-left w-full text-sm text-gray-900">
-                            Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
-                          </div>
-                          <button
-                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)] hover:shadow-[0_0_12px_2px_rgba(192,226,231,0.4),0_4px_6px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.12)] active:scale-95 active:shadow-[0_0_8px_1px_rgba(192,226,231,0.3),0_1px_2px_rgba(0,0,0,0.12)] transition-all duration-200 focus:outline-none w-[140px]"
-                            onClick={() => {
+            <div ref={messagesContentRef}>
+              <ChatMessageList
+                messages={messages}
+                onCreateAccount={() => {
                               setShowSignup(true);
                               setSignupStep(0);
                               setSignupData({});
                               addMessage({
-                                id: crypto.randomUUID(),
+                    id: generateUUID(),
                                 sender: 'assistant',
                                 content: "Let's get you set up! What's your name?"
                               });
                             }}
-                          >
-                            Create an account
-                          </button>
-                        </div>
-                      </ChatBubble>
-                    </motion.div>
-                  );
-                }
-                if (msg.type === 'post_signup_options') {
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="w-full"
-                    >
-                      <ChatBubble side="left" className="w-full max-w-[95vw] sm:max-w-3xl">
-                        <PostSignupOptions onRemindLater={() => setShowPostSignupOptions(false)} />
-                      </ChatBubble>
-                    </motion.div>
-                  );
-                }
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="w-full"
-                  >
-                    <ChatBubble
-                      side={msg.sender === 'user' ? 'right' : 'left'}
-                    >
-                      {msg.content}
-                    </ChatBubble>
-                  </motion.div>
-                );
-              })}
+                onRemindLater={() => setShowPostSignupOptions(false)}
+                latestChildName={latestChildName}
+              />
             </div>
           );
         })()}
@@ -989,7 +553,7 @@ export default function Home() {
             setLatestEvent(pendingEvent);
             setPendingEvent(null);
             addMessage({
-              id: crypto.randomUUID(),
+              id: generateUUID(),
               sender: 'assistant',
               content: `Got it! "${pendingEvent.eventName || pendingEvent.name}" is now on your calendar.`
             });
@@ -1007,7 +571,7 @@ export default function Home() {
           // Add post-signup options message
           setTimeout(() => {
             addMessage({
-              id: crypto.randomUUID(),
+              id: generateUUID(),
               sender: 'assistant',
               type: 'post_signup_options',
               content: ''
@@ -1022,6 +586,7 @@ export default function Home() {
         onSend={handleSend}
         disabled={isInitializing || !threadId}
       />
+
     </div>
   );
 } 

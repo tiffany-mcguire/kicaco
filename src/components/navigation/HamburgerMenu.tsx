@@ -17,14 +17,16 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ currentPath }) => {
       caretPosition="hamburger"
       trigger={
         <IconButton
+          variant="frameless"
           IconComponent={() => (
-            <svg width="24" height="24" fill="#c0e2e7" viewBox="0 0 24 24">
+            <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
               <rect x="4" y="6" width="16" height="2" rx="1" />
               <rect x="4" y="11" width="16" height="2" rx="1" />
               <rect x="4" y="16" width="16" height="2" rx="1" />
             </svg>
           )}
           aria-label="Toggle menu"
+          style={{ color: '#ffffff' }}
         />
       }
     >

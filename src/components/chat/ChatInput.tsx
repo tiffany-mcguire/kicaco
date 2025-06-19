@@ -3,6 +3,7 @@ import { useKicacoStore } from '../../store/kicacoStore';
 import { extractJsonFromMessage, validateParsedResponse } from '../../utils/parseAssistantResponse';
 import { sendMessageToAssistant } from '../../utils/talkToKicaco';
 
+import { generateUUID } from '../../utils/uuid';
 const ChatInput: React.FC = () => {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -22,7 +23,7 @@ const ChatInput: React.FC = () => {
 
       // Add user message
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'user',
         content: userText
       });
@@ -47,7 +48,7 @@ const ChatInput: React.FC = () => {
 
       // Add assistant message
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: parsedResponse.type === 'json' ? JSON.stringify(parsedResponse.content, null, 2) : parsedResponse.content
       });
@@ -60,7 +61,7 @@ const ChatInput: React.FC = () => {
       console.error('Error in chat:', error);
       // Add error message to chat
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: `I'm having trouble processing your message. ${error instanceof Error ? error.message : 'Please try again.'}`
       });

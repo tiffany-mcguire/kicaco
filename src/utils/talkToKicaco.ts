@@ -26,6 +26,12 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
+// Add debugging for mobile
+if (!import.meta.env.VITE_OPENAI_API_KEY) {
+  console.error('❌ OpenAI API key is missing! Check your environment variables.');
+  console.error('Current env:', import.meta.env);
+}
+
 // Memory management functions
 function addToMemory(role: 'user' | 'assistant', content: string) {
   const now = Date.now();
@@ -198,6 +204,11 @@ export async function createOpenAIThread(): Promise<string> {
   }
 
   try {
+    // Check if API key exists
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      throw new Error('OpenAI API key is not configured. Please set VITE_OPENAI_API_KEY environment variable.');
+    }
+
     const t0 = performance.now();
     console.log('🧵 Creating new OpenAI thread...');
 
@@ -218,8 +229,24 @@ export async function createOpenAIThread(): Promise<string> {
     });
 
     return thread.id;
-  } catch (error) {
-    console.error('Failed to create thread:', error);
+  } catch (error: any) {
+    console.error('❌ Failed to create thread:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      type: error.type,
+      code: error.code
+    });
+    
+    // Provide more specific error messages
+    if (error.message?.includes('401') || error.status === 401) {
+      throw new Error('Invalid API key. Please check your OpenAI API key configuration.');
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection.');
+    } else if (error.message?.includes('CORS')) {
+      throw new Error('CORS error. The API cannot be accessed from this browser.');
+    }
+    
     currentThreadId = null;
     throw error;
   }
@@ -317,8 +344,14 @@ export async function sendMessageToAssistant(threadId: string, userMessage: stri
     throw new Error('Empty message provided');
   }
 
+  // Check API key again
+  if (!import.meta.env.VITE_OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is not configured');
+  }
+
   try {
     console.log(`📤 Sending message to thread ${threadId}...`);
+    console.log('Message:', userMessage);
     
     // Add message to thread
     const message = await openai.beta.threads.messages.create(threadId, {
@@ -346,8 +379,26 @@ export async function sendMessageToAssistant(threadId: string, userMessage: stri
     }
 
     return response;
-  } catch (error) {
-    console.error('Error in sendMessageToAssistant:', error);
+  } catch (error: any) {
+    console.error('❌ Error in sendMessageToAssistant:', error);
+    console.error('Error details:', {
+      message: error.message,
+      status: error.status,
+      type: error.type,
+      code: error.code,
+      threadId,
+      apiKeyPresent: !!import.meta.env.VITE_OPENAI_API_KEY
+    });
+    
+    // Provide user-friendly error messages
+    if (error.message?.includes('401') || error.status === 401) {
+      throw new Error('Authentication failed. Please check your API key.');
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      throw new Error('Network error. Please check your connection and try again.');
+    } else if (error.message?.includes('CORS')) {
+      throw new Error('Cannot access the API from this browser. Please try a different browser or device.');
+    }
+    
     throw error;
   }
 }

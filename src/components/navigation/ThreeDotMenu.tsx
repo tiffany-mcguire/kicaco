@@ -144,14 +144,16 @@ export default function ThreeDotMenu({ currentPath }: ThreeDotMenuProps) {
         caretPosition="threedot"
         trigger={
           <IconButton
+            variant="frameless"
             IconComponent={() => (
-              <svg width="24" height="24" fill="#c0e2e7" viewBox="0 0 24 24">
+              <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="5" r="2"/>
                 <circle cx="12" cy="12" r="2"/>
                 <circle cx="12" cy="19" r="2"/>
               </svg>
             )}
             aria-label="Toggle menu"
+            style={{ color: '#ffffff' }}
           />
         }
       >

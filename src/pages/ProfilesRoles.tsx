@@ -15,6 +15,7 @@ import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users } from "lucide-react";
 
+import { generateUUID } from '../utils/uuid';
 // Styles and function copied from EditChild.tsx for consistent input styling
 
 // Base style for the input WRAPPER
@@ -264,6 +265,8 @@ export default function ProfilesRoles() {
   const [chatInput, setChatInput] = useState("");
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [tempPermissions, setTempPermissions] = useState<SharedUser['permissions'] | null>(null);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
@@ -414,6 +417,37 @@ export default function ProfilesRoles() {
     setTimeout(() => navigate('/edit-child'), 150);
   };
 
+  const handleEditPermissions = (user: SharedUser) => {
+    setEditingUser(user.id);
+    setTempPermissions({ ...user.permissions });
+  };
+
+  const handleSavePermissions = (userId: string) => {
+    if (tempPermissions) {
+      setSharedUsers(sharedUsers.map(user => 
+        user.id === userId 
+          ? { ...user, permissions: tempPermissions }
+          : user
+      ));
+    }
+    setEditingUser(null);
+    setTempPermissions(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setTempPermissions(null);
+  };
+
+  const updateTempPermission = (key: keyof SharedUser['permissions'], value: boolean) => {
+    if (tempPermissions) {
+      setTempPermissions({
+        ...tempPermissions,
+        [key]: value
+      });
+    }
+  };
+
   // Full implementation for handleChatSendMessage
   const handleChatSendMessage = async () => {
     if (!chatInput.trim()) return;
@@ -421,14 +455,14 @@ export default function ProfilesRoles() {
     if (!threadId) {
       console.error("ProfilesRoles: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -450,7 +484,7 @@ export default function ProfilesRoles() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -458,7 +492,7 @@ export default function ProfilesRoles() {
       console.error("Error sending message from ProfilesRoles:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -635,7 +669,7 @@ export default function ProfilesRoles() {
           left: 0,
           right: 0,
           overflowY: oldScrollOverflow,
-          transition: 'top 0.2s, bottom 0.2s',
+
         }}
       >
         <div className="profiles-roles-content-inner px-6 pt-6 pb-24 max-w-2xl mx-auto">
@@ -687,7 +721,7 @@ export default function ProfilesRoles() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div 
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-700 text-xs font-semibold ring-1 ring-gray-400"
                             style={{ backgroundColor: child.color || childColors[index % childColors.length] }}
                           >
                             {child.name.charAt(0).toUpperCase()}
@@ -779,14 +813,19 @@ export default function ProfilesRoles() {
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1.5">
-                            {Object.entries(user.permissions).map(([key, value]) => (
+                            {Object.entries(editingUser === user.id && tempPermissions ? tempPermissions : user.permissions).map(([key, value]) => (
                               <span 
                                 key={key} 
-                                className={`w-2 h-2 rounded-full ${value ? 'bg-[#217e8f]' : 'bg-gray-300'}`}
+                                className={`w-2 h-2 rounded-full ${value ? 'bg-[#217e8f]' : 'bg-gray-300'} ${
+                                  editingUser === user.id ? 'ring-2 ring-blue-200' : ''
+                                }`}
                                 title={key.replace('can', '')}
                               />
                             ))}
                           </div>
+                          {editingUser === user.id && (
+                            <span className="text-xs text-blue-600 font-medium">•</span>
+                          )}
                           <svg 
                             className={`w-4 h-4 text-gray-400 transition-transform ${expandedUser === user.id ? 'rotate-180' : ''}`} 
                             fill="none" 
@@ -810,42 +849,82 @@ export default function ProfilesRoles() {
                           <div className="mt-3 pt-3 border-t border-gray-100">
                             <div className="flex items-center justify-between mb-3">
                               <span className="text-xs font-medium text-gray-700">Permissions</span>
+                              {editingUser === user.id && (
+                                <span className="text-xs text-blue-600 font-medium">Editing Mode</span>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                              {Object.entries(user.permissions).map(([key, value]) => (
-                                <label key={key} className="flex items-center gap-2 text-xs">
+                              {Object.entries(editingUser === user.id ? tempPermissions || user.permissions : user.permissions).map(([key, value]) => (
+                                <label 
+                                  key={key} 
+                                  className="flex items-center gap-2 text-xs"
+                                  onClick={(e) => e.stopPropagation()} // Prevent label click from bubbling
+                                >
                                   <input 
                                     type="checkbox" 
                                     checked={value} 
-                                    readOnly
-                                    className="w-3 h-3 text-[#217e8f] rounded border-gray-300"
+                                    readOnly={editingUser !== user.id}
+                                    onChange={(e) => {
+                                      e.stopPropagation(); // Prevent bubbling to parent div
+                                      if (editingUser === user.id) {
+                                        updateTempPermission(key as keyof SharedUser['permissions'], e.target.checked);
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()} // Also prevent click bubbling
+                                    className={`w-3 h-3 text-[#217e8f] rounded border-gray-300 ${
+                                      editingUser === user.id ? 'cursor-pointer' : 'cursor-default'
+                                    }`}
                                   />
                                   <span className="text-gray-600 capitalize">{key.replace('can', '')}</span>
                                 </label>
                               ))}
                             </div>
                             <div className="mt-3 flex items-center gap-3">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // TODO: Implement edit permissions functionality
-                                  console.log('Edit permissions for:', user.id);
-                                }}
-                                className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors active:scale-95"
-                              >
-                                Edit Access
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm(`Are you sure you want to remove access for ${user.name}?`)) {
-                                    setSharedUsers(sharedUsers.filter(u => u.id !== user.id));
-                                  }
-                                }}
-                                className="text-xs text-[#b91142] hover:text-[#a01038] font-medium transition-colors active:scale-95"
-                              >
-                                Remove Access
-                              </button>
+                              {editingUser === user.id ? (
+                                <>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSavePermissions(user.id);
+                                    }}
+                                    className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors active:scale-95"
+                                  >
+                                    Save Changes
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancelEdit();
+                                    }}
+                                    className="text-xs text-gray-600 hover:text-gray-700 font-medium transition-colors active:scale-95"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditPermissions(user);
+                                    }}
+                                    className="text-xs text-[#217e8f] hover:text-[#1a6e7e] font-medium transition-colors active:scale-95"
+                                  >
+                                    Edit Access
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Are you sure you want to remove access for ${user.name}?`)) {
+                                        setSharedUsers(sharedUsers.filter(u => u.id !== user.id));
+                                      }
+                                    }}
+                                    className="text-xs text-[#b91142] hover:text-[#a01038] font-medium transition-colors active:scale-95"
+                                  >
+                                    Remove Access
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </motion.div>

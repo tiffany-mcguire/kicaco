@@ -125,6 +125,13 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       const maxH = maxDrawerHeight ?? maxHeight;
       newHeight = Math.max(MIN_HEIGHT, Math.min(newHeight, maxH));
       if (onHeightChange) onHeightChange(newHeight);
+      
+      // Update scroll padding in real-time during drag
+      if (newHeight > MIN_HEIGHT) {
+        document.documentElement.style.scrollPaddingBottom = `${newHeight}px`;
+      } else {
+        document.documentElement.style.scrollPaddingBottom = '0px';
+      }
     };
     const onDragEnd = () => {
       setIsDragging(false);
@@ -151,6 +158,23 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       setIsFullyClosed(drawerHeight <= MIN_HEIGHT);
     }, [drawerHeight]);
 
+    // Update scroll padding based on drawer height
+    useEffect(() => {
+      // Consider drawer "open" when height > MIN_HEIGHT (32px)
+      if (drawerHeight > MIN_HEIGHT) {
+        // Set scroll padding to match drawer height for better mobile experience
+        document.documentElement.style.scrollPaddingBottom = `${drawerHeight}px`;
+      } else {
+        // Drawer is closed, remove scroll padding
+        document.documentElement.style.scrollPaddingBottom = '0px';
+      }
+
+      // Cleanup function to reset scroll padding when component unmounts
+      return () => {
+        document.documentElement.style.scrollPaddingBottom = '';
+      };
+    }, [drawerHeight]);
+
     // Base style for the handle
     const handleBaseStyle: React.CSSProperties = {
       height: 32,
@@ -167,6 +191,25 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
       ? { boxShadow: 'inset 0 0 6px 3px rgba(192, 226, 231, 0.85)' }
       : { boxShadow: 'none' };
 
+    // Handle mouse events for hover effect (only on non-touch devices)
+    const [isHovered, setIsHovered] = useState(false);
+    const handleMouseEnter = () => {
+      // Only apply hover on devices that support hover (non-touch)
+      if (window.matchMedia('(hover: hover)').matches) {
+        setIsHovered(true);
+      }
+    };
+    const handleMouseLeave = () => {
+      setIsHovered(false);
+    };
+
+    // Combine all handle styles
+    const combinedHandleStyle: React.CSSProperties = {
+      ...handleBaseStyle,
+      ...handleInteractionStyle,
+      ...(isHovered && !isDragging ? { boxShadow: 'inset 0 0 5px 2px rgba(192, 226, 231, 0.75)' } : {})
+    };
+
     return (
       <Portal>
         <div
@@ -180,24 +223,40 @@ const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProp
             bottom: footerHeight,
             zIndex: 40,
             background: 'white',
-            boxShadow: '0 2px 12px 0 rgba(0,0,0,0.06)',
+            boxShadow: isDragging ? 'none' : '0 2px 12px 0 rgba(0,0,0,0.06)',
             borderRadius: '16px 16px 0 0',
             overflow: 'hidden',
             touchAction: 'none',
             display: 'flex',
             flexDirection: 'column',
-            transition: isDragging ? 'none' : 'height 0.2s',
+            transition: isDragging ? 'none' : 'height 0.2s ease-out',
           }}
         >
+          {/* Background extension to prevent gaps - hidden during drag */}
+          {!isDragging && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -2,
+                left: 0,
+                right: 0,
+                height: 4,
+                background: 'white',
+                zIndex: -1,
+              }}
+            />
+          )}
           {/* Handle Bar */}
           <div
-            className="chat-drawer-handle w-full flex flex-col items-center cursor-ns-resize select-none bg-white hover:shadow-[inset_0_0_5px_2px_rgba(192,226,231,0.75)]"
-            style={{ ...handleBaseStyle, ...handleInteractionStyle }}
+            className="chat-drawer-handle w-full flex flex-col items-center cursor-ns-resize select-none bg-white"
+            style={combinedHandleStyle}
             role="button"
             aria-label={isFullyClosed ? 'Open chat drawer' : 'Close chat drawer'}
             tabIndex={0}
             onMouseDown={onDragStart}
             onTouchStart={onDragStart}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <div className="flex w-full items-center justify-center py-2">
               <div className="h-px w-12 bg-[#c0e2e7]" />

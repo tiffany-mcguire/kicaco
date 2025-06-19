@@ -1,6 +1,6 @@
 import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
 import { IconButton } from '../components/common';
-import { ChatBubble } from '../components/chat';
+import { ChatBubble, ChatMessageList } from '../components/chat';
 import { HamburgerMenu } from '../components/navigation';
 import { CalendarMenu } from '../components/calendar';
 import { ThreeDotMenu } from '../components/navigation';
@@ -17,8 +17,10 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, parse, isToday } from 'date-fns';
 import { EventCard } from '../components/calendar';
 import { KeeperCard } from '../components/calendar';
+import { StackedChildBadges } from '../components/common';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
+import { generateUUID } from '../utils/uuid';
 // Rainbow colors for children (matching other pages)
 const childColors = [
   '#f8b6c2', // Pink
@@ -138,9 +140,7 @@ const DailyEventCard: React.FC<{
   setDisplayedEventIndex: (fn: (prev: number) => number) => void;
 }> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex }) => {
   const children = useKicacoStore(state => state.children);
-  const childProfile = event.childName ? children.find(c => c.name === event.childName) : null;
-  const childIndex = event.childName ? children.findIndex(c => c.name === event.childName) : -1;
-  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  const eventDate = event.date ? parse(event.date, 'yyyy-MM-dd', new Date()) : currentDate;
   const dayOfWeek = currentDate.getDay();
   
   // Find the global index of this event
@@ -173,10 +173,13 @@ const DailyEventCard: React.FC<{
     return name;
   })();
 
+  const eventImage = getKicacoEventPhoto(event.eventName);
+  console.log('DailyEventCard:', { eventName: event.eventName, selectedImage: eventImage });
+
   return (
     <div className="relative h-[240px] w-full rounded-xl overflow-hidden">
       <EventCard
-        image={getKicacoEventPhoto(event.eventName)}
+        image={eventImage}
         name={event.eventName}
         childName={event.childName}
         date={event.date}
@@ -197,41 +200,39 @@ const DailyEventCard: React.FC<{
       {/* Tab header overlay similar to UpcomingEvents */}
       <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
         <div className="flex h-full items-center justify-between px-4">
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-1.5">
-              {event.childName && childColor && (
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                  style={{ backgroundColor: childColor }}
-                >
-                  {event.childName.charAt(0).toUpperCase()}
-                </div>
-              )}
+          <div className="flex items-center gap-1.5">
+            <StackedChildBadges 
+              childName={event.childName} 
+              size="md" 
+              maxVisible={3}
+            />
+            <div className="flex flex-col">
               <span className="text-sm font-semibold text-white">{displayName}</span>
-              {/* Carousel controls next to event name */}
-              {events.length > 1 && (
-                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-[5px]">
-                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                    <ChevronLeft size={12} />
-                  </button>
-                  <span className="text-gray-800 text-[10px] font-medium">
-                    {displayedEventIndex + 1}/{events.length}
-                  </span>
-                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                    <ChevronRight size={12} />
-                  </button>
-                </div>
+              {event.location && (
+                <span className="text-xs text-gray-200 mt-0.5">{event.location}</span>
               )}
             </div>
-            {event.location && (
-              <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: event.childName && childColor ? '22px' : '0' }}>{event.location}</span>
+            {/* Carousel controls - hugging the event content */}
+            {events.length > 1 && (
+              <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-2">
+                <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                  <ChevronLeft size={12} />
+                </button>
+                <span className="text-gray-800 text-[10px] font-medium">
+                  {displayedEventIndex + 1}/{events.length}
+                </span>
+                <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                  <ChevronRight size={12} />
+                </button>
+              </div>
             )}
           </div>
-          {event.time && (
-            <div className="flex flex-col justify-center items-end">
-              <span className="text-xs text-gray-200">{formatTime(event.time)}</span>
-            </div>
-          )}
+          <div className="flex flex-col justify-center items-end">
+            <span className="text-sm font-medium text-white">{format(eventDate, 'EEEE, MMMM d')}</span>
+            {event.time && (
+              <span className="text-xs text-gray-200 mt-0.5">{formatTime(event.time)}</span>
+            )}
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[1.5px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
       </div>
@@ -297,6 +298,34 @@ export default function DailyView() {
     setDisplayedKeeperIndex(0);
   };
 
+  // Helper function to parse time for sorting (same as WeeklyCalendar)
+  const parseTimeForSorting = (timeStr?: string): number => {
+    if (!timeStr) return 2400; // Events without a time go last
+
+    let normalized = timeStr.trim().toLowerCase();
+    normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
+    if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
+      normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
+    }
+
+    const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
+    for (const pattern of patterns) {
+      try {
+        const dateObj = parse(normalized, pattern, new Date());
+        if (!isNaN(dateObj.getTime())) {
+          return parseInt(format(dateObj, 'HHmm'), 10);
+        }
+      } catch {}
+    }
+    
+    const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
+    if (!isNaN(dateObj.getTime())) {
+      return parseInt(format(dateObj, 'HHmm'), 10);
+    }
+
+    return 2400;
+  };
+
   // Get events for the current day
   const eventsForDay = useMemo(() => {
     const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -309,11 +338,7 @@ export default function DailyView() {
         console.error("Error parsing event date:", event.date, e);
         return false;
       }
-    }).sort((a, b) => {
-      const timeA = a.time ? parse(a.time, 'h:mm a', new Date()).getTime() : 0;
-      const timeB = b.time ? parse(b.time, 'h:mm a', new Date()).getTime() : 0;
-      return timeA - timeB;
-    });
+    }).sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
   }, [events, currentDate]);
 
   // Get keepers for the current day
@@ -331,33 +356,7 @@ export default function DailyView() {
     });
   }, [keepers, currentDate]);
 
-  // Get unique children for events of the day
-  const childrenForEvents = useMemo(() => {
-    const childNames = new Set(eventsForDay.map(event => event.childName).filter(Boolean));
-    return Array.from(childNames).map(name => {
-      const child = children.find(c => c.name === name);
-      const index = children.findIndex(c => c.name === name);
-      return {
-        name,
-        color: child?.color || childColors[index % childColors.length],
-        initial: name.charAt(0).toUpperCase()
-      };
-    });
-  }, [eventsForDay, children]);
 
-  // Get unique children for keepers of the day
-  const childrenForKeepers = useMemo(() => {
-    const childNames = new Set(keepersForDay.map(keeper => keeper.childName).filter(Boolean));
-    return Array.from(childNames).map(name => {
-      const child = children.find(c => c.name === name);
-      const index = children.findIndex(c => c.name === name);
-      return {
-        name,
-        color: child?.color || childColors[index % childColors.length],
-        initial: name.charAt(0).toUpperCase()
-      };
-    });
-  }, [keepersForDay, children]);
 
   const handleGlobalDrawerHeightChange = (height: number) => {
     const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
@@ -504,14 +503,14 @@ export default function DailyView() {
     if (!threadId) {
       console.error("DailyView: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -533,7 +532,7 @@ export default function DailyView() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -541,7 +540,7 @@ export default function DailyView() {
       console.error("Error sending message from DailyView:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -582,16 +581,10 @@ export default function DailyView() {
       </div>
       <div
         ref={pageScrollRef}
-        className="daily-view-content-scroll bg-gray-50 overflow-y-auto"
+        className="daily-view-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: dayNavBottom,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
           WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto',
-          transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         <div className="px-4 pt-4 pb-8 max-w-2xl mx-auto">
@@ -601,18 +594,18 @@ export default function DailyView() {
               <h2 className="text-sm font-medium text-gray-600 ml-1">
                 Events of the Day
               </h2>
-              {childrenForEvents.length > 0 && (
+              {eventsForDay.length > 0 && (
                 <div className="flex items-center gap-1">
-                  {childrenForEvents.map((child, index) => (
-                    <div
-                      key={`event-child-${index}`}
-                      className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400"
-                      style={{ backgroundColor: child.color }}
-                      title={child.name}
-                    >
-                      {child.initial}
-                    </div>
-                  ))}
+                  {eventsForDay.map((event, index) => (
+                    event.childName ? (
+                      <StackedChildBadges 
+                        key={`event-${index}`}
+                        childName={event.childName} 
+                        size="md" 
+                        maxVisible={3}
+                      />
+                    ) : null
+                  )).filter(Boolean)}
                 </div>
               )}
             </div>
@@ -650,18 +643,18 @@ export default function DailyView() {
               <h2 className="text-sm font-medium text-gray-600 ml-1">
                 Keepers Due
               </h2>
-              {childrenForKeepers.length > 0 && (
+              {keepersForDay.length > 0 && (
                 <div className="flex items-center gap-1">
-                  {childrenForKeepers.map((child, index) => (
-                    <div
-                      key={`keeper-child-${index}`}
-                      className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400"
-                      style={{ backgroundColor: child.color }}
-                      title={child.name}
-                    >
-                      {child.initial}
-                    </div>
-                  ))}
+                  {keepersForDay.map((keeper, index) => (
+                    keeper.childName ? (
+                      <StackedChildBadges 
+                        key={`keeper-${index}`}
+                        childName={keeper.childName} 
+                        size="md" 
+                        maxVisible={3}
+                      />
+                    ) : null
+                  )).filter(Boolean)}
                 </div>
               )}
             </div>
@@ -741,26 +734,19 @@ export default function DailyView() {
         maxDrawerHeight={maxDrawerHeight}
         scrollContainerRefCallback={chatContentScrollRef}
       >
-        <div 
-          ref={messagesContentRef}
-          className="space-y-1 mt-2 flex flex-col items-start px-2 pb-4"
-        >
-          {/* Render Messages */}
-          {messages.map((msg) => (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="w-full"
-            >
-              <ChatBubble
-                side={msg.sender === 'user' ? 'right' : 'left'}
-              >
-                {msg.content}
-              </ChatBubble>
-            </motion.div>
-          ))}
+        <div ref={messagesContentRef}>
+          <ChatMessageList
+            messages={messages}
+            onCreateAccount={() => {
+              // Handle account creation if needed
+              console.log('Account creation requested from DailyView');
+            }}
+            onRemindLater={() => {
+              // Handle remind later if needed
+              console.log('Remind later requested from DailyView');
+            }}
+            latestChildName={children[0]?.name || 'your child'}
+          />
         </div>
       </GlobalChatDrawer>
       <GlobalFooter

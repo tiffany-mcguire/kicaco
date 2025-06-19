@@ -2,6 +2,8 @@ import React from 'react';
 import { format, parse, isToday } from 'date-fns';
 import { getKicacoEventPhoto } from '../../utils/getKicacoEventPhoto';
 import { useKicacoStore } from '../../store/kicacoStore';
+import { Trash2 } from 'lucide-react';
+import { StackedChildBadges } from '../common';
 
 interface KeeperCardProps {
   keeperName: string;
@@ -18,18 +20,10 @@ interface KeeperCardProps {
   index?: number;
   activeIndex?: number | null;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-// Rainbow colors for children (same as EventCard)
-const childColors = [
-  '#f8b6c2', // Pink
-  '#fbd3a2', // Orange
-  '#fde68a', // Yellow
-  '#bbf7d0', // Green
-  '#c0e2e7', // Blue
-  '#d1d5fa', // Indigo
-  '#e9d5ff', // Purple
-];
+
 
 // Day colors for accent line (same as EventCard and UpcomingEvents)
 const dayColors: { [key: number]: string } = {
@@ -64,12 +58,9 @@ const formatTime = (time?: string) => {
 
 const KeeperCard: React.FC<KeeperCardProps> = ({
   keeperName, childName, date, time, description, image,
-  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex, onEdit
+  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex, onEdit, onDelete
 }) => {
-  const children = useKicacoStore(state => state.children);
-  const childProfile = childName ? children.find(c => c.name === childName) : null;
-  const childIndex = childName ? children.findIndex(c => c.name === childName) : -1;
-  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+
   
   // Get day of week for color coding
   const dayOfWeek = date ? parse(date, 'yyyy-MM-dd', new Date()).getDay() : 0;
@@ -125,13 +116,12 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
           <div className="flex h-full items-center justify-between px-4" onClick={onTabClick}>
             <div className="flex flex-col justify-center">
               <div className="flex items-center gap-1.5">
-                {childName && childColor && (
-                  <div
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                    style={{ backgroundColor: childColor }}
-                  >
-                    {childName.charAt(0).toUpperCase()}
-                  </div>
+                {childName && (
+                  <StackedChildBadges 
+                    childName={childName} 
+                    size="sm" 
+                    maxVisible={3}
+                  />
                 )}
                 <span className="text-sm font-semibold text-white">{keeperName}</span>
               </div>
@@ -177,6 +167,22 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
               border: '1px solid rgba(248, 182, 194, 0.4)',
             }}
           />
+        )}
+        
+        {/* Delete button at bottom center */}
+        {onDelete && (
+          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
+            >
+              <Trash2 size={12} />
+              <span>Delete</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { format, parse } from 'date-fns';
 import { useKicacoStore } from '../../store/kicacoStore';
+import { Trash2 } from 'lucide-react';
+import { StackedChildBadges } from '../common';
 
 interface EventCardProps {
   image: string;
@@ -13,7 +15,12 @@ interface EventCardProps {
   noHeaderSpace?: boolean;
   showEventInfo?: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
   carouselControls?: React.ReactNode;
+  carouselSwipeHandler?: {
+    onTouchStart: (e: React.TouchEvent) => void;
+    onTouchEnd: (e: React.TouchEvent) => void;
+  };
 }
 
 const formatDate = (date?: string) => {
@@ -81,12 +88,14 @@ const EventCard: React.FC<EventCardProps> = ({
   noHeaderSpace = false,
   showEventInfo = false,
   onEdit,
-  carouselControls
+  onDelete,
+  carouselControls,
+  carouselSwipeHandler
 }) => {
   const children = useKicacoStore(state => state.children);
-  const childProfile = childName ? children.find(c => c.name === childName) : null;
-  const childIndex = childName ? children.findIndex(c => c.name === childName) : -1;
-  const childColor = childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : null);
+  
+  // Parse multiple children from comma-separated string
+  const childNames = childName ? childName.split(',').map(name => name.trim()).filter(name => name) : [];
 
   // Get day of week for color coding
   const dayOfWeek = date ? parse(date, 'yyyy-MM-dd', new Date()).getDay() : 0;
@@ -114,8 +123,8 @@ const EventCard: React.FC<EventCardProps> = ({
       }
       
       // If no parentheses but we have a childName and it's their birthday, use possessive form
-      if (childName && (name.toLowerCase() === 'birthday party' || name.toLowerCase() === 'birthday')) {
-        const possessiveName = childName.endsWith('s') ? `${childName}'` : `${childName}'s`;
+      if (childNames.length === 1 && (name.toLowerCase() === 'birthday party' || name.toLowerCase() === 'birthday')) {
+        const possessiveName = childNames[0].endsWith('s') ? `${childNames[0]}'` : `${childNames[0]}'s`;
         return `${possessiveName} Birthday Party`;
       }
     }
@@ -136,67 +145,67 @@ const EventCard: React.FC<EventCardProps> = ({
         <div className={`absolute inset-x-0 top-0 p-4 flex flex-col ${
           noHeaderSpace ? 'pt-16' : 'pt-16'
         }`}>
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                {childName && childColor && (
-                  <div
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-gray-700 text-[10px] font-semibold ring-1 ring-gray-400 flex-shrink-0"
-                    style={{ backgroundColor: childColor }}
-                  >
-                    {childName.charAt(0).toUpperCase()}
+          <div>
+            <div className="flex justify-between items-start mb-3">
+              <div 
+                className="flex flex-col flex-1"
+                {...(carouselSwipeHandler && carouselControls ? carouselSwipeHandler : {})}
+              >
+                <div className="flex items-center gap-1.5">
+                  <StackedChildBadges childName={childName} size="md" maxVisible={3} />
+                  <div className="flex flex-col">
+                    <h3 className="text-sm font-semibold">
+                      {displayName}
+                    </h3>
+                    {location && (
+                      <span className="text-xs text-gray-200 mt-0.5">{location}</span>
+                    )}
+                  </div>
+                  {carouselControls}
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                {date && (
+                  <div className="text-sm font-medium text-white">
+                    {formatDate(date)}
                   </div>
                 )}
-                <h3 className="text-sm font-semibold">
-                  {displayName}
-                </h3>
-                {carouselControls}
-              </div>
-              {location && (
-                <span className="text-xs text-gray-200 mt-0.5" style={{ marginLeft: childName && childColor ? '22px' : '0' }}>{location}</span>
-              )}
-            </div>
-            <div className="flex flex-col items-end">
-              {date && (
-                <div className="text-sm font-medium text-white">
-                  {formatDate(date)}
-                </div>
-              )}
-              {time && (
-                <div className="text-xs text-gray-300 mt-0.5">
-                  {formatTime(time)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="relative">
-            <div 
-              className="absolute left-0 right-0 h-[1.5px] mb-3 opacity-60"
-              style={{ 
-                background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`
-              }}
-            />
-            <div className="pt-4">
-              <div className="flex justify-between items-center mb-1">
-                <h4 className="text-xs font-bold text-gray-300">Notes</h4>
-                {onEdit && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                    className="text-xs text-gray-300 hover:text-white transition-colors bg-black/30 rounded-full px-1.5 py-0.5"
-                  >
-                    Edit
-                  </button>
+                {time && (
+                  <div className="text-xs text-gray-300 mt-0.5">
+                    {formatTime(time)}
+                  </div>
                 )}
               </div>
-              {notes ? (
-                <p className="text-xs text-gray-200">{notes}</p>
-              ) : (
-                <p className="text-xs italic text-gray-400">—</p>
-              )}
+            </div>
+
+            <div className="relative">
+              <div 
+                className="absolute left-0 right-0 h-[1.5px] mb-3 opacity-60"
+                style={{ 
+                  background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`
+                }}
+              />
+              <div className="pt-4">
+                <div className="flex justify-between items-center mb-1">
+                  <h4 className="text-xs font-bold text-gray-300">Notes</h4>
+                  {onEdit && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit();
+                      }}
+                      className="text-xs text-gray-300 hover:text-white transition-colors bg-black/30 rounded-full px-1.5 py-0.5"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+                {notes ? (
+                  <p className="text-xs text-gray-200">{notes}</p>
+                ) : (
+                  <p className="text-xs italic text-gray-400">—</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -222,6 +231,22 @@ const EventCard: React.FC<EventCardProps> = ({
           ) : (
             <p className="text-xs italic text-gray-400">—</p>
           )}
+        </div>
+      )}
+      
+      {/* Delete button at bottom center */}
+      {onDelete && (
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
+          >
+            <Trash2 size={12} />
+            <span>Delete</span>
+          </button>
         </div>
       )}
     </div>

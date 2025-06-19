@@ -16,35 +16,45 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
   ({ value, onChange, onSend, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false }, ref) => (
     <footer
       ref={ref}
-      className={`global-footer fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-2px_8px_rgba(0,0,0,0.15)] z-50 h-16 flex items-center justify-between px-4 ${className}`}
+      className={`global-footer fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.08)] z-50 h-16 ${className}`}
     >
-      <div className="flex gap-2">
-        {leftButtons ?? <>
-          <IconButton IconComponent={props => <ClipboardIcon2 {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Paste" />
-          <IconButton IconComponent={props => <UploadIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Upload" />
-        </>}
-      </div>
-      <div className="flex-1 mx-4">
-        <input
-          type="text"
-          value={value}
-          onChange={onChange}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && onSend && !disabled) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          className="footer-chat w-full rounded-full border border-[#c0e2e7] px-4 py-2 focus:outline-none text-sm bg-white text-gray-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow duration-200 focus:shadow-[0_0_8px_2px_#c0e2e7,0_2px_8px_rgba(0,0,0,0.08)]"
-          placeholder={placeholder}
-          disabled={disabled}
-        />
-      </div>
-      <div className="flex gap-2">
-        {rightButtons ?? <>
-          <IconButton IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Camera" disabled={disabled} />
-          <IconButton IconComponent={props => <MicIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Mic" disabled={disabled} />
-        </>}
+      {/* Subtle gradient accent line */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: 'linear-gradient(90deg, rgba(248,182,194,0.5) 0%, rgba(255,216,181,0.5) 16%, rgba(253,230,138,0.5) 33%, rgba(187,247,208,0.5) 50%, rgba(192,226,231,0.5) 66%, rgba(209,213,250,0.5) 83%, rgba(233,213,255,0.5) 100%)'
+        }}
+      />
+      
+      <div className="flex items-center justify-between px-4 h-full">
+        <div className="flex gap-1">
+          {leftButtons ?? <>
+            <IconButton variant="frameless" IconComponent={props => <ClipboardIcon2 {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Paste" />
+            <IconButton variant="frameless" IconComponent={props => <UploadIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Upload" />
+          </>}
+        </div>
+        <div className="flex-1 mx-3">
+          <input
+            type="text"
+            value={value}
+            onChange={onChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && onSend && !disabled) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
+            className="footer-chat w-full rounded-xl border border-gray-200 px-4 py-2 focus:outline-none bg-gray-50 text-gray-700 transition-all duration-200 focus:border-[#c0e2e7] focus:bg-white focus:shadow-[0_0_0_3px_rgba(192,226,231,0.1)]"
+            placeholder={placeholder}
+            disabled={disabled}
+          />
+        </div>
+        <div className="flex gap-1">
+          {rightButtons ?? <>
+            <IconButton variant="frameless" IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Camera" disabled={disabled} />
+            <IconButton variant="frameless" IconComponent={props => <MicIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} aria-label="Mic" disabled={disabled} />
+          </>}
+        </div>
       </div>
     </footer>
   )

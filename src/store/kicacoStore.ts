@@ -59,6 +59,7 @@ type KicacoState = {
   events: Event[];
   addEvent: (event: Partial<Event>) => void;
   updateEvent: (index: number, event: Partial<Event>) => void;
+  removeEvent: (index: number) => void;
 
   messages: ChatMessage[];
   addMessage: (message: ChatMessage) => void;
@@ -68,6 +69,7 @@ type KicacoState = {
   keepers: Keeper[];
   addKeeper: (keeper: Partial<Keeper>) => void;
   updateKeeper: (index: number, keeper: Partial<Keeper>) => void;
+  removeKeeper: (index: number) => void;
 
   children: ChildProfile[];
   addChild: (child: ChildProfile) => void;
@@ -183,6 +185,10 @@ export const useKicacoStore = create(
         set((state) => ({
           events: state.events.map((e, i) => i === index ? { ...e, ...event } as Event : e)
         })),
+      removeEvent: (index: number) =>
+        set((state) => ({
+          events: state.events.filter((_, i) => i !== index)
+        })),
 
       messages: [],
       addMessage: (message: ChatMessage) => {
@@ -201,6 +207,10 @@ export const useKicacoStore = create(
       updateKeeper: (index: number, keeper: Partial<Keeper>) =>
         set((state) => ({
           keepers: state.keepers.map((k, i) => i === index ? { ...k, ...keeper } as Keeper : k)
+        })),
+      removeKeeper: (index: number) =>
+        set((state) => ({
+          keepers: state.keepers.filter((_, i) => i !== index)
         })),
 
       children: mockChildren,

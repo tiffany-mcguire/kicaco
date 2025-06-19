@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import { CalendarPlus } from "lucide-react";
 import { format } from 'date-fns';
 
+import { generateUUID } from '../utils/uuid';
 const AddEventIcon = () => {
   const styles = {
     Icon: {
@@ -368,14 +369,14 @@ export default function AddEvent() {
     if (!threadId) {
       console.error("AddEvent: Cannot send message, threadId is null.");
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I'm not ready to chat right now. Please try again in a moment."
       });
       return;
     }
 
-    const userMessageId = crypto.randomUUID();
+    const userMessageId = generateUUID();
     addMessage({
       id: userMessageId,
       sender: 'user',
@@ -397,7 +398,7 @@ export default function AddEvent() {
       const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: assistantResponseText,
       });
@@ -405,7 +406,7 @@ export default function AddEvent() {
       console.error("Error sending message from AddEvent:", error);
       removeMessageById(thinkingMessageId);
       addMessage({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sender: 'assistant',
         content: "Sorry, I encountered an error. Please try again.",
       });
@@ -558,16 +559,10 @@ export default function AddEvent() {
       />
       <div
         ref={pageScrollRef}
-        className="add-event-content-scroll bg-gray-50 overflow-y-auto"
+        className="add-event-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          position: 'absolute',
-          top: subheaderBottom + 8,
-          bottom: currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8,
-          left: 0,
-          right: 0,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
           WebkitOverflowScrolling: 'touch',
-          overflowY: 'auto',
-          transition: 'top 0.2s, bottom 0.2s',
         }}
       >
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
