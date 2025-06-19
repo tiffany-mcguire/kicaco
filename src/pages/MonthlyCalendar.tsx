@@ -5,7 +5,7 @@ import { HamburgerMenu } from '../components/navigation';
 import { CalendarMenu } from '../components/calendar';
 import { ThreeDotMenu } from '../components/navigation';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
 import { GlobalSubheader } from '../components/navigation';
@@ -13,10 +13,78 @@ import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parse, getDaysInMonth, isPast, startOfDay } from 'date-fns';
 
 import { generateUUID } from '../utils/uuid';
+
+// Filter Dropdown Component
+const ChildFilterDropdown: React.FC<{
+  children: { name: string }[];
+  selectedChildren: string[];
+  onToggleChild: (name: string) => void;
+  onClear: () => void;
+}> = ({ children, selectedChildren, onToggleChild, onClear }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors bg-[#c0e2e7]/40 text-[#217e8f] hover:bg-[#c0e2e7]/60"
+        aria-label="Filter by child"
+      >
+        <FilterIcon size={12} />
+        <span>Filter</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-100">
+          <ul className="py-1">
+            {children.map(child => (
+              <li key={child.name}>
+                <label className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedChildren.includes(child.name)}
+                    onChange={() => onToggleChild(child.name)}
+                    className="h-4 w-4 rounded border-gray-300 text-[#217e8f] focus:ring-[#217e8f]/50"
+                  />
+                  <span className="ml-3">{child.name}</span>
+                </label>
+              </li>
+            ))}
+            {selectedChildren.length > 0 && (
+              <>
+                <li className="border-t border-gray-100 my-1" />
+                <li>
+                  <button 
+                    onClick={onClear} 
+                    className="w-full text-left block px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                  >
+                    Clear Filter
+                  </button>
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CalendarIcon = () => (
   <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
     <path d="M160 32V64H288V32C288 14.33 302.3 0 320 0C337.7 0 352 14.33 352 32V64H400C426.5 64 448 85.49 448 112V160H0V112C0 85.49 21.49 64 48 64H96V32C96 14.33 110.3 0 128 0C145.7 0 160 14.33 160 32zM0 192H448V464C448 490.5 426.5 512 400 512H48C21.49 512 0 490.5 0 464V192zM64 304C64 312.8 71.16 320 80 320H112C120.8 320 128 312.8 128 304V272C128 263.2 120.8 256 112 256H80C71.16 256 64 263.2 64 272V304zM192 304C192 312.8 199.2 320 208 320H240C248.8 320 256 312.8 256 304V272C256 263.2 248.8 256 240 256H208C199.2 256 192 263.2 192 272V304zM336 256C327.2 256 320 263.2 320 272V304C320 312.8 327.2 320 336 320H368C376.8 320 384 312.8 384 304V272C384 263.2 376.8 256 368 256H336zM64 432C64 440.8 71.16 448 80 448H112C120.8 448 128 440.8 128 432V400C128 391.2 120.8 384 112 384H80C71.16 384 64 391.2 64 400V432zM208 384C199.2 384 192 391.2 192 400V432C192 440.8 199.2 448 208 448H240C248.8 448 256 440.8 256 432V400C256 391.2 248.8 384 240 384H208zM320 432C320 440.8 327.2 448 336 448H368C376.8 448 384 440.8 384 432V400C384 391.2 376.8 384 368 384H336C327.2 384 320 391.2 320 400V432z" />
@@ -101,6 +169,7 @@ export default function MonthlyCalendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(null);
   const [fadeOutDate, setFadeOutDate] = useState<Date | null>(null);
+  const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
   const { messages, threadId, addMessage, removeMessageById, events, keepers, children, drawerHeight: storedDrawerHeight, setDrawerHeight: setStoredDrawerHeight } = useKicacoStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
@@ -119,7 +188,36 @@ export default function MonthlyCalendar() {
     setSelectedDate(null);
   };
 
+  const handleToggleChildFilter = (childName: string) => {
+    setFilteredChildren(prev =>
+      prev.includes(childName)
+        ? prev.filter(name => name !== childName)
+        : [...prev, childName]
+    );
+  };
+
+  const handleClearFilter = () => setFilteredChildren([]);
+
   const getChildProfile = (childName?: string) => children.find(c => c.name === childName);
+
+  // Filtered events and keepers
+  const filteredEvents = useMemo(() => {
+    if (filteredChildren.length === 0) return events;
+    return events.filter(event => {
+      if (!event.childName) return false;
+      const eventChildren = event.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => eventChildren.includes(selectedChild));
+    });
+  }, [events, filteredChildren]);
+
+  const filteredKeepers = useMemo(() => {
+    if (filteredChildren.length === 0) return keepers;
+    return keepers.filter(keeper => {
+      if (!keeper.childName) return false;
+      const keeperChildren = keeper.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => keeperChildren.includes(selectedChild));
+    });
+  }, [keepers, filteredChildren]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -131,7 +229,7 @@ export default function MonthlyCalendar() {
   const daysInMonth = getDaysInMonth(currentMonth);
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
     const day = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1);
-    const dayEvents = events.filter(event => {
+    const dayEvents = filteredEvents.filter(event => {
       if (!event.date) return false;
       try {
         const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
@@ -141,7 +239,7 @@ export default function MonthlyCalendar() {
         return false;
       }
     });
-    const dayKeepers = keepers.filter(keeper => {
+    const dayKeepers = filteredKeepers.filter(keeper => {
       if (!keeper.date) return false;
       try {
         const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
@@ -350,7 +448,7 @@ export default function MonthlyCalendar() {
           >
             {/* Month Navigation */}
             <div 
-              className="flex items-center justify-between p-3 rounded-t-lg"
+              className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center p-3 rounded-t-lg"
               style={{
                 borderTop: '1px solid #c0e2e780',
                 borderLeft: '1px solid #c0e2e780',
@@ -361,7 +459,20 @@ export default function MonthlyCalendar() {
               <button onClick={goToPreviousMonth} className="p-1 rounded-full hover:bg-gray-100">
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
+
+              <div className="flex justify-center">
+                <ChildFilterDropdown 
+                  children={children}
+                  selectedChildren={filteredChildren}
+                  onToggleChild={handleToggleChildFilter}
+                  onClear={handleClearFilter}
+                />
+              </div>
+
               <h2 className="text-lg font-medium text-gray-700">{dateFormat(currentMonth, "MMMM yyyy")}</h2>
+
+              <div />
+
               <button onClick={goToNextMonth} className="p-1 rounded-full hover:bg-gray-100">
                 <ChevronRight size={20} className="text-gray-600" />
               </button>
@@ -386,7 +497,7 @@ export default function MonthlyCalendar() {
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 rounded-b-lg overflow-hidden">
               {days.map((day, index) => {
-                const dayEvents = events.filter(event => {
+                const dayEvents = filteredEvents.filter(event => {
                   if (!event.date) return false;
                   try {
                     const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
@@ -396,7 +507,7 @@ export default function MonthlyCalendar() {
                     return false;
                   }
                 });
-                const dayKeepers = keepers.filter(keeper => {
+                const dayKeepers = filteredKeepers.filter(keeper => {
                   if (!keeper.date) return false;
                   try {
                     const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());

@@ -4,12 +4,13 @@ interface DropdownMenuProps {
   trigger: React.ReactNode;
   align: 'left' | 'right';
   width?: string;
-  children: React.ReactNode;
+  children: React.ReactNode | ((helpers: { close: () => void }) => React.ReactNode);
   showCaret?: boolean;
   caretPosition?: 'hamburger' | 'calendar' | 'threedot';
+  onClose?: () => void;
 }
 
-const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '212px', children, showCaret, caretPosition }) => {
+const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '212px', children, showCaret, caretPosition, onClose }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
     setTimeout(() => {
       setIsOpen(false);
       setClosing(false);
+      if (onClose) onClose();
     }, 200);
   };
 
@@ -81,7 +83,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
           {shouldShowCaret && (
             <div className={`absolute top-[-8px] ${positionClassCaret} w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-[#217e8f] shadow-[0_4px_8px_rgba(0,0,0,0.1)]`} style={{ opacity: 0.95, zIndex: 151 }} />
           )}
-          {children}
+          {typeof children === 'function' ? children({ close: handleClose }) : children}
         </div>
       )}
     </div>

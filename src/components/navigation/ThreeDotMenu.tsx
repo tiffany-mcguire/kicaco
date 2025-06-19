@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DropdownMenu, IconButton } from '../common';
+import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock-upgrade';
+import { AlertCircle, MessageSquare, HelpCircle } from 'lucide-react';
 
 interface ThreeDotMenuProps {
   currentPath: string;
@@ -7,28 +9,45 @@ interface ThreeDotMenuProps {
 
 function ReportBugPopup({ open, onClose, onSubmit }: { open: boolean, onClose: () => void, onSubmit: (desc: string) => void }) {
   const [desc, setDesc] = useState('');
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targetElement = popupRef.current;
+    if (open && targetElement) {
+      disableBodyScroll(targetElement);
+    }
+    return () => {
+      if (targetElement) {
+        enableBodyScroll(targetElement);
+      }
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
-        <h2 className="text-lg font-bold text-[#b91142] mb-2">Report a Bug</h2>
-        <p className="text-sm text-gray-700 mb-3">Please describe the issue you encountered. The more details, the better!</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertCircle size={24} className="text-[#d4919f]" />
+          <h2 className="text-lg font-semibold text-gray-800">Report a Bug</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4 ml-1">Please describe the issue you encountered. The more details, the better!</p>
         <textarea
-          className="w-full border border-[#c0e2e7] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] mb-4"
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition"
           rows={5}
           value={desc}
           onChange={e => setDesc(e.target.value)}
           placeholder="Describe the bug..."
           autoFocus
         />
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="flex justify-end gap-3 mt-5">
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold"
+            className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl font-medium transition-all hover:shadow-sm border border-gray-200"
             onClick={onClose}
             type="button"
           >Cancel</button>
           <button
-            className="px-4 py-2 rounded bg-[#217e8f] text-white hover:bg-[#1a6e7e] font-semibold"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
             onClick={() => { onSubmit(desc); setDesc(''); }}
             type="button"
             disabled={!desc.trim()}
@@ -46,28 +65,45 @@ function reportBug(desc: string) {
 
 function GiveFeedbackPopup({ open, onClose, onSubmit }: { open: boolean, onClose: () => void, onSubmit: (desc: string) => void }) {
   const [desc, setDesc] = useState('');
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targetElement = popupRef.current;
+    if (open && targetElement) {
+      disableBodyScroll(targetElement);
+    }
+    return () => {
+      if (targetElement) {
+        enableBodyScroll(targetElement);
+      }
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
-        <h2 className="text-lg font-bold text-[#217e8f] mb-2">Give Feedback</h2>
-        <p className="text-sm text-gray-700 mb-3">We'd love to hear your thoughts or suggestions to improve Kicaco!</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+        <div className="flex items-center gap-3 mb-3">
+          <MessageSquare size={24} className="text-[#9fc2c7]" />
+          <h2 className="text-lg font-semibold text-gray-800">Give Feedback</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4 ml-1">We'd love to hear your thoughts or suggestions to improve Kicaco!</p>
         <textarea
-          className="w-full border border-[#c0e2e7] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] mb-4"
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition"
           rows={5}
           value={desc}
           onChange={e => setDesc(e.target.value)}
           placeholder="Share your feedback..."
           autoFocus
         />
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="flex justify-end gap-3 mt-5">
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold"
+            className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl font-medium transition-all hover:shadow-sm border border-gray-200"
             onClick={onClose}
             type="button"
           >Cancel</button>
           <button
-            className="px-4 py-2 rounded bg-[#217e8f] text-white hover:bg-[#1a6e7e] font-semibold"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
             onClick={() => { onSubmit(desc); setDesc(''); }}
             type="button"
             disabled={!desc.trim()}
@@ -87,14 +123,31 @@ function ContactSupportPopup({ open, onClose, onSubmit }: { open: boolean, onClo
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');
   const isEmailValid = email.includes('@') && email.length > 3;
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targetElement = popupRef.current;
+    if (open && targetElement) {
+      disableBodyScroll(targetElement);
+    }
+    return () => {
+      if (targetElement) {
+        enableBodyScroll(targetElement);
+      }
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
-        <h2 className="text-lg font-bold text-[#217e8f] mb-2">Contact Support</h2>
-        <p className="text-sm text-gray-700 mb-3">Need help? Send us a message and we'll get back to you as soon as possible.</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+        <div className="flex items-center gap-3 mb-3">
+          <HelpCircle size={24} className="text-[#9fc2c7]" />
+          <h2 className="text-lg font-semibold text-gray-800">Contact Support</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4 ml-1">Need help? Send us a message and we'll get back to you as soon as possible.</p>
         <input
-          className="w-full border border-[#c0e2e7] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] mb-3"
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition mb-3"
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
@@ -102,21 +155,21 @@ function ContactSupportPopup({ open, onClose, onSubmit }: { open: boolean, onClo
           required
         />
         <textarea
-          className="w-full border border-[#c0e2e7] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] mb-4"
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition"
           rows={5}
           value={msg}
           onChange={e => setMsg(e.target.value)}
           placeholder="How can we help you?"
           autoFocus
         />
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="flex justify-end gap-3 mt-5">
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold"
+            className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl font-medium transition-all hover:shadow-sm border border-gray-200"
             onClick={onClose}
             type="button"
           >Cancel</button>
           <button
-            className="px-4 py-2 rounded bg-[#217e8f] text-white hover:bg-[#1a6e7e] font-semibold"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
             onClick={() => { onSubmit(email, msg); setEmail(''); setMsg(''); }}
             type="button"
             disabled={!msg.trim() || !isEmailValid}
@@ -132,10 +185,11 @@ function contactSupport(email: string, msg: string) {
   alert('Thank you for contacting support!\n\n' + (email ? `Email: ${email}\n` : '') + msg);
 }
 
+type ActivePopup = 'bug' | 'feedback' | 'support' | null;
+
 export default function ThreeDotMenu({ currentPath }: ThreeDotMenuProps) {
-  const [showBug, setShowBug] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [showSupport, setShowSupport] = useState(false);
+  const [activePopup, setActivePopup] = useState<ActivePopup>(null);
+
   return (
     <>
       <DropdownMenu
@@ -157,63 +211,65 @@ export default function ThreeDotMenu({ currentPath }: ThreeDotMenuProps) {
           />
         }
       >
-        <div className="py-1 flex flex-col pr-4" role="menu" aria-orientation="vertical" style={{ color: '#c0e2e7' }}>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-            onClick={() => setShowBug(true)}
-          >
-            Report a Bug
-          </button>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-            onClick={() => setShowFeedback(true)}
-          >
-            Give Feedback
-          </button>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-            onClick={() => setShowSupport(true)}
-          >
-            Contact Support
-          </button>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-          >
-            Rate This App
-          </button>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-          >
-            Check for Updates
-          </button>
-          <button
-            className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
-            role="menuitem"
-          >
-            Log Out
-          </button>
-        </div>
+        {({ close: closeMenu }) => (
+          <div className="py-1 flex flex-col pr-4" role="menu" aria-orientation="vertical" style={{ color: '#c0e2e7' }}>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+              onClick={() => { setActivePopup('bug'); closeMenu(); }}
+            >
+              Report a Bug
+            </button>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+              onClick={() => { setActivePopup('feedback'); closeMenu(); }}
+            >
+              Give Feedback
+            </button>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+              onClick={() => { setActivePopup('support'); closeMenu(); }}
+            >
+              Contact Support
+            </button>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+            >
+              Rate This App
+            </button>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+            >
+              Check for Updates
+            </button>
+            <button
+              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              role="menuitem"
+            >
+              Log Out
+            </button>
+          </div>
+        )}
       </DropdownMenu>
       <ReportBugPopup
-        open={showBug}
-        onClose={() => setShowBug(false)}
-        onSubmit={desc => { reportBug(desc); setShowBug(false); }}
+        open={activePopup === 'bug'}
+        onClose={() => setActivePopup(null)}
+        onSubmit={desc => { reportBug(desc); setActivePopup(null); }}
       />
       <GiveFeedbackPopup
-        open={showFeedback}
-        onClose={() => setShowFeedback(false)}
-        onSubmit={desc => { giveFeedback(desc); setShowFeedback(false); }}
+        open={activePopup === 'feedback'}
+        onClose={() => setActivePopup(null)}
+        onSubmit={desc => { giveFeedback(desc); setActivePopup(null); }}
       />
       <ContactSupportPopup
-        open={showSupport}
-        onClose={() => setShowSupport(false)}
-        onSubmit={(email, msg) => { contactSupport(email, msg); setShowSupport(false); }}
+        open={activePopup === 'support'}
+        onClose={() => setActivePopup(null)}
+        onSubmit={(email, msg) => { contactSupport(email, msg); setActivePopup(null); }}
       />
     </>
   );
-} 
+}
