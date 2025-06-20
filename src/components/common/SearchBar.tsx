@@ -42,6 +42,34 @@ const SearchBar: React.FC<SearchBarProps> = ({
     };
   }, [isVisible, onClose]);
 
+  // Auto-close when clicking outside the search area (but not on search results)
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const searchContainer = inputRef.current?.closest('.search-container');
+      const searchResults = document.querySelector('.search-results');
+      
+      // Don't close if clicking on search container or search results
+      if (searchContainer?.contains(target) || searchResults?.contains(target)) {
+        return;
+      }
+      
+      onClose();
+    };
+
+    // Add a slight delay before enabling click-outside to prevent immediate closure
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isVisible, onClose]);
+
   // Determine the keyboard shortcut hint based on platform
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const shortcutHint = isMac ? '⌘K' : 'Ctrl+K';
@@ -54,7 +82,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           animate={{ opacity: 1, width: '100%' }}
           exit={{ opacity: 0, width: 0 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="absolute inset-0 flex items-center justify-center bg-[#217e8f] z-20 px-4"
+          className="search-container absolute inset-0 flex items-center justify-center bg-[#217e8f] z-20 px-4"
         >
           <div className="relative w-full max-w-md flex items-center">
             <div className="absolute left-3 text-[#217e8f]">

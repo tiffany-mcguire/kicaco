@@ -279,10 +279,154 @@ export default function DailyView() {
   
   // Initialize currentDate from navigation state if available
   const navigationDate = location.state?.date;
-  const initialDate = navigationDate ? parse(navigationDate, 'yyyy-MM-dd', new Date()) : new Date();
+  const initialDate = navigationDate ? navigationDate : new Date();
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
+  
+  // Get location state to check if we need to focus on a specific item
+  const locationState = location.state as { 
+    date?: Date, 
+    targetEvent?: any,
+    targetKeeper?: any
+  } | null;
+  
+  // State to track which items to highlight
+  const [highlightedEvent, setHighlightedEvent] = useState<any | null>(null);
+  const [highlightedKeeper, setHighlightedKeeper] = useState<any | null>(null);
+  
+  // Effect to handle focusing on specific items from search results
+  useEffect(() => {
+    // Handle date from location state if available
+    if (locationState?.date) {
+      setCurrentDate(locationState.date);
+    }
+    
+    // Handle focusing on specific event
+    if (locationState?.targetEvent) {
+      setHighlightedEvent(locationState.targetEvent);
+      
+      // Find the event in the events for the day and set the displayed index
+      setTimeout(() => {
+        const eventsForDay = events.filter(e => 
+          isSameDay(parse(e.date, 'yyyy-MM-dd', new Date()), locationState.date || currentDate)
+        ).sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
+        
+        console.log('DailyView: Looking for target event:', locationState.targetEvent);
+        console.log('DailyView: Events for day:', eventsForDay);
+        
+        const targetIndex = eventsForDay.findIndex(e => 
+          e.eventName === locationState.targetEvent.eventName && 
+          e.date === locationState.targetEvent.date && 
+          e.childName === locationState.targetEvent.childName &&
+          e.time === locationState.targetEvent.time &&
+          e.location === locationState.targetEvent.location
+        );
+        
+        console.log('DailyView: Found target event at index:', targetIndex);
+        
+        if (targetIndex !== -1) {
+          setDisplayedEventIndex(targetIndex);
+        }
+        
+        // Clear highlight after animation
+        setTimeout(() => {
+          setHighlightedEvent(null);
+        }, 2000);
+      }, 300);
+    }
+    
+    // Handle focusing on specific keeper
+    if (locationState?.targetKeeper) {
+      setHighlightedKeeper(locationState.targetKeeper);
+      
+      // Find the keeper in the keepers for the day and set the active index
+      setTimeout(() => {
+        const keepersForDay = keepers.filter(k => 
+          isSameDay(parse(k.date, 'yyyy-MM-dd', new Date()), locationState.date || currentDate)
+        );
+        
+        const targetIndex = keepersForDay.findIndex(k => 
+          k.keeperName === locationState.targetKeeper.keeperName && 
+          k.date === locationState.targetKeeper.date && 
+          k.childName === locationState.targetKeeper.childName
+        );
+        
+        if (targetIndex !== -1) {
+          setDisplayedKeeperIndex(targetIndex);
+        }
+        
+        // Scroll to keeper section with a delay to ensure rendering
+        setTimeout(() => {
+          const keeperSection = document.getElementById('keepers-section');
+          if (keeperSection) {
+            // Get the current drawer height
+            const drawerHeight = storedDrawerHeight || 32;
+            const footerHeight = footerRef.current?.offsetHeight || 0;
+            
+            // Calculate the offset needed for sticky headers
+            const headerHeight = 64; // Header height
+            const subheaderHeight = 58; // Subheader height
+            const dayNavHeight = 40; // Day navigation height
+            const buffer = 20; // Extra buffer
+            
+            // Calculate the position to scroll to
+            const keeperRect = keeperSection.getBoundingClientRect();
+            const scrollTop = window.scrollY + keeperRect.top - headerHeight - subheaderHeight - dayNavHeight - buffer;
+            
+            // Perform the scroll
+            window.scrollTo({
+              top: scrollTop,
+              behavior: 'smooth'
+            });
+          }
+        }, 500); // Delay to ensure everything is rendered
+        
+        // Clear highlight after animation
+        setTimeout(() => {
+          setHighlightedKeeper(null);
+        }, 2000);
+      }, 300);
+    }
+  }, [locationState, events, keepers, currentDate]);
+  
+  // Add CSS for search highlights
+  useEffect(() => {
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+      .search-highlight {
+        animation: search-highlight-pulse 2s ease-in-out;
+        position: relative;
+      }
+      
+      .search-highlight::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 16px;
+        border: 2px solid rgba(33, 126, 143, 0.7);
+        animation: search-highlight-pulse 2s ease-in-out;
+        pointer-events: none;
+        z-index: 10;
+      }
+      
+      @keyframes search-highlight-pulse {
+        0%, 100% {
+          box-shadow: 0 0 8px 2px rgba(33, 126, 143, 0.2);
+          opacity: 0.6;
+        }
+        50% {
+          box-shadow: 0 0 12px 4px rgba(33, 126, 143, 0.3);
+          opacity: 0.8;
+        }
+      }
+    `;
+    document.head.appendChild(styleEl);
+    
+    return () => {
+      document.head.removeChild(styleEl);
+    };
+  }, []);
   
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -613,7 +757,16 @@ export default function DailyView() {
               )}
             </div>
             {eventsForDay.length > 0 ? (
-              <div className="relative rounded-xl shadow-lg overflow-hidden">
+              <div className={`relative rounded-xl shadow-lg overflow-hidden ${
+                highlightedEvent && eventsForDay[displayedEventIndex] && 
+                highlightedEvent.eventName === eventsForDay[displayedEventIndex].eventName &&
+                highlightedEvent.date === eventsForDay[displayedEventIndex].date &&
+                highlightedEvent.childName === eventsForDay[displayedEventIndex].childName &&
+                highlightedEvent.time === eventsForDay[displayedEventIndex].time &&
+                highlightedEvent.location === eventsForDay[displayedEventIndex].location
+                  ? 'search-highlight' 
+                  : ''
+              }`}>
 
                 <DailyEventCard 
                   event={eventsForDay[displayedEventIndex]} 
@@ -641,7 +794,7 @@ export default function DailyView() {
           </section>
 
           {/* Keepers Due Section */}
-          <section>
+          <section id="keepers-section">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-sm font-medium text-gray-600 ml-1">
                 Keepers Due
@@ -662,7 +815,14 @@ export default function DailyView() {
               )}
             </div>
             {keepersForDay.length > 0 ? (
-              <div className="relative rounded-xl shadow-lg overflow-hidden">
+              <div className={`relative rounded-xl shadow-lg overflow-hidden ${
+                highlightedKeeper && keepersForDay[displayedKeeperIndex] && 
+                highlightedKeeper.keeperName === keepersForDay[displayedKeeperIndex].keeperName &&
+                highlightedKeeper.date === keepersForDay[displayedKeeperIndex].date &&
+                highlightedKeeper.childName === keepersForDay[displayedKeeperIndex].childName
+                  ? 'search-highlight' 
+                  : ''
+              }`}>
                 {/* Keeper Carousel Controls */}
                 {keepersForDay.length > 1 && (
                   <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2">

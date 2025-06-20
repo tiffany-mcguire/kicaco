@@ -53,7 +53,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.2 }}
-          className="absolute top-16 left-0 right-0 bg-white z-10 shadow-lg max-h-[70vh] overflow-y-auto"
+          className="search-results absolute top-16 left-0 right-0 bg-white z-10 shadow-lg max-h-[70vh] overflow-y-auto"
         >
           <div className="p-2">
             {results.length === 0 ? (

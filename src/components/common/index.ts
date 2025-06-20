@@ -7,4 +7,6 @@ export { default as PostSignupOptions } from './PostSignupOptions';
 export { MobileDebugPanel } from './MobileDebugPanel';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as StackedChildBadges } from './StackedChildBadges';
+export { default as SearchBar } from './SearchBar';
+export { default as SearchResults } from './SearchResults';
 export * from './icons'; 

@@ -9,7 +9,7 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { EventConfirmationCard } from '../components/calendar';
 import { createOpenAIThread } from '../utils/talkToKicaco';
 import { getApiClientInstance } from '../utils/apiClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SevenDayEventOutlook, ThirtyDayKeeperOutlook } from '../components/calendar';
 import { parse, format } from 'date-fns';
 import { PasswordModal } from '../components/common';
@@ -92,6 +92,66 @@ function parseTo24H(time?: string): number {
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get location state to check if we need to scroll to a specific message
+  const locationState = location.state as { targetMessageId?: string } | null;
+  
+  // Effect to handle scrolling to a specific message from search results
+  useEffect(() => {
+    if (locationState?.targetMessageId) {
+      // Short delay to ensure the chat is rendered
+      setTimeout(() => {
+        // Find the message element by its ID
+        const messageElement = document.getElementById(`message-${locationState.targetMessageId}`);
+        
+        if (messageElement) {
+          // Add CSS for highlighting the message
+          const styleEl = document.createElement('style');
+          styleEl.textContent = `
+            .message-highlight {
+              position: relative;
+            }
+            
+            .message-highlight::after {
+              content: '';
+              position: absolute;
+              inset: -4px;
+              border-radius: 16px;
+              border: 2px solid rgba(33, 126, 143, 0.7);
+              animation: pulse-highlight 2s ease-in-out;
+              pointer-events: none;
+              box-shadow: 0 0 10px 2px rgba(33, 126, 143, 0.2);
+            }
+            
+            @keyframes pulse-highlight {
+              0%, 100% {
+                box-shadow: 0 0 8px 2px rgba(33, 126, 143, 0.2);
+                opacity: 0.6;
+              }
+              50% {
+                box-shadow: 0 0 12px 4px rgba(33, 126, 143, 0.3);
+                opacity: 0.8;
+              }
+            }
+          `;
+          document.head.appendChild(styleEl);
+          
+          // Scroll to the message
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight class
+          messageElement.classList.add('message-highlight');
+          
+          // Remove highlight after animation and clean up style element
+          setTimeout(() => {
+            messageElement.classList.remove('message-highlight');
+            document.head.removeChild(styleEl);
+          }, 2000);
+        }
+      }, 500);
+    }
+  }, [locationState]);
 
   useEffect(() => {
     setIsMounted(true);

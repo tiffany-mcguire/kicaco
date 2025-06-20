@@ -25,8 +25,8 @@ function ReportBugPopup({ open, onClose, onSubmit }: { open: boolean, onClose: (
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-30 p-4 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-3">
           <AlertCircle size={24} className="text-[#d4919f]" />
           <h2 className="text-lg font-semibold text-gray-800">Report a Bug</h2>
@@ -81,8 +81,8 @@ function GiveFeedbackPopup({ open, onClose, onSubmit }: { open: boolean, onClose
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-30 p-4 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-3">
           <MessageSquare size={24} className="text-[#9fc2c7]" />
           <h2 className="text-lg font-semibold text-gray-800">Give Feedback</h2>
@@ -139,15 +139,15 @@ function ContactSupportPopup({ open, onClose, onSubmit }: { open: boolean, onClo
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 p-8 backdrop-blur-sm" ref={popupRef}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-30 p-4 backdrop-blur-sm" ref={popupRef}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-3">
           <HelpCircle size={24} className="text-[#9fc2c7]" />
           <h2 className="text-lg font-semibold text-gray-800">Contact Support</h2>
         </div>
-        <p className="text-sm text-gray-600 mb-4 ml-1">Need help? Send us a message and we'll get back to you as soon as possible.</p>
+        <p className="text-sm text-gray-600 mb-2 ml-1">Need help? Send us a message and we'll get back to you as soon as possible.</p>
         <input
-          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition mb-3"
+          className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition mb-1.5"
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
@@ -155,14 +155,14 @@ function ContactSupportPopup({ open, onClose, onSubmit }: { open: boolean, onClo
           required
         />
         <textarea
-          className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition"
-          rows={5}
+          className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] bg-gray-50 transition"
+          rows={1}
           value={msg}
           onChange={e => setMsg(e.target.value)}
           placeholder="How can we help you?"
           autoFocus
         />
-        <div className="flex justify-end gap-3 mt-5">
+        <div className="flex justify-end gap-3 mt-2">
           <button
             className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-xl font-medium transition-all hover:shadow-sm border border-gray-200"
             onClick={onClose}

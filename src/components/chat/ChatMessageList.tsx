@@ -47,6 +47,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             return (
               <motion.div
                 key={msg.id}
+                id={`message-${msg.id}`}
                 initial={isNewMessage ? { opacity: 0, scale: 0.95, y: 10 } : false}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -82,6 +83,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             return (
               <motion.div
                 key={msg.id}
+                id={`message-${msg.id}`}
                 initial={isNewMessage ? { opacity: 0, scale: 0.95, y: 10 } : false}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -96,6 +98,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           return (
             <motion.div
               key={msg.id}
+              id={`message-${msg.id}`}
               initial={isNewMessage ? { opacity: 0, scale: 0.95, y: 10 } : false}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.5 }}
