@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, ReactNode, cloneElement } from 'react';
 
 interface DropdownMenuProps {
-  trigger: React.ReactNode;
+  trigger: React.ReactElement;
   align: 'left' | 'right';
   width?: string;
   children: React.ReactNode | ((helpers: { close: () => void }) => React.ReactNode);
@@ -41,6 +41,14 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
     }, 200);
   };
 
+  const handleTriggerClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const clonedTrigger = cloneElement(trigger, {
+    isActive: isOpen,
+  });
+
   // Alignment and rounded corners
   const positionClass = align === 'left' ? 'fixed left-0 top-16 rounded-r-md' : 'fixed right-0 top-16 rounded-l-md';
   // Caret triangle position based on which menu it is
@@ -69,8 +77,8 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
 
   return (
     <div className="relative" ref={menuRef}>
-      <span onClick={() => isOpen ? handleClose() : setIsOpen(true)}>
-        {trigger}
+      <span onClick={handleTriggerClick}>
+        {clonedTrigger}
       </span>
       {(isOpen || closing) && (
         <div
