@@ -434,7 +434,7 @@ export default function MonthlyCalendar() {
       <div 
         className="monthly-calendar-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 200}px`, // Added extra padding for proper scrolling
           WebkitOverflowScrolling: 'touch',
         }}
       >
@@ -584,16 +584,14 @@ export default function MonthlyCalendar() {
                               // Then scroll to the date in the new month's list view
                               setTimeout(() => {
                                 const listViewElement = document.getElementById(`list-day-${day.getDate()}`);
-                                const scrollContainer = document.querySelector('.monthly-calendar-content-scroll');
+                                const scrollContainer = document.querySelector('.monthly-calendar-content-scroll') as HTMLElement;
                                 
                                 if (listViewElement && scrollContainer) {
-                                  const containerRect = scrollContainer.getBoundingClientRect();
-                                  const elementRect = listViewElement.getBoundingClientRect();
-                                  const relativeTop = elementRect.top - containerRect.top + scrollContainer.scrollTop;
-                                  
-                                  scrollContainer.scrollTo({
-                                    top: relativeTop - 20, // 20px padding from top
-                                    behavior: 'smooth'
+                                  // Use scrollIntoView for more reliable scrolling
+                                  listViewElement.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                    inline: 'nearest'
                                   });
                                   
                                   // Start fade out after 2.5 seconds
@@ -614,16 +612,14 @@ export default function MonthlyCalendar() {
                               setHighlightedDate(day);
                               
                               const listViewElement = document.getElementById(`list-day-${day.getDate()}`);
-                              const scrollContainer = document.querySelector('.monthly-calendar-content-scroll');
+                              const scrollContainer = document.querySelector('.monthly-calendar-content-scroll') as HTMLElement;
                               
                               if (listViewElement && scrollContainer) {
-                                const containerRect = scrollContainer.getBoundingClientRect();
-                                const elementRect = listViewElement.getBoundingClientRect();
-                                const relativeTop = elementRect.top - containerRect.top + scrollContainer.scrollTop;
-                                
-                                scrollContainer.scrollTo({
-                                  top: relativeTop - 20, // 20px padding from top
-                                  behavior: 'smooth'
+                                // Use scrollIntoView for more reliable scrolling
+                                listViewElement.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'center',
+                                  inline: 'nearest'
                                 });
                                 
                                 // Start fade out after 2.5 seconds

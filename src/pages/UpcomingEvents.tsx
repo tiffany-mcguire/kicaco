@@ -129,7 +129,8 @@ const EventDayStackCard: React.FC<{
   isActive: boolean;
   navigate: any;
   allEvents: any[];
-}> = ({ date, events, isActive, navigate, allEvents }) => {
+  removeEvent: (index: number) => void;
+}> = ({ date, events, isActive, navigate, allEvents, removeEvent }) => {
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const eventDate = parse(date, 'yyyy-MM-dd', new Date());
   const dayOfWeek = eventDate.getDay();
@@ -148,6 +149,12 @@ const EventDayStackCard: React.FC<{
     e.childName === currentEvent.childName &&
     e.time === currentEvent.time
   );
+
+  const handleDelete = () => {
+    if (globalEventIndex !== -1) {
+      removeEvent(globalEventIndex);
+    }
+  };
 
   // Transform birthday party names to possessive form (same logic as EventCard)
   const displayName = (() => {
@@ -199,6 +206,7 @@ const EventDayStackCard: React.FC<{
             } 
           });
         } : undefined}
+        onDelete={isActive ? handleDelete : undefined}
       />
       {/* The Tab is an overlay on top of the EventCard */}
       <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
@@ -265,7 +273,8 @@ export default function UpcomingEvents() {
     threadId,
     addMessage,
     removeMessageById,
-    addEvent
+    addEvent,
+    removeEvent,
   } = useKicacoStore();
   const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
@@ -534,7 +543,7 @@ export default function UpcomingEvents() {
       <div
         className="flex-1 overflow-y-auto p-4"
         style={{
-          paddingBottom: `${currentDrawerHeight + (footerRef.current?.offsetHeight ?? 0) + 8}px`,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.offsetHeight ?? 0) + 200}px`, // Added extra padding for expanded event cards
         }}
       >
         <div className="max-w-md mx-auto">
@@ -601,6 +610,7 @@ export default function UpcomingEvents() {
                                         isActive={isActive}
                                         navigate={navigate}
                                         allEvents={events}
+                                        removeEvent={removeEvent}
                                     />
                                   </div>
                               </div>

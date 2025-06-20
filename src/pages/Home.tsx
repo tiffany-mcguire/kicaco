@@ -547,7 +547,7 @@ export default function Home() {
         ref={pageContentRef}
         className="flex-1 w-full bg-gray-50 overflow-y-auto px-4"
         style={{
-          paddingBottom: `${currentDrawerHeight + (footerRef.current?.offsetHeight || 0) + 8}px`,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.offsetHeight || 0) + 200}px`, // Added extra padding for expanded keeper cards
           zIndex: 1, // Ensure it's below the chat drawer
         }}
       >

@@ -56,6 +56,7 @@ export default function Keepers() {
     chatScrollPosition,
     setChatScrollPosition,
     keepers,
+    removeKeeper,
   } = useKicacoStore();
 
   // State for keeper card interactions
@@ -388,7 +389,7 @@ export default function Keepers() {
         ref={scrollRef}
         className="keepers-content-scroll bg-gray-50 flex-1 overflow-y-auto"
         style={{
-          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 8}px`,
+          paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 200}px`, // Added extra padding for expanded keeper cards
         }}
       >
         {keepers && keepers.length > 0 ? (
@@ -422,6 +423,12 @@ export default function Keepers() {
                         k.childName === keeper.childName
                       );
                       
+                      const handleDelete = () => {
+                        if (originalKeeperIndex !== -1) {
+                          removeKeeper(originalKeeperIndex);
+                        }
+                      };
+                      
                       return (
                         <KeeperCard
                           key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
@@ -450,6 +457,7 @@ export default function Keepers() {
                               }
                             });
                           }}
+                          onDelete={isActive ? handleDelete : undefined}
                         />
                       );
                     })}

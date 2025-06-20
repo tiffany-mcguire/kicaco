@@ -138,7 +138,8 @@ const DailyEventCard: React.FC<{
   events: any[];
   displayedEventIndex: number;
   setDisplayedEventIndex: (fn: (prev: number) => number) => void;
-}> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex }) => {
+  removeEvent: (index: number) => void;
+}> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex, removeEvent }) => {
   const children = useKicacoStore(state => state.children);
   const eventDate = event.date ? parse(event.date, 'yyyy-MM-dd', new Date()) : currentDate;
   const dayOfWeek = currentDate.getDay();
@@ -150,6 +151,12 @@ const DailyEventCard: React.FC<{
     e.childName === event.childName &&
     e.time === event.time
   );
+
+  const handleDelete = () => {
+    if (globalEventIndex !== -1) {
+      removeEvent(globalEventIndex);
+    }
+  };
 
   // Transform birthday party names to possessive form (same logic as EventCard)
   const displayName = (() => {
@@ -196,6 +203,7 @@ const DailyEventCard: React.FC<{
             } 
           });
         }}
+        onDelete={handleDelete}
       />
       {/* Tab header overlay similar to UpcomingEvents */}
       <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
@@ -275,6 +283,8 @@ export default function DailyView() {
     events,
     keepers,
     children,
+    removeEvent,
+    removeKeeper,
   } = useKicacoStore();
   
   // Initialize currentDate from navigation state if available
@@ -760,6 +770,7 @@ export default function DailyView() {
                   events={eventsForDay}
                   displayedEventIndex={displayedEventIndex}
                   setDisplayedEventIndex={setDisplayedEventIndex}
+                  removeEvent={removeEvent}
                 />
               </div>
             ) : (
@@ -855,6 +866,17 @@ export default function DailyView() {
                           keeperIndex: originalKeeperIndex
                         }
                       });
+                    }}
+                    onDelete={() => {
+                      const keeper = keepersForDay[displayedKeeperIndex];
+                      const originalKeeperIndex = keepers.findIndex(k => 
+                        k.keeperName === keeper.keeperName && 
+                        k.date === keeper.date &&
+                        k.childName === keeper.childName
+                      );
+                      if (originalKeeperIndex !== -1) {
+                        removeKeeper(originalKeeperIndex);
+                      }
                     }}
                   />
                 </div>
