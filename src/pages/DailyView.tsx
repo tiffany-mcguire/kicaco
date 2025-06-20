@@ -297,98 +297,82 @@ export default function DailyView() {
   
   // Effect to handle focusing on specific items from search results
   useEffect(() => {
-    // Handle date from location state if available
-    if (locationState?.date) {
-      setCurrentDate(locationState.date);
+    const targetDate = locationState?.date;
+
+    // 1. Exit if there's no navigation state to process
+    if (!targetDate || (!locationState.targetEvent && !locationState.targetKeeper)) {
+      return;
     }
-    
-    // Handle focusing on specific event
-    if (locationState?.targetEvent) {
+
+    // 2. If the view is not on the correct date yet, set it and wait for re-render.
+    // This ensures we are working with the right day's events.
+    if (!isSameDay(currentDate, targetDate)) {
+      setCurrentDate(targetDate);
+      return;
+    }
+
+    // 3. The view is on the correct date, so we can now find the item.
+    let itemHandled = false;
+
+    if (locationState.targetEvent) {
+      itemHandled = true;
       setHighlightedEvent(locationState.targetEvent);
+
+      const eventsForDay = events.filter(e => 
+        isSameDay(parse(e.date, 'yyyy-MM-dd', new Date()), targetDate)
+      ).sort((a, b) => parseTimeForSorting(a.time));
       
-      // Find the event in the events for the day and set the displayed index
-      setTimeout(() => {
-        const eventsForDay = events.filter(e => 
-          isSameDay(parse(e.date, 'yyyy-MM-dd', new Date()), locationState.date || currentDate)
-        ).sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
-        
-        console.log('DailyView: Looking for target event:', locationState.targetEvent);
-        console.log('DailyView: Events for day:', eventsForDay);
-        
-        const targetIndex = eventsForDay.findIndex(e => 
-          e.eventName === locationState.targetEvent.eventName && 
-          e.date === locationState.targetEvent.date && 
-          e.childName === locationState.targetEvent.childName &&
-          e.time === locationState.targetEvent.time &&
-          e.location === locationState.targetEvent.location
-        );
-        
-        console.log('DailyView: Found target event at index:', targetIndex);
-        
-        if (targetIndex !== -1) {
-          setDisplayedEventIndex(targetIndex);
-        }
-        
-        // Clear highlight after animation
-        setTimeout(() => {
-          setHighlightedEvent(null);
-        }, 2000);
-      }, 300);
+      const targetIndex = eventsForDay.findIndex(e => 
+        e.eventName === locationState.targetEvent.eventName && 
+        e.date === locationState.targetEvent.date && 
+        e.childName === locationState.targetEvent.childName &&
+        e.time === locationState.targetEvent.time &&
+        e.location === locationState.targetEvent.location
+      );
+      
+      if (targetIndex !== -1) {
+        setDisplayedEventIndex(targetIndex);
+      }
+      
+      setTimeout(() => setHighlightedEvent(null), 2000);
     }
     
-    // Handle focusing on specific keeper
-    if (locationState?.targetKeeper) {
+    if (locationState.targetKeeper) {
+      itemHandled = true;
       setHighlightedKeeper(locationState.targetKeeper);
       
-      // Find the keeper in the keepers for the day and set the active index
+      const keepersForDay = keepers.filter(k => 
+        isSameDay(parse(k.date, 'yyyy-MM-dd', new Date()), targetDate)
+      );
+      
+      const targetIndex = keepersForDay.findIndex(k => 
+        k.keeperName === locationState.targetKeeper.keeperName && 
+        k.date === locationState.targetKeeper.date && 
+        k.childName === locationState.targetKeeper.childName
+      );
+      
+      if (targetIndex !== -1) {
+        setDisplayedKeeperIndex(targetIndex);
+      }
+      
       setTimeout(() => {
-        const keepersForDay = keepers.filter(k => 
-          isSameDay(parse(k.date, 'yyyy-MM-dd', new Date()), locationState.date || currentDate)
-        );
-        
-        const targetIndex = keepersForDay.findIndex(k => 
-          k.keeperName === locationState.targetKeeper.keeperName && 
-          k.date === locationState.targetKeeper.date && 
-          k.childName === locationState.targetKeeper.childName
-        );
-        
-        if (targetIndex !== -1) {
-          setDisplayedKeeperIndex(targetIndex);
+        const keeperSection = document.getElementById('keepers-section');
+        if (keeperSection) {
+          const headerHeight = 64, subheaderHeight = 58, dayNavHeight = 40, buffer = 20;
+          const keeperRect = keeperSection.getBoundingClientRect();
+          const scrollTop = window.scrollY + keeperRect.top - headerHeight - subheaderHeight - dayNavHeight - buffer;
+          window.scrollTo({ top: scrollTop, behavior: 'smooth' });
         }
-        
-        // Scroll to keeper section with a delay to ensure rendering
-        setTimeout(() => {
-          const keeperSection = document.getElementById('keepers-section');
-          if (keeperSection) {
-            // Get the current drawer height
-            const drawerHeight = storedDrawerHeight || 32;
-            const footerHeight = footerRef.current?.offsetHeight || 0;
-            
-            // Calculate the offset needed for sticky headers
-            const headerHeight = 64; // Header height
-            const subheaderHeight = 58; // Subheader height
-            const dayNavHeight = 40; // Day navigation height
-            const buffer = 20; // Extra buffer
-            
-            // Calculate the position to scroll to
-            const keeperRect = keeperSection.getBoundingClientRect();
-            const scrollTop = window.scrollY + keeperRect.top - headerHeight - subheaderHeight - dayNavHeight - buffer;
-            
-            // Perform the scroll
-            window.scrollTo({
-              top: scrollTop,
-              behavior: 'smooth'
-            });
-          }
-        }, 500); // Delay to ensure everything is rendered
-        
-        // Clear highlight after animation
-        setTimeout(() => {
-          setHighlightedKeeper(null);
-        }, 2000);
-      }, 300);
+      }, 500);
+      
+      setTimeout(() => setHighlightedKeeper(null), 2000);
     }
-  }, [locationState, events, keepers, currentDate]);
+
+    // 4. Once handled, clear the location state to prevent this logic from re-running.
+    if (itemHandled) {
+      navigate('.', { replace: true, state: {} });
+    }
+  }, [locationState, currentDate, events, keepers, navigate]);
   
   // Add CSS for search highlights
   useEffect(() => {
