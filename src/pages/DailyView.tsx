@@ -328,11 +328,19 @@ export default function DailyView() {
       itemHandled = true;
       setHighlightedEvent(locationState.targetEvent);
 
-      const eventsForDay = events.filter(e => 
-        isSameDay(parse(e.date, 'yyyy-MM-dd', new Date()), targetDate)
-      ).sort((a, b) => parseTimeForSorting(a.time));
+      // Use the same eventsForDay that the component uses for rendering
+      const currentEventsForDay = events.filter(event => {
+        if (!event.date) return false;
+        try {
+          const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
+          return isSameDay(eventDate, targetDate);
+        } catch (e) {
+          console.error("Error parsing event date:", event.date, e);
+          return false;
+        }
+      }).sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
       
-      const targetIndex = eventsForDay.findIndex(e => 
+      const targetIndex = currentEventsForDay.findIndex(e => 
         e.eventName === locationState.targetEvent.eventName && 
         e.date === locationState.targetEvent.date && 
         e.childName === locationState.targetEvent.childName &&
@@ -351,11 +359,19 @@ export default function DailyView() {
       itemHandled = true;
       setHighlightedKeeper(locationState.targetKeeper);
       
-      const keepersForDay = keepers.filter(k => 
-        isSameDay(parse(k.date, 'yyyy-MM-dd', new Date()), targetDate)
-      );
+      // Use the same keepersForDay that the component uses for rendering
+      const currentKeepersForDay = keepers.filter(keeper => {
+        if (!keeper.date) return false;
+        try {
+          const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
+          return isSameDay(keeperDate, targetDate);
+        } catch (e) {
+          console.error("Error parsing keeper date:", keeper.date, e);
+          return false;
+        }
+      });
       
-      const targetIndex = keepersForDay.findIndex(k => 
+      const targetIndex = currentKeepersForDay.findIndex(k => 
         k.keeperName === locationState.targetKeeper.keeperName && 
         k.date === locationState.targetKeeper.date && 
         k.childName === locationState.targetKeeper.childName
