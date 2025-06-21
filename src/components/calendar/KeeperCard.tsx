@@ -2,7 +2,7 @@ import React from 'react';
 import { format, parse, isToday } from 'date-fns';
 import { getKicacoEventPhoto } from '../../utils/getKicacoEventPhoto';
 import { useKicacoStore } from '../../store/kicacoStore';
-import { Trash2 } from 'lucide-react';
+import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StackedChildBadges } from '../common';
 
 interface KeeperCardProps {
@@ -21,6 +21,19 @@ interface KeeperCardProps {
   activeIndex?: number | null;
   onEdit?: () => void;
   onDelete?: () => void;
+  // Carousel props for Daily View
+  showCarouselControls?: boolean;
+  currentCarouselIndex?: number;
+  totalCarouselItems?: number;
+  onCarouselPrevious?: () => void;
+  onCarouselNext?: () => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
+  onTouchMove?: (e: React.TouchEvent) => void;
+  onTouchEnd?: (e: React.TouchEvent) => void;
+  onTouchCancel?: (e: React.TouchEvent) => void;
+  // Add Keeper button props
+  showAddKeeperButton?: boolean;
+  onAddKeeper?: () => void;
 }
 
 
@@ -58,7 +71,10 @@ const formatTime = (time?: string) => {
 
 const KeeperCard: React.FC<KeeperCardProps> = ({
   keeperName, childName, date, time, description, image,
-  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex, onEdit, onDelete
+  stackPosition = 0, totalInStack = 1, isActive = false, onTabClick, index = 0, activeIndex, onEdit, onDelete,
+  showCarouselControls = false, currentCarouselIndex = 0, totalCarouselItems = 1,
+  onCarouselPrevious, onCarouselNext, onTouchStart, onTouchMove, onTouchEnd, onTouchCancel,
+  showAddKeeperButton = false, onAddKeeper
 }) => {
 
   
@@ -112,19 +128,55 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
         <div className="absolute inset-0 bg-black/[.65]" />
         
         {/* Tab overlay on top of the KeeperCard (matching EventDayStackCard) */}
-        <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
+        <div 
+          className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm"
+          data-card-alley
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
+        >
           <div className="flex h-full items-center justify-between px-4" onClick={onTabClick}>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-1.5">
-                {childName && (
-                  <StackedChildBadges 
-                    childName={childName} 
-                    size="sm" 
-                    maxVisible={3}
-                  />
-                )}
+            <div className="flex items-center gap-1.5">
+              {childName && (
+                <StackedChildBadges 
+                  childName={childName} 
+                  size="md" 
+                  maxVisible={3}
+                />
+              )}
+              <div className="flex flex-col">
                 <span className="text-sm font-semibold text-white">{keeperName}</span>
+                {time && (
+                  <span className="text-xs text-gray-200 mt-0.5">{formatTime(time)}</span>
+                )}
               </div>
+              {/* Carousel controls - hugging the keeper content */}
+              {showCarouselControls && totalCarouselItems > 1 && (
+                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-2">
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onCarouselPrevious?.(); 
+                    }} 
+                    className="text-gray-800 hover:text-gray-900 p-0"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-gray-800 text-[10px] font-medium">
+                    {currentCarouselIndex + 1}/{totalCarouselItems}
+                  </span>
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onCarouselNext?.(); 
+                    }} 
+                    className="text-gray-800 hover:text-gray-900 p-0"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex flex-col justify-center items-end">
               <span className="text-sm font-medium text-white">{formatDate(date)}</span>
@@ -181,6 +233,21 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
             >
               <Trash2 size={12} />
               <span>Delete</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Add Keeper button at bottom right */}
+        {showAddKeeperButton && onAddKeeper && (
+          <div className="absolute bottom-2 right-2 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddKeeper();
+              }}
+              className="bg-white/50 backdrop-blur-sm rounded-full px-2 py-1 text-[10px] text-gray-800 hover:text-gray-900 font-medium hover:bg-white/60 transition-colors duration-150"
+            >
+              + Add Keeper
             </button>
           </div>
         )}

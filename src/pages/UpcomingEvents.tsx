@@ -16,7 +16,7 @@ import { EventCard } from '../components/calendar';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { parse, format, startOfDay, isAfter, isSameDay } from 'date-fns';
 
 import { generateUUID } from '../utils/uuid';
@@ -136,6 +136,133 @@ const EventDayStackCard: React.FC<{
   const dayOfWeek = eventDate.getDay();
   const currentEvent = events[displayedEventIndex];
   
+  // Touch handling for swipe gestures
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchIntentionRef = useRef<'unknown' | 'vertical' | 'horizontal' | 'swipe'>('unknown');
+  
+  // Helper function to reset touch state
+  const resetTouchState = useCallback(() => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchIntentionRef.current = 'unknown';
+  }, []);
+
+  // Handle swipe navigation
+  const handleSwipe = (direction: number) => {
+    if (events.length <= 1) return;
+    
+    if (direction > 0) {
+      // Swipe left - next event
+      setDisplayedEventIndex(prev => (prev + 1) % events.length);
+    } else {
+      // Swipe right - previous event
+      setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    resetTouchState();
+    if (events.length <= 1) return;
+    
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
+    
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchIntentionRef.current = 'unknown';
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || events.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = Math.abs(touchStartX.current - currentX);
+    const diffY = Math.abs(touchStartY.current - currentY);
+    
+    if (touchIntentionRef.current === 'unknown') {
+      const minMovement = 15;
+      
+      if (diffX > minMovement || diffY > minMovement) {
+        const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
+        const verticalDisplacement = Math.abs(touchStartY.current - currentY);
+        
+        const minVerticalForScroll = 25;
+        const maxHorizontalDriftForScroll = 10;
+        const strongVerticalRatio = verticalDisplacement > horizontalDisplacement * 3;
+        
+        if (strongVerticalRatio && verticalDisplacement > minVerticalForScroll && horizontalDisplacement < maxHorizontalDriftForScroll) {
+          touchIntentionRef.current = 'vertical';
+        } else if (horizontalDisplacement > verticalDisplacement * 1.5 && horizontalDisplacement > 20) {
+          touchIntentionRef.current = 'horizontal';
+        } else if (horizontalDisplacement > 30) {
+          touchIntentionRef.current = 'swipe';
+        }
+      }
+    }
+    
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (touchIntentionRef.current === 'vertical') {
+      e.stopPropagation();
+    } else {
+      e.stopPropagation();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || events.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      resetTouchState();
+      return;
+    }
+    
+    e.stopPropagation();
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const diffX = touchStartX.current - touchEndX;
+    const threshold = 50;
+
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      e.preventDefault();
+      
+      const horizontalDisplacement = Math.abs(diffX);
+      
+      if (horizontalDisplacement > threshold) {
+        if (diffX > 0) {
+          handleSwipe(1);
+        } else {
+          handleSwipe(-1);
+        }
+      }
+    }
+    
+    resetTouchState();
+  };
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    resetTouchState();
+  };
+  
   // Get child info for the event
   const children = useKicacoStore(state => state.children);
   
@@ -209,7 +336,13 @@ const EventDayStackCard: React.FC<{
         onDelete={isActive ? handleDelete : undefined}
       />
       {/* The Tab is an overlay on top of the EventCard */}
-      <div className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm">
+      <div 
+        className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         <div className="flex h-full items-center justify-between px-4">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">

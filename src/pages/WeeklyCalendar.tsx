@@ -518,6 +518,158 @@ const DayCard = React.memo(({
 // Simplified MiniEventCarousel
 const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, formatTime12, navigate, removeEvent, events }: any) => {
   const [currentIdx, setCurrentIdx] = useState(0);
+  
+  // Touch handling for swipe gestures
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchIntentionRef = useRef<'unknown' | 'vertical' | 'horizontal' | 'swipe'>('unknown');
+  
+  // Helper function to reset touch state
+  const resetTouchState = useCallback(() => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchIntentionRef.current = 'unknown';
+  }, []);
+
+  // Handle swipe navigation
+  const handleSwipe = (direction: number) => {
+    if (dayEvents.length <= 1) return;
+    
+    if (direction > 0) {
+      // Swipe left - next event
+      setCurrentIdx((currentIdx + 1) % dayEvents.length);
+    } else {
+      // Swipe right - previous event
+      setCurrentIdx((currentIdx - 1 + dayEvents.length) % dayEvents.length);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Reset state first
+    resetTouchState();
+    
+    // Only handle if there are multiple events
+    if (dayEvents.length <= 1) return;
+    
+    // Check if touch started on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return; // Don't handle touches on buttons
+    }
+    
+    // Record starting position
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchIntentionRef.current = 'unknown';
+    
+    // Stop propagation to prevent parent handlers
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || dayEvents.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    // Check if touch is on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = Math.abs(touchStartX.current - currentX);
+    const diffY = Math.abs(touchStartY.current - currentY);
+    
+    // Determine user intention based on movement pattern
+    if (touchIntentionRef.current === 'unknown') {
+      const minMovement = 15; // Minimum movement to determine intention
+      
+      if (diffX > minMovement || diffY > minMovement) {
+        const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
+        const verticalDisplacement = Math.abs(touchStartY.current - currentY);
+        
+        // Check for clear vertical movement (scrolling)
+        const minVerticalForScroll = 25;
+        const maxHorizontalDriftForScroll = 10;
+        const strongVerticalRatio = verticalDisplacement > horizontalDisplacement * 3;
+        
+        if (strongVerticalRatio && verticalDisplacement > minVerticalForScroll && horizontalDisplacement < maxHorizontalDriftForScroll) {
+          // Clear vertical movement - allow page scrolling
+          touchIntentionRef.current = 'vertical';
+        } else if (horizontalDisplacement > verticalDisplacement * 1.5 && horizontalDisplacement > 20) {
+          // Clear horizontal movement - this is a swipe
+          touchIntentionRef.current = 'horizontal';
+        } else if (horizontalDisplacement > 30) {
+          // Significant horizontal displacement
+          touchIntentionRef.current = 'swipe';
+        }
+      }
+    }
+    
+    // Handle based on determined intention
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      // Prevent default for horizontal movement to stop page scrolling
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (touchIntentionRef.current === 'vertical') {
+      // Allow vertical scrolling by only stopping propagation
+      e.stopPropagation();
+    } else {
+      // Still determining intention - stop propagation but allow default
+      e.stopPropagation();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || dayEvents.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    // Check if touch ended on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      resetTouchState();
+      return;
+    }
+    
+    e.stopPropagation();
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const diffX = touchStartX.current - touchEndX;
+    const diffY = Math.abs(touchStartY.current - touchEndY);
+    const threshold = 50; // Minimum distance for swipe
+
+    // Only process swipes if intention was horizontal movement
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      e.preventDefault(); // Prevent default for swipe gestures
+      
+      const horizontalDisplacement = Math.abs(diffX);
+      
+      // Check if we actually moved horizontally enough
+      if (horizontalDisplacement > threshold) {
+        if (diffX > 0) {
+          // Swiped left - next event
+          handleSwipe(1);
+        } else {
+          // Swiped right - previous event
+          handleSwipe(-1);
+        }
+      }
+    }
+    
+    // Reset touch state
+    resetTouchState();
+  };
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    resetTouchState();
+  };
 
   if (dayEvents.length === 0) {
     return (
@@ -560,7 +712,13 @@ const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, format
       <img src={getKicacoEventPhoto(evt.eventName)} alt={evt.eventName} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/65" />
       
-      <div className="absolute top-2 left-0 right-0 z-10 h-[40px]">
+      <div 
+        className="absolute top-2 left-0 right-0 z-10 h-[40px]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         <div className="flex h-full items-center justify-between px-3">
           <div className="flex items-center gap-1.5">
             <StackedChildBadges childName={evt.childName} size="sm" maxVisible={3} />
@@ -643,6 +801,158 @@ const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, format
 // Simplified MiniKeeperCard
 const MiniKeeperCard = React.memo(({ dayKeepers, dayOfWeek, fullDate, formatTime12, navigate, removeKeeper, keepers }: any) => {
   const [currentIdx, setCurrentIdx] = useState(0);
+  
+  // Touch handling for swipe gestures
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchIntentionRef = useRef<'unknown' | 'vertical' | 'horizontal' | 'swipe'>('unknown');
+  
+  // Helper function to reset touch state
+  const resetTouchState = useCallback(() => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+    touchIntentionRef.current = 'unknown';
+  }, []);
+
+  // Handle swipe navigation
+  const handleSwipe = (direction: number) => {
+    if (dayKeepers.length <= 1) return;
+    
+    if (direction > 0) {
+      // Swipe left - next keeper
+      setCurrentIdx((currentIdx + 1) % dayKeepers.length);
+    } else {
+      // Swipe right - previous keeper
+      setCurrentIdx((currentIdx - 1 + dayKeepers.length) % dayKeepers.length);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Reset state first
+    resetTouchState();
+    
+    // Only handle if there are multiple keepers
+    if (dayKeepers.length <= 1) return;
+    
+    // Check if touch started on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return; // Don't handle touches on buttons
+    }
+    
+    // Record starting position
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchIntentionRef.current = 'unknown';
+    
+    // Stop propagation to prevent parent handlers
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || dayKeepers.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    // Check if touch is on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      return;
+    }
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = Math.abs(touchStartX.current - currentX);
+    const diffY = Math.abs(touchStartY.current - currentY);
+    
+    // Determine user intention based on movement pattern
+    if (touchIntentionRef.current === 'unknown') {
+      const minMovement = 15; // Minimum movement to determine intention
+      
+      if (diffX > minMovement || diffY > minMovement) {
+        const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
+        const verticalDisplacement = Math.abs(touchStartY.current - currentY);
+        
+        // Check for clear vertical movement (scrolling)
+        const minVerticalForScroll = 25;
+        const maxHorizontalDriftForScroll = 10;
+        const strongVerticalRatio = verticalDisplacement > horizontalDisplacement * 3;
+        
+        if (strongVerticalRatio && verticalDisplacement > minVerticalForScroll && horizontalDisplacement < maxHorizontalDriftForScroll) {
+          // Clear vertical movement - allow page scrolling
+          touchIntentionRef.current = 'vertical';
+        } else if (horizontalDisplacement > verticalDisplacement * 1.5 && horizontalDisplacement > 20) {
+          // Clear horizontal movement - this is a swipe
+          touchIntentionRef.current = 'horizontal';
+        } else if (horizontalDisplacement > 30) {
+          // Significant horizontal displacement
+          touchIntentionRef.current = 'swipe';
+        }
+      }
+    }
+    
+    // Handle based on determined intention
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      // Prevent default for horizontal movement to stop page scrolling
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (touchIntentionRef.current === 'vertical') {
+      // Allow vertical scrolling by only stopping propagation
+      e.stopPropagation();
+    } else {
+      // Still determining intention - stop propagation but allow default
+      e.stopPropagation();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null || dayKeepers.length <= 1) {
+      resetTouchState();
+      return;
+    }
+
+    // Check if touch ended on a button - if so, don't interfere
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) {
+      resetTouchState();
+      return;
+    }
+    
+    e.stopPropagation();
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const diffX = touchStartX.current - touchEndX;
+    const diffY = Math.abs(touchStartY.current - touchEndY);
+    const threshold = 50; // Minimum distance for swipe
+
+    // Only process swipes if intention was horizontal movement
+    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+      e.preventDefault(); // Prevent default for swipe gestures
+      
+      const horizontalDisplacement = Math.abs(diffX);
+      
+      // Check if we actually moved horizontally enough
+      if (horizontalDisplacement > threshold) {
+        if (diffX > 0) {
+          // Swiped left - next keeper
+          handleSwipe(1);
+        } else {
+          // Swiped right - previous keeper
+          handleSwipe(-1);
+        }
+      }
+    }
+    
+    // Reset touch state
+    resetTouchState();
+  };
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    resetTouchState();
+  };
 
   if (dayKeepers.length === 0) {
     return (
@@ -679,7 +989,13 @@ const MiniKeeperCard = React.memo(({ dayKeepers, dayOfWeek, fullDate, formatTime
       <img src={getKicacoEventPhoto(keeper.keeperName || 'keeper')} alt={keeper.keeperName} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/65" />
       
-      <div className="absolute top-2 left-0 right-0 z-10 h-[40px]">
+      <div 
+        className="absolute top-2 left-0 right-0 z-10 h-[40px]"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
         <div className="flex h-full items-center justify-between px-3">
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1">

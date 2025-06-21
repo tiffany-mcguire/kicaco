@@ -95,6 +95,23 @@ const SevenDayEventOutlook: React.FC = () => {
     // Always reset state first to ensure clean start
     resetTouchState();
     
+    // Check if touch started within carousel controls - if so, don't interfere
+    const carouselElement = carouselRegionRef.current;
+    if (carouselElement) {
+      const rect = carouselElement.getBoundingClientRect();
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      
+      // Add padding around carousel controls for easier tapping (8px padding on all sides)
+      const padding = 8;
+      // If touch is within carousel controls area (including padding), don't handle it - let buttons work normally
+      if (touchX >= (rect.left - padding) && touchX <= (rect.right + padding) && 
+          touchY >= (rect.top - padding) && touchY <= (rect.bottom + padding)) {
+        resetTouchState();
+        return; // Don't stop propagation or prevent default - let button clicks work
+      }
+    }
+    
     // Record starting position but don't prevent default yet
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
@@ -125,6 +142,22 @@ const SevenDayEventOutlook: React.FC = () => {
       // Safety: if we have corrupted state, reset and exit
       resetTouchState();
       return;
+    }
+
+    // Check if touch is within carousel controls - if so, don't interfere
+    const carouselElement = carouselRegionRef.current;
+    if (carouselElement) {
+      const rect = carouselElement.getBoundingClientRect();
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      
+      // Add padding around carousel controls for easier tapping (8px padding on all sides)
+      const padding = 8;
+      // If touch is within carousel controls area (including padding), don't handle it
+      if (touchX >= (rect.left - padding) && touchX <= (rect.right + padding) && 
+          touchY >= (rect.top - padding) && touchY <= (rect.bottom + padding)) {
+        return; // Don't interfere with carousel controls
+      }
     }
     
     // Check if this touch started near the bottom - if so, be extra conservative
@@ -197,6 +230,23 @@ const SevenDayEventOutlook: React.FC = () => {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Check if touch is within carousel controls - if so, don't interfere
+    const carouselElement = carouselRegionRef.current;
+    if (carouselElement) {
+      const rect = carouselElement.getBoundingClientRect();
+      const touchX = e.changedTouches[0].clientX;
+      const touchY = e.changedTouches[0].clientY;
+      
+      // Add padding around carousel controls for easier tapping (8px padding on all sides)
+      const padding = 8;
+      // If touch is within carousel controls area (including padding), don't handle it
+      if (touchX >= (rect.left - padding) && touchX <= (rect.right + padding) && 
+          touchY >= (rect.top - padding) && touchY <= (rect.bottom + padding)) {
+        resetTouchState();
+        return; // Don't interfere with carousel controls
+      }
+    }
+    
     // Always stop propagation but only prevent default for swipe gestures
     e.stopPropagation();
     
@@ -235,6 +285,22 @@ const SevenDayEventOutlook: React.FC = () => {
   };
 
   const handleTouchCancel = (e: React.TouchEvent) => {
+    // Check if touch is within carousel controls - if so, don't interfere
+    const carouselElement = carouselRegionRef.current;
+    if (carouselElement) {
+      const rect = carouselElement.getBoundingClientRect();
+      const touchX = e.changedTouches[0].clientX;
+      const touchY = e.changedTouches[0].clientY;
+      
+      // Add padding around carousel controls for easier tapping (8px padding on all sides)
+      const padding = 8;
+      // If touch is within carousel controls area (including padding), don't handle it
+      if (touchX >= (rect.left - padding) && touchX <= (rect.right + padding) && 
+          touchY >= (rect.top - padding) && touchY <= (rect.bottom + padding)) {
+        return; // Don't interfere with carousel controls
+      }
+    }
+    
     // Always reset state when touch is cancelled
     e.stopPropagation();
     resetTouchState();
@@ -356,13 +422,26 @@ const SevenDayEventOutlook: React.FC = () => {
                 }}
                 carouselSwipeHandler={eventsForSelectedDay.length > 1 ? {
                   onTouchStart: (e: React.TouchEvent) => {
-                    // Prevent default behavior and stop propagation for carousel swipes
+                    // Check if touch started on carousel controls - if so, don't interfere
+                    const target = e.target as HTMLElement;
+                    if (target.closest('button') || target.closest('[role="button"]')) {
+                      return; // Don't handle touches on buttons
+                    }
+                    
+                    // Only prevent default and stop propagation for non-button touches
                     e.preventDefault();
                     e.stopPropagation();
                     carouselTouchStartX.current = e.touches[0].clientX;
                   },
                   onTouchEnd: (e: React.TouchEvent) => {
-                    // Prevent default behavior and stop propagation for carousel swipes
+                    // Check if touch ended on carousel controls - if so, don't interfere
+                    const target = e.target as HTMLElement;
+                    if (target.closest('button') || target.closest('[role="button"]')) {
+                      carouselTouchStartX.current = null; // Reset state but don't process swipe
+                      return; // Don't handle touches on buttons
+                    }
+                    
+                    // Only prevent default and stop propagation for non-button touches
                     e.preventDefault();
                     e.stopPropagation();
                     if (carouselTouchStartX.current === null) return;
@@ -442,10 +521,6 @@ const SevenDayEventOutlook: React.FC = () => {
         {/* Tabs overlay bar */}
         <div 
           className="absolute top-0 left-0 right-0 z-10"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
         >
           <div className="flex divide-x divide-white/20 backdrop-blur-sm rounded-t-xl overflow-hidden">
             {next7Days.map(day => (
