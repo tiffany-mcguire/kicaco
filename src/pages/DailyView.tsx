@@ -21,6 +21,7 @@ import { StackedChildBadges } from '../components/common';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
+import { ImageUpload } from '../components/common';
 // Rainbow colors for children (matching other pages)
 const childColors = [
   '#f8b6c2', // Pink
@@ -283,6 +284,8 @@ export default function DailyView() {
     events,
     keepers,
     children,
+    addEvent,
+    addKeeper,
     removeEvent,
     removeKeeper,
   } = useKicacoStore();
@@ -293,6 +296,7 @@ export default function DailyView() {
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   
   // Get location state to check if we need to focus on a specific item
   const locationState = location.state as { 
@@ -701,6 +705,52 @@ export default function DailyView() {
     }
   };
 
+  // Handle image upload
+  const handleImageUpload = () => {
+    setShowImageUpload(true);
+  };
+
+  const handleImageUploadComplete = (response: string, createdEvents?: any[], createdKeepers?: any[]) => {
+    // Remove thinking message
+    removeMessageById('image-upload-thinking');
+    
+    // Add created events to the store
+    if (createdEvents && createdEvents.length > 0) {
+      console.log('DailyView: Adding events from image upload:', createdEvents);
+      createdEvents.forEach(event => {
+        console.log('DailyView: Adding individual event:', event);
+        addEvent(event);
+      });
+    }
+    
+    // Add created keepers to the store
+    if (createdKeepers && createdKeepers.length > 0) {
+      createdKeepers.forEach(keeper => {
+        addKeeper(keeper);
+      });
+    }
+    
+    // Add the AI response as a message
+    addMessage({
+      id: generateUUID(),
+      sender: 'assistant',
+      content: response
+    });
+    
+    // Close the upload interface
+    setShowImageUpload(false);
+  };
+
+  const handleImageUploadStart = () => {
+    // Add a thinking message while processing
+    const thinkingId = 'image-upload-thinking';
+    addMessage({
+      id: thinkingId,
+      sender: 'assistant',
+      content: 'Kicaco is analyzing your image'
+    });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -939,7 +989,23 @@ export default function DailyView() {
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSendMessage}
+        onUploadClick={handleImageUpload}
       />
+      
+      {/* Image Upload Modal */}
+      {showImageUpload && threadId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <ImageUpload
+              threadId={threadId}
+              onUploadComplete={handleImageUploadComplete}
+              onUploadStart={handleImageUploadStart}
+              onClose={() => setShowImageUpload(false)}
+              prompt="Please analyze this image and extract ALL event information. Create events/keepers immediately with any information you find. After creating them, you MUST ask follow-up questions for any missing required information (location, child name, time, etc.) one at a time. Treat this as the START of a conversation, not the end."
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

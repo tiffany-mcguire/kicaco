@@ -5,6 +5,7 @@ interface GlobalFooterProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSend?: () => void;
+  onUploadClick?: () => void;
   placeholder?: string;
   leftButtons?: ReactNode;
   rightButtons?: ReactNode;
@@ -13,7 +14,7 @@ interface GlobalFooterProps {
 }
 
 const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
-  ({ value, onChange, onSend, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false }, ref) => {
+  ({ value, onChange, onSend, onUploadClick, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false }, ref) => {
     const [activeButton, setActiveButton] = useState<string | null>(null);
 
     const handleButtonClick = (buttonName: string) => {
@@ -48,7 +49,10 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
                 IconComponent={props => <UploadIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} 
                 aria-label="Upload" 
                 isActive={activeButton === 'upload'}
-                onClick={() => handleButtonClick('upload')}
+                onClick={() => {
+                  handleButtonClick('upload');
+                  onUploadClick?.();
+                }}
               />
             </>}
           </div>

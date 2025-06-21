@@ -1,6 +1,7 @@
 // import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { useEffect, createContext, useState } from 'react';
+import './utils/clearStorage'; // Import to make clearKicacoStorage available globally
 
 // Create a context for global search functionality
 export const SearchContext = createContext({

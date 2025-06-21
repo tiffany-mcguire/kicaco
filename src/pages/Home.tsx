@@ -12,7 +12,7 @@ import { getApiClientInstance } from '../utils/apiClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SevenDayEventOutlook, ThirtyDayKeeperOutlook } from '../components/calendar';
 import { parse, format } from 'date-fns';
-import { PasswordModal } from '../components/common';
+import { PasswordModal, ImageUpload } from '../components/common';
 import { PostSignupOptions } from '../components/common';
 import { Home as HomeIcon } from "lucide-react";
 import { GlobalSubheader } from '../components/navigation';
@@ -106,9 +106,6 @@ export default function Home() {
   }, []);
 
   const [input, setInput] = useState("");
-  const [hasIntroPlayed, setHasIntroPlayed] = useState(() => {
-    return localStorage.getItem('kicaco_intro_played') === 'true';
-  });
   const [currentWindowHeight, setCurrentWindowHeight] = useState(window.innerHeight);
   const introStartedRef = useRef(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -122,10 +119,17 @@ export default function Home() {
     eventInProgress,
     setEventInProgress,
     addEvent,
+    addKeeper,
     drawerHeight: storedDrawerHeight,
     setDrawerHeight: setStoredDrawerHeight,
     chatScrollPosition,
-    setChatScrollPosition
+    setChatScrollPosition,
+    hasIntroPlayed,
+    setHasIntroPlayed,
+    disableIntro,
+    setDisableIntro,
+    blurbGone,
+    setBlurbGone
   } = useKicacoStore();
   const headerRef = useRef<HTMLDivElement>(null);
   const pageContentRef = useRef<HTMLDivElement>(null); // Renamed from subheaderRef
@@ -151,26 +155,45 @@ export default function Home() {
   
   const { handleEventMessage, eventCreationMessage, currentEventFields } = useEventCreation();
 
-  // --- NEW: Track if blurb has been shown/should be hidden forever ---
-  const [blurbGone, setBlurbGone] = useState(() => {
-    return localStorage.getItem('kicaco_blurb_gone') === 'true';
-  });
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
+
+  // Make intro control functions available globally for testing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).disableIntro = () => {
+        setDisableIntro(true);
+        setHasIntroPlayed(true);
+        console.log('Intro messages disabled');
+      };
+      (window as any).enableIntro = () => {
+        setDisableIntro(false);
+        setHasIntroPlayed(false);
+        console.log('Intro messages enabled - refresh page to see intro');
+      };
+    }
+  }, [setDisableIntro, setHasIntroPlayed]);
 
   useEffect(() => {
     console.log('Events:', events);
     console.log('Keepers:', keepers);
     if ((events.length > 0 || keepers.length > 0) && !blurbGone) {
       setBlurbGone(true);
-      localStorage.setItem('kicaco_blurb_gone', 'true');
     }
-  }, [events, keepers, blurbGone]);
+  }, [events, keepers, blurbGone, setBlurbGone]);
 
   // Staggered intro messages
   useEffect(() => {
     const playIntroWithThinking = async () => {
-      if (hasIntroPlayed || introStartedRef.current) return;
+      if (hasIntroPlayed || introStartedRef.current || disableIntro) return;
+      
+      // Skip intro if there's already data (events or keepers)
+      if (events.length > 0 || keepers.length > 0) {
+        console.log('Skipping intro - existing data found');
+        setHasIntroPlayed(true);
+        return;
+      }
+      
       introStartedRef.current = true;
 
       for (let i = 0; i < intro.length; i++) {
@@ -198,11 +221,10 @@ export default function Home() {
       }
 
       setHasIntroPlayed(true);
-      localStorage.setItem('kicaco_intro_played', 'true');
     };
 
     playIntroWithThinking();
-  }, [hasIntroPlayed, addMessage, removeMessageById]);
+  }, [hasIntroPlayed, disableIntro, addMessage, removeMessageById, setHasIntroPlayed, events.length, keepers.length]);
 
   // Initialize thread
   useEffect(() => {
@@ -260,6 +282,7 @@ export default function Home() {
   const [signupData, setSignupData] = useState<{ name?: string; email?: string; password?: string }>({});
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPostSignupOptions, setShowPostSignupOptions] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Track the most recent event's childName for use in signup flow
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
@@ -496,6 +519,50 @@ export default function Home() {
     await handleEventMessage(userText);
   };
 
+  // Handle image upload
+  const handleImageUpload = () => {
+    setShowImageUpload(true);
+  };
+
+  const handleImageUploadComplete = (response: string, createdEvents?: any[], createdKeepers?: any[]) => {
+    // Remove thinking message
+    removeMessageById('image-upload-thinking');
+    
+    // Add created events to the store
+    if (createdEvents && createdEvents.length > 0) {
+      createdEvents.forEach(event => {
+        addEvent(event);
+      });
+    }
+    
+    // Add created keepers to the store
+    if (createdKeepers && createdKeepers.length > 0) {
+      createdKeepers.forEach(keeper => {
+        addKeeper(keeper);
+      });
+    }
+    
+    // Add the AI response as a message
+    addMessage({
+      id: generateUUID(),
+      sender: 'assistant',
+      content: response
+    });
+    
+    // Close the upload interface
+    setShowImageUpload(false);
+  };
+
+  const handleImageUploadStart = () => {
+    // Add a thinking message while processing
+    const thinkingId = 'image-upload-thinking';
+    addMessage({
+      id: thinkingId,
+      sender: 'assistant',
+      content: 'Kicaco is analyzing your image'
+    });
+  };
+
   // Log messages and visibleCount changes
   useEffect(() => {
     console.log('Messages updated:', messages);
@@ -640,8 +707,24 @@ export default function Home() {
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSend}
+        onUploadClick={handleImageUpload}
         disabled={isInitializing || !threadId}
       />
+      
+      {/* Image Upload Modal */}
+      {showImageUpload && threadId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <ImageUpload
+              threadId={threadId}
+              onUploadComplete={handleImageUploadComplete}
+              onUploadStart={handleImageUploadStart}
+              onClose={() => setShowImageUpload(false)}
+              prompt="Please analyze this image and extract ALL event information. Create events/keepers immediately with any information you find. After creating them, you MUST ask follow-up questions for any missing required information (location, child name, time, etc.) one at a time. Treat this as the START of a conversation, not the end."
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

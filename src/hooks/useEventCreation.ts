@@ -58,7 +58,26 @@ export const useEventCreation = () => {
 
     try {
       const apiClient = getApiClientInstance();
-      const assistantResponse = await apiClient.sendMessage(threadId, userText);
+      const messageResponse = await apiClient.sendMessage(threadId, userText);
+      
+      // Handle any events/keepers that were created during message processing
+      if (messageResponse.createdEvents && messageResponse.createdEvents.length > 0) {
+        console.log('Events created/updated during message:', messageResponse.createdEvents);
+        messageResponse.createdEvents.forEach(event => {
+          addEvent(event);
+        });
+      }
+      
+      if (messageResponse.createdKeepers && messageResponse.createdKeepers.length > 0) {
+        console.log('Keepers created/updated during message:', messageResponse.createdKeepers);
+        messageResponse.createdKeepers.forEach(keeper => {
+          // Assuming there's an addKeeper function in the store
+          const { addKeeper } = useKicacoStore.getState();
+          addKeeper(keeper);
+        });
+      }
+      
+      const assistantResponse = messageResponse.response;
       
       // Try to extract event JSON
       let eventObj = null;
@@ -106,6 +125,14 @@ export const useEventCreation = () => {
           type: 'event_confirmation',
           content: '',
           event: finalEvent
+        });
+      } else if (!assistantResponse || assistantResponse.trim() === '') {
+        // Handle case where assistant didn't generate a response (likely after a function call)
+        console.log('Assistant completed without generating a message, providing default response');
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant' as const,
+          content: 'Got it! I\'ve updated the event with that information.'
         });
       } else {
         // Regular assistant response

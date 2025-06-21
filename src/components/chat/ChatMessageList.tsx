@@ -63,16 +63,21 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       time={msg.event.time}
                       location={msg.event.location}
                     />
-                    <div className="mt-2 text-left w-full text-sm text-gray-900">
-                      Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
-                    </div>
-                    {onCreateAccount && (
-                      <button
-                        className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)] hover:shadow-[0_0_12px_2px_rgba(192,226,231,0.4),0_4px_6px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.12)] active:scale-95 active:shadow-[0_0_8px_1px_rgba(192,226,231,0.3),0_1px_2px_rgba(0,0,0,0.12)] transition-all duration-200 focus:outline-none w-[140px]"
-                        onClick={onCreateAccount}
-                      >
-                        Create an account
-                      </button>
+                    {/* Signup flow disabled for testing */}
+                    {false && (
+                      <>
+                        <div className="mt-2 text-left w-full text-sm text-gray-900">
+                          Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!
+                        </div>
+                        {onCreateAccount && (
+                          <button
+                            className="mt-3 h-[30px] px-2 border border-[#c0e2e7] rounded-md font-semibold text-xs sm:text-sm text-[#217e8f] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.08)] hover:shadow-[0_0_12px_2px_rgba(192,226,231,0.4),0_4px_6px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.12)] active:scale-95 active:shadow-[0_0_8px_1px_rgba(192,226,231,0.3),0_1px_2px_rgba(0,0,0,0.12)] transition-all duration-200 focus:outline-none w-[140px]"
+                            onClick={onCreateAccount}
+                          >
+                            Create an account
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </ChatBubble>
