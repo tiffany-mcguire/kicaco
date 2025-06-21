@@ -283,6 +283,7 @@ export default function Home() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPostSignupOptions, setShowPostSignupOptions] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
 
   // Track the most recent event's childName for use in signup flow
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
@@ -515,6 +516,12 @@ export default function Home() {
     const userText = input.trim();
     setInput('');
 
+    // Blur any active input to minimize keyboard on mobile
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.tagName === 'INPUT') {
+      activeElement.blur();
+    }
+
     // Use the event creation hook
     await handleEventMessage(userText);
   };
@@ -551,6 +558,17 @@ export default function Home() {
     
     // Close the upload interface
     setShowImageUpload(false);
+    
+    // Clear the active button state in the footer
+    setClearFooterActiveButton(true);
+    // Reset the clear flag after a short delay
+    setTimeout(() => setClearFooterActiveButton(false), 100);
+    
+    // Blur any active input to minimize keyboard after upload
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.tagName === 'INPUT') {
+      activeElement.blur();
+    }
   };
 
   const handleImageUploadStart = () => {
@@ -709,6 +727,7 @@ export default function Home() {
         onSend={handleSend}
         onUploadClick={handleImageUpload}
         disabled={isInitializing || !threadId}
+        clearActiveButton={clearFooterActiveButton}
       />
       
       {/* Image Upload Modal */}

@@ -63,11 +63,25 @@ export const MicIcon = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const SendIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg style={{ color: '#c1c1c1', fill: '#c1c1c1', width: '14px', height: '14px', fontSize: '14px', ...(props.style || {}) }} viewBox="0 0 24 24">
-    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-  </svg>
-);
+export const SendIcon = (props: React.SVGProps<SVGSVGElement>) => {
+  const styles = {
+    Icon: {
+      color: '#c1c1c1',
+      fill: '#c1c1c1',
+      fontSize: '28px',
+      width: '28px',
+      height: '28px',
+      ...(props.style || {})
+    },
+  };
+
+  return (
+    <svg style={styles.Icon} viewBox="0 0 24 24">
+      <path fill="none" d="M0 0h24v24H0z" />
+      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+    </svg>
+  );
+};
 
 export const ClipboardIcon2 = (props: React.SVGProps<SVGSVGElement>) => {
   const styles = {

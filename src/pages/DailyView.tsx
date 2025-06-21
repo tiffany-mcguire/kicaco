@@ -297,6 +297,7 @@ export default function DailyView() {
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
   
   // Get location state to check if we need to focus on a specific item
   const locationState = location.state as { 
@@ -677,6 +678,12 @@ export default function DailyView() {
     const messageToSend = input;
     setInput(""); // Clear input
 
+    // Blur any active input to minimize keyboard on mobile
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.tagName === 'INPUT') {
+      activeElement.blur();
+    }
+
     autoscrollFlagRef.current = true;
 
     const thinkingMessageId = 'thinking-dailyview';
@@ -739,6 +746,17 @@ export default function DailyView() {
     
     // Close the upload interface
     setShowImageUpload(false);
+    
+    // Clear the active button state in the footer
+    setClearFooterActiveButton(true);
+    // Reset the clear flag after a short delay
+    setTimeout(() => setClearFooterActiveButton(false), 100);
+    
+    // Blur any active input to minimize keyboard after upload
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.tagName === 'INPUT') {
+      activeElement.blur();
+    }
   };
 
   const handleImageUploadStart = () => {
@@ -990,6 +1008,7 @@ export default function DailyView() {
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSendMessage}
         onUploadClick={handleImageUpload}
+        clearActiveButton={clearFooterActiveButton}
       />
       
       {/* Image Upload Modal */}

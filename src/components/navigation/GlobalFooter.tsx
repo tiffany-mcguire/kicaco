@@ -1,5 +1,5 @@
-import React, { forwardRef, ReactNode, useState } from 'react';
-import { IconButton, ClipboardIcon2, UploadIcon, CameraIconMD, MicIcon } from '../common';
+import React, { forwardRef, ReactNode, useState, useEffect, useRef } from 'react';
+import { IconButton, ClipboardIcon2, UploadIcon, SendIcon, MicIcon } from '../common';
 
 interface GlobalFooterProps {
   value: string;
@@ -11,15 +11,59 @@ interface GlobalFooterProps {
   rightButtons?: ReactNode;
   className?: string;
   disabled?: boolean;
+  clearActiveButton?: boolean; // New prop to clear active state
 }
 
 const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
-  ({ value, onChange, onSend, onUploadClick, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false }, ref) => {
+  ({ value, onChange, onSend, onUploadClick, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false, clearActiveButton = false }, ref) => {
     const [activeButton, setActiveButton] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleButtonClick = (buttonName: string) => {
       setActiveButton(prev => (prev === buttonName ? null : buttonName));
     };
+
+    // Function to blur input and minimize keyboard
+    const blurInput = () => {
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
+    };
+
+    // Enhanced send handler with keyboard management
+    const handleSend = () => {
+      if (onSend && !disabled && value.trim()) {
+        onSend();
+        // Clear the send button active state immediately after sending
+        setActiveButton(null);
+        // Blur input to minimize keyboard after sending
+        setTimeout(() => blurInput(), 100);
+      }
+    };
+
+    // Clear active button when clearActiveButton prop changes to true
+    useEffect(() => {
+      if (clearActiveButton) {
+        setActiveButton(null);
+      }
+    }, [clearActiveButton]);
+
+    // Also clear active button when clicking elsewhere (existing behavior for other similar components)
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        const footer = document.querySelector('.global-footer');
+        if (footer && !footer.contains(event.target as Node)) {
+          setActiveButton(null);
+          // Also blur input when clicking outside footer to minimize keyboard
+          blurInput();
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
     
     return (
       <footer
@@ -58,13 +102,14 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
           </div>
           <div className="flex-1 mx-3">
             <input
+              ref={inputRef}
               type="text"
               value={value}
               onChange={onChange}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && onSend && !disabled) {
                   e.preventDefault();
-                  onSend();
+                  handleSend();
                 }
               }}
               className="footer-chat w-full rounded-xl border border-gray-200 px-4 py-2 focus:outline-none bg-gray-50 text-gray-700 transition-all duration-200 focus:border-[#c0e2e7] focus:bg-white focus:shadow-[0_0_0_3px_rgba(192,226,231,0.1)]"
@@ -76,11 +121,14 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
             {rightButtons ?? <>
               <IconButton 
                 variant="frameless" 
-                IconComponent={props => <CameraIconMD {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} 
-                aria-label="Camera" 
-                disabled={disabled} 
-                isActive={activeButton === 'camera'}
-                onClick={() => handleButtonClick('camera')}
+                IconComponent={props => <SendIcon {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} 
+                aria-label="Send" 
+                disabled={disabled || !value.trim()}
+                isActive={activeButton === 'send'}
+                onClick={() => {
+                  handleButtonClick('send');
+                  handleSend();
+                }}
               />
               <IconButton 
                 variant="frameless" 
