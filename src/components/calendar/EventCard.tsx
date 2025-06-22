@@ -1,6 +1,5 @@
 import React from 'react';
 import { format, parse } from 'date-fns';
-import { useKicacoStore } from '../../store/kicacoStore';
 import { Trash2 } from 'lucide-react';
 import { StackedChildBadges } from '../common';
 
@@ -60,16 +59,7 @@ const formatTime = (time?: string) => {
   return time;
 };
 
-// Rainbow colors fallback
-const childColors = [
-  '#f8b6c2', // Pink
-  '#fbd3a2', // Orange (updated from #ffd8b5)
-  '#fde68a', // Yellow
-  '#bbf7d0', // Green
-  '#c0e2e7', // Blue
-  '#d1d5fa', // Indigo
-  '#e9d5ff', // Purple
-];
+
 
 // Day colors for accent line (same as upcoming events)
 const dayColors: { [key: number]: string } = {
@@ -92,8 +82,6 @@ const EventCard: React.FC<EventCardProps> = ({
   carouselControls,
   carouselSwipeHandler
 }) => {
-  const children = useKicacoStore(state => state.children);
-  
   // Parse multiple children from comma-separated string
   const childNames = childName ? childName.split(',').map(name => name.trim()).filter(name => name) : [];
 

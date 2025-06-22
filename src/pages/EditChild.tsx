@@ -1,11 +1,6 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useLayoutEffect, useEffect, useCallback } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
 import { GlobalSubheader } from '../components/navigation';
@@ -26,23 +21,6 @@ const rainbowColors = [
   { name: 'Indigo', value: '#d1d5fa', dark: '#9fa8da' },
   { name: 'Purple', value: '#e9d5ff', dark: '#ce93d8' },
 ];
-
-const EditChildIcon = () => {
-  const styles = {
-    Icon: {
-      color: 'rgba(185,17,66,0.75)',
-      fill: 'rgba(185,17,66,0.75)',
-      fontSize: '16px',
-      width: '16px',
-      height: '16px',
-    },
-  };
-  return (
-    <svg style={styles.Icon} viewBox="0 0 384 512">
-      <path d="M352 448H32c-17.69 0-32 14.31-32 32s14.31 31.1 32 31.1h320c17.69 0 32-14.31 32-31.1S369.7 448 352 448zM48 208H160v111.1c0 17.69 14.31 31.1 32 31.1s32-14.31 32-31.1V208h112c17.69 0 32-14.32 32-32.01s-14.31-31.99-32-31.99H224v-112c0-17.69-14.31-32.01-32-32.01S160 14.33 160 32.01v112H48c-17.69 0-32 14.31-32 31.99S30.31 208 48 208z"></path>
-    </svg>
-  );
-};
 
 const UpdateChildButton = (props: { label?: string; onClick?: () => void; disabled?: boolean }) => {
   const [hovered, setHovered] = React.useState(false);
@@ -133,18 +111,7 @@ const toggleKnobStyle = (isOn: boolean) => ({
   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
 });
 
-const childNameInputId = 'child-name-input';
 
-// Replace pastel colors with the darker, more saturated versions
-const childColors = [
-  '#ec4899', // Pink
-  '#f97316', // Orange
-  '#eab308', // Yellow
-  '#22c55e', // Green
-  '#06b6d4', // Blue
-  '#6366f1', // Indigo
-  '#a855f7', // Purple
-];
 
 export default function EditChild() {
   const [input, setInput] = useState("");
@@ -154,9 +121,6 @@ export default function EditChild() {
   const footerRef = React.useRef<HTMLDivElement>(null);
   const pageScrollRef = React.useRef<HTMLDivElement>(null);
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
-  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
   const internalChatContentScrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -304,14 +268,11 @@ export default function EditChild() {
     setStoredDrawerHeight(newHeight);
     
     setMainContentDrawerOffset(height);
-    setMainContentTopClearance(window.innerHeight - height);
   };
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
+      // Function kept for resize listener compatibility
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
@@ -338,11 +299,7 @@ export default function EditChild() {
   }, []);
 
   useEffect(() => {
-    if (mainContentDrawerOffset > 32 + 8) {
-      setMainContentScrollOverflow('auto');
-    } else {
-      setMainContentScrollOverflow('hidden');
-    }
+    // Scroll overflow management simplified
   }, [mainContentDrawerOffset]);
 
   // Chat Scroll Management Logic
@@ -551,7 +508,7 @@ export default function EditChild() {
   };
   
   const labelClass = "block text-sm font-medium text-gray-700";
-  const helperTextClass = "mt-1 text-xs text-gray-500";
+
   const sectionTitleClass = "text-sm font-medium text-gray-600";
 
   return (

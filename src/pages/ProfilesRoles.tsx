@@ -1,10 +1,5 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { GlobalChatDrawer } from '../components/chat';
 import { GlobalHeader } from '../components/navigation';
@@ -260,7 +255,7 @@ const childColors = [
 export default function ProfilesRoles() {
   const [inviteInput, setInviteInput] = useState("");
   const [inviteInputFocused, setInviteInputFocused] = useState(false);
-  const location = useLocation();
+
   const navigate = useNavigate();
   const [chatInput, setChatInput] = useState("");
   const [expandedChild, setExpandedChild] = useState<string | null>(null);

@@ -87,7 +87,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     let createdKeepers: any[] = [];
     
     try {
-      const response = await uploadImage({
+      await uploadImage({
         threadId,
         imageFile: selectedFile,
         prompt,

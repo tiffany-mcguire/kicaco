@@ -1,11 +1,7 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2, StackedChildBadges } from '../components/common';
-import { IconButton } from '../components/common';
+import { StackedChildBadges } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
 import { GlobalSubheader } from '../components/navigation';
@@ -85,11 +81,7 @@ const ChildFilterDropdown: React.FC<{
   );
 };
 
-const CalendarIcon = () => (
-  <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 448 512">
-    <path d="M160 32V64H288V32C288 14.33 302.3 0 320 0C337.7 0 352 14.33 352 32V64H400C426.5 64 448 85.49 448 112V160H0V112C0 85.49 21.49 64 48 64H96V32C96 14.33 110.3 0 128 0C145.7 0 160 14.33 160 32zM0 192H448V464C448 490.5 426.5 512 400 512H48C21.49 512 0 490.5 0 464V192zM64 304C64 312.8 71.16 320 80 320H112C120.8 320 128 312.8 128 304V272C128 263.2 120.8 256 112 256H80C71.16 256 64 263.2 64 272V304zM192 304C192 312.8 199.2 320 208 320H240C248.8 320 256 312.8 256 304V272C256 263.2 248.8 256 240 256H208C199.2 256 192 263.2 192 272V304zM336 256C327.2 256 320 263.2 320 272V304C320 312.8 327.2 320 336 320H368C376.8 320 384 312.8 384 304V272C384 263.2 376.8 256 368 256H336zM64 432C64 440.8 71.16 448 80 448H112C120.8 448 128 440.8 128 432V400C128 391.2 120.8 384 112 384H80C71.16 384 64 391.2 64 400V432zM208 384C199.2 384 192 391.2 192 400V432C192 440.8 199.2 448 208 448H240C248.8 448 256 440.8 256 432V400C256 391.2 248.8 384 240 384H208zM320 432C320 440.8 327.2 448 336 448H368C376.8 448 384 440.8 384 432V400C384 391.2 376.8 384 368 384H336C327.2 384 320 391.2 320 400V432z" />
-  </svg>
-);
+
 
 const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) => {
   const navigate = useNavigate();
@@ -158,12 +150,9 @@ const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) 
 
 export default function MonthlyCalendar() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
-  const [subheaderBottom, setSubheaderBottom] = useState(108); // More accurate initial estimate (64px header + ~44px subheader)
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -198,7 +187,7 @@ export default function MonthlyCalendar() {
 
   const handleClearFilter = () => setFilteredChildren([]);
 
-  const getChildProfile = (childName?: string) => children.find(c => c.name === childName);
+
 
   // Filtered events and keepers
   const filteredEvents = useMemo(() => {
@@ -260,7 +249,7 @@ export default function MonthlyCalendar() {
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   // Helper function to make event names more compact
-  const compactEventName = (eventName: string, childName?: string) => {
+  const compactEventName = (eventName: string) => {
     let compactName = eventName;
     
     // First, check if the event name has a name in parentheses (like "Birthday Party (Sarah)")
@@ -366,10 +355,7 @@ export default function MonthlyCalendar() {
 
   useLayoutEffect(() => {
     const updateSubheaderBottom = () => {
-      if (subheaderRef.current) {
-        const rect = subheaderRef.current.getBoundingClientRect();
-        setSubheaderBottom(rect.bottom);
-      }
+      // Function kept for resize listener compatibility
     };
 
     const calculateMaxDrawerHeight = () => {
@@ -676,7 +662,7 @@ export default function MonthlyCalendar() {
                           {(events.length > 0 || keepers.length > 0) ? (
                             <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.3)' } : {}}>
                               {events.map((event, index) => {
-                                const { name: displayName } = compactEventName(event.eventName, event.childName);
+                                const { name: displayName } = compactEventName(event.eventName);
                                 return (
                                   <Link
                                     key={`event-${index}`}
@@ -755,7 +741,7 @@ export default function MonthlyCalendar() {
                           {(events.length > 0 || keepers.length > 0) ? (
                             <div className={`space-y-0.5 ${isPastDay ? 'px-1.5 py-0.5 -mx-1.5 rounded' : ''}`} style={isPastDay ? { backgroundColor: 'rgba(255, 182, 193, 0.3)' } : {}}>
                               {events.map((event, index) => {
-                                const { name: displayName } = compactEventName(event.eventName, event.childName);
+                                const { name: displayName } = compactEventName(event.eventName);
                                 return (
                                   <Link
                                     key={`event-${index}`}

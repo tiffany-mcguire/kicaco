@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DropdownMenu, IconButton } from '../common';
 import { disableBodyScroll, enableBodyScroll } from 'body-scroll-lock-upgrade';
 import { AlertCircle, MessageSquare, HelpCircle } from 'lucide-react';
@@ -187,7 +187,7 @@ function contactSupport(email: string, msg: string) {
 
 type ActivePopup = 'bug' | 'feedback' | 'support' | null;
 
-export default function ThreeDotMenu({ currentPath }: ThreeDotMenuProps) {
+export default function ThreeDotMenu({}: ThreeDotMenuProps) {
   const [activePopup, setActivePopup] = useState<ActivePopup>(null);
 
   return (

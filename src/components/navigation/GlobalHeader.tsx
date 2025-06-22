@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode, useState, useEffect, useContext, useRef } from 'react';
+import { forwardRef, ReactNode, useState, useEffect } from 'react';
 import HamburgerMenu from './HamburgerMenu';
 import ThreeDotMenu from './ThreeDotMenu';
 import { CalendarMenu } from '../calendar';
@@ -6,8 +6,6 @@ import { IconButton, SearchBar, SearchResults } from '../common';
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { useSearch } from '../../hooks/useSearch';
 import { parse } from 'date-fns';
-import { SearchContext } from '../../App';
-import { useKicacoStore } from '../../store/kicacoStore';
 
 interface GlobalHeaderProps {
   children?: ReactNode;
@@ -19,9 +17,6 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
     const location = useLocation();
     const navigate = useNavigate();
     const { searchTrigger } = useOutletContext<{ searchTrigger: number }>();
-    const { openSearch } = useContext(SearchContext);
-    const events = useKicacoStore(state => state.events);
-    const keepers = useKicacoStore(state => state.keepers);
     const [, forceUpdate] = useState(0);
     
     const {

@@ -1,12 +1,6 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
-import { AddKeeperButton } from '../components/common';
+
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
 import { GlobalChatDrawer } from '../components/chat';
@@ -17,12 +11,6 @@ import { motion } from 'framer-motion';
 import { Settings } from "lucide-react";
 
 import { generateUUID } from '../utils/uuid';
-const ChatDefaultsIcon = () => (
-  <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '16px', width: '16px', height: '16px' }} viewBox="0 0 24 24">
-    <path d="M0 0h24v24H0z" fill="none"></path>
-    <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"></path>
-  </svg>
-);
 
 const UpdateDefaultsButton = (props: { label?: string }) => {
   const [hovered, setHovered] = React.useState(false);
@@ -89,14 +77,11 @@ export default function ChatDefaults() {
   const [timeToggle, setTimeToggle] = useState(true);
   const [locationToggle, setLocationToggle] = useState(true);
   const [reminderToggle, setReminderToggle] = useState(true);
-  const location = useLocation();
+
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const [drawerHeight, setDrawerHeight] = useState(44);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const pageScrollRef = useRef<HTMLDivElement>(null);
 
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
@@ -127,14 +112,11 @@ export default function ChatDefaults() {
     setStoredDrawerHeight(newHeight);
 
     setDrawerHeight(height);
-    setDrawerTop(window.innerHeight - height);
   };
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
+      // Function kept for resize listener compatibility
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
@@ -161,11 +143,7 @@ export default function ChatDefaults() {
   }, []);
 
   useEffect(() => {
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
-    } else {
-      setScrollOverflow('hidden');
-    }
+    // Scroll overflow management simplified
   }, [drawerHeight]);
 
   const toggleStyle = (isOn: boolean) => ({
@@ -380,11 +358,7 @@ export default function ChatDefaults() {
 
     const checkOverflow = () => {
       // console.log(`[ChatDefaults checkOverflow] scrollH: ${scrollEl.scrollHeight}, clientH: ${scrollEl.clientHeight}`);
-      if (scrollEl.scrollHeight > scrollEl.clientHeight) {
-        setScrollOverflow('auto');
-      } else {
-        setScrollOverflow('hidden');
-      }
+      // Scroll overflow management simplified
     };
 
     checkOverflow(); // Initial check

@@ -1,10 +1,5 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
@@ -14,26 +9,9 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { CalendarPlus } from "lucide-react";
-import { format } from 'date-fns';
+
 
 import { generateUUID } from '../utils/uuid';
-const AddEventIcon = () => {
-  const styles = {
-    Icon: {
-      color: 'rgba(185,17,66,0.75)',
-      fill: 'rgba(185,17,66,0.75)',
-      fontSize: '16px',
-      width: '16px',
-      height: '16px',
-    },
-  };
-  return (
-    <svg style={styles.Icon} viewBox="0 0 24 24">
-      <path d="M0 0h24v24H0z" fill="none"></path>
-      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path>
-    </svg>
-  );
-};
 
 const SaveButton = (props: { label?: string; onClick?: () => void }) => {
   const [hovered, setHovered] = React.useState(false);
@@ -101,9 +79,6 @@ export default function AddEvent() {
   const footerRef = useRef<HTMLDivElement>(null);
   const pageScrollRef = useRef<HTMLDivElement>(null);
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
-  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
   const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
@@ -162,23 +137,18 @@ export default function AddEvent() {
     setStoredDrawerHeight(newHeight);
     
     setMainContentDrawerOffset(height);
-    setMainContentTopClearance(window.innerHeight - height);
   };
 
   // Initialize scroll overflow based on initial drawer height
   useEffect(() => {
     // Set initial drawer offset and scroll overflow
     setMainContentDrawerOffset(currentDrawerHeight);
-    setMainContentTopClearance(window.innerHeight - currentDrawerHeight);
     // Always enable scrolling when drawer is minimized
-    setMainContentScrollOverflow('auto');
   }, []); // Run only on mount
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
+      // Function kept for potential future use
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
@@ -206,7 +176,6 @@ export default function AddEvent() {
 
   useEffect(() => {
     // Always enable scrolling - let the browser handle whether it's needed
-      setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
   // Watch for content height changes and update scroll overflow
@@ -796,7 +765,7 @@ export default function AddEvent() {
                           name="reminderType"
                           value="dueDate"
                           checked={reminderType === 'dueDate'}
-                          onChange={(e) => setReminderType('dueDate')}
+                          onChange={() => setReminderType('dueDate')}
                           className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
                           style={{ accentColor: '#217e8f' }}
                         />
@@ -808,7 +777,7 @@ export default function AddEvent() {
                           name="reminderType"
                           value="alertBefore"
                           checked={reminderType === 'alertBefore'}
-                          onChange={(e) => setReminderType('alertBefore')}
+                          onChange={() => setReminderType('alertBefore')}
                           className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
                           style={{ accentColor: '#217e8f' }}
                         />

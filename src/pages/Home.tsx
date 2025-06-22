@@ -7,13 +7,11 @@ import { useChatScrollManagement } from '../hooks/useChatScrollManagement';
 import { useEventCreation } from '../hooks/useEventCreation';
 import { useKicacoStore } from '../store/kicacoStore';
 import { EventConfirmationCard } from '../components/calendar';
-import { createOpenAIThread } from '../utils/talkToKicaco';
 import { getApiClientInstance } from '../utils/apiClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SevenDayEventOutlook, ThirtyDayKeeperOutlook } from '../components/calendar';
-import { parse, format } from 'date-fns';
+
 import { PasswordModal, ImageUpload } from '../components/common';
-import { PostSignupOptions } from '../components/common';
 import { Home as HomeIcon } from "lucide-react";
 import { GlobalSubheader } from '../components/navigation';
 import { generateUUID } from '../utils/uuid';
@@ -31,63 +29,7 @@ const intro = [
   "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them.",
 ];
 
-// Date/time formatting helpers
-function formatDateMMDDYYYY(date: Date) {
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  const y = date.getFullYear();
-  return `${m}/${d}/${y}`;
-}
 
-function formatTimeAMPM(date: Date) {
-  let h = date.getHours();
-  const m = date.getMinutes().toString().padStart(2, '0');
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${h}:${m} ${suffix}`;
-}
-
-function toTitleCase(str: string) {
-  return str.replace(/\b\w+/g, txt => txt[0].toUpperCase() + txt.slice(1).toLowerCase());
-}
-
-
-
-// Add formatTime helper from EventCard
-function formatTime(time?: string) {
-  if (!time) return '';
-  let normalized = time.trim().toLowerCase();
-  normalized = normalized.replace(/(\d)(am|pm)/, '$1 $2');
-  if (/^\d{1,2}\s?(am|pm)$/.test(normalized)) {
-    normalized = normalized.replace(/^(\d{1,2})\s?(am|pm)$/, '$1:00 $2');
-  }
-  const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
-  for (const pattern of patterns) {
-    try {
-      const dateObj = parse(normalized, pattern, new Date());
-      if (!isNaN(dateObj.getTime())) {
-        return format(dateObj, 'hh:mm a').toUpperCase();
-      }
-    } catch {}
-  }
-  const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
-  if (!isNaN(dateObj.getTime())) {
-    return format(dateObj, 'hh:mm a').toUpperCase();
-  }
-  return time;
-}
-
-// Helper to parse time strings for sorting
-function parseTo24H(time?: string): number {
-  if (!time) return 2400; // Put events without a time at the end
-  let normalized = time.trim().toLowerCase();
-  // ... (rest of the function is implemented inside the component for now)
-  const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
-  if (!isNaN(dateObj.getTime())) {
-    return parseInt(format(dateObj, 'HHmm'), 10);
-  }
-  return 2400; // Fallback for invalid time formats
-}
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
@@ -116,8 +58,6 @@ export default function Home() {
     addMessage, 
     removeMessageById, 
     setLatestEvent,
-    eventInProgress,
-    setEventInProgress,
     addEvent,
     addKeeper,
     drawerHeight: storedDrawerHeight,
@@ -153,7 +93,7 @@ export default function Home() {
     pageName: 'Home'
   });
   
-  const { handleEventMessage, eventCreationMessage, currentEventFields } = useEventCreation();
+  const { handleEventMessage } = useEventCreation();
 
   const events = useKicacoStore(state => state.events);
   const keepers = useKicacoStore(state => state.keepers);
@@ -281,7 +221,6 @@ export default function Home() {
   const [signupStep, setSignupStep] = useState<number | null>(null);
   const [signupData, setSignupData] = useState<{ name?: string; email?: string; password?: string }>({});
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showPostSignupOptions, setShowPostSignupOptions] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
 
@@ -679,8 +618,7 @@ export default function Home() {
                                 content: "Let's get you set up! What's your name?"
                               });
                             }}
-                onRemindLater={() => setShowPostSignupOptions(false)}
-                latestChildName={latestChildName}
+                onRemindLater={() => {}}
               />
             </div>
           );

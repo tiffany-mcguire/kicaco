@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ReactNode, cloneElement } from 'react';
+import React, { useState, useRef, useEffect, cloneElement } from 'react';
 
 interface DropdownMenuProps {
   trigger: React.ReactElement;

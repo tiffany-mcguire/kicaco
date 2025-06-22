@@ -253,17 +253,13 @@ const SevenDayEventOutlook: React.FC = () => {
     if (touchStartX.current === null || touchStartY.current === null) return;
     
     const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
     const diffX = touchStartX.current - touchEndX;
-    const diffY = Math.abs(touchStartY.current - touchEndY);
-    const threshold = 80;
 
     // Only process swipes if intention was horizontal movement
     if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
       e.preventDefault(); // Prevent default for swipe gestures
       
       const horizontalDisplacement = Math.abs(diffX);
-      const verticalDisplacement = diffY;
       
       // Focus on actual horizontal travel distance rather than just ratios
       const minSwipeDistance = 60; // Minimum horizontal distance to register as swipe

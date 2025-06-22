@@ -1,29 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const styles = {
-  Button: {
-    width: '140px',
-    height: '30px',
-    padding: '0px 8px',
-    border: 'none',
-    boxSizing: 'border-box' as const,
-    borderRadius: '6px',
-    fontWeight: 500,
-    fontSize: '14px',
-    lineHeight: '20px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-    background: '#217e8f',
-    color: '#ffffff',
-    outline: 'none',
-    transition: 'all 0.2s ease',
-  } as React.CSSProperties,
-};
-
-const defaultProps = {
-  label: 'Add Keeper',
-};
-
 const AddKeeperButton = (props: { label?: string }) => {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);

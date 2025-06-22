@@ -1,12 +1,7 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2, StackedChildBadges } from '../components/common';
-import { IconButton } from '../components/common';
+import { StackedChildBadges } from '../components/common';
 import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AddKeeperButton } from '../components/common';
+import { useNavigate } from 'react-router-dom';
 import { GlobalChatDrawer } from '../components/chat';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
@@ -16,7 +11,7 @@ import { EventCard } from '../components/calendar';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { parse, format, startOfDay, isAfter, isSameDay } from 'date-fns';
 
 import { generateUUID } from '../utils/uuid';
@@ -26,21 +21,7 @@ const dayColors: { [key: number]: string } = {
   4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
 };
 
-const dayColorsDark: { [key: number]: string } = {
-  0: '#e7a5b4', 1: '#e6c2a2', 2: '#e3d27c', 3: '#a8e1bb',
-  4: '#aed1d6', 5: '#b9bde3', 6: '#d4c0e6',
-};
 
-// Rainbow colors for children (same as EventCard)
-const childColors = [
-  '#f8b6c2', // Pink
-  '#fbd3a2', // Orange
-  '#fde68a', // Yellow
-  '#bbf7d0', // Green
-  '#c0e2e7', // Blue
-  '#d1d5fa', // Indigo
-  '#e9d5ff', // Purple
-];
 
 // Reusable formatTime function
 const formatTime = (time?: string) => {
@@ -130,55 +111,52 @@ const EventDayStackCard: React.FC<{
   navigate: any;
   allEvents: any[];
   removeEvent: (index: number) => void;
-}> = ({ date, events, isActive, navigate, allEvents, removeEvent }) => {
+  onFlickDismiss?: (date: string) => void;
+  onToggle: () => void;
+}> = ({ date, events, isActive, navigate, allEvents, removeEvent, onFlickDismiss, onToggle }) => {
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const eventDate = parse(date, 'yyyy-MM-dd', new Date());
   const dayOfWeek = eventDate.getDay();
   const currentEvent = events[displayedEventIndex];
   
-  // Touch handling for swipe gestures
+  // Touch tracking using same pattern as Keepers page
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const touchIntentionRef = useRef<'unknown' | 'vertical' | 'horizontal' | 'swipe'>('unknown');
-  
-  // Helper function to reset touch state
-  const resetTouchState = useCallback(() => {
+  const touchStartTime = useRef<number | null>(null);
+  const touchIntentionRef = useRef<'flick' | 'expand' | 'horizontal' | 'swipe' | null>(null);
+
+  const resetTouchState = () => {
     touchStartX.current = null;
     touchStartY.current = null;
-    touchIntentionRef.current = 'unknown';
-  }, []);
+    touchStartTime.current = null;
+    touchIntentionRef.current = null;
+  };
 
-  // Handle swipe navigation
   const handleSwipe = (direction: number) => {
-    if (events.length <= 1) return;
-    
     if (direction > 0) {
-      // Swipe left - next event
-      setDisplayedEventIndex(prev => (prev + 1) % events.length);
+      setDisplayedEventIndex((prev) => (prev + 1) % events.length);
     } else {
-      // Swipe right - previous event
-      setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length);
+      setDisplayedEventIndex((prev) => (prev - 1 + events.length) % events.length);
     }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    resetTouchState();
-    if (events.length <= 1) return;
-    
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]')) {
       return;
     }
+    
+    // Always prevent default on touch start to prevent scroll momentum
+    e.preventDefault();
     
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
-    touchIntentionRef.current = 'unknown';
-    e.stopPropagation();
+    touchStartTime.current = Date.now();
+    touchIntentionRef.current = null;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || events.length <= 1) {
-      resetTouchState();
+    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
       return;
     }
 
@@ -186,29 +164,41 @@ const EventDayStackCard: React.FC<{
     if (target.closest('button') || target.closest('[role="button"]')) {
       return;
     }
-    
+
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
-    const diffX = Math.abs(touchStartX.current - currentX);
-    const diffY = Math.abs(touchStartY.current - currentY);
-    
-    if (touchIntentionRef.current === 'unknown') {
-      const minMovement = 15;
-      
-      if (diffX > minMovement || diffY > minMovement) {
-        const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
-        const verticalDisplacement = Math.abs(touchStartY.current - currentY);
+    const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
+    const verticalDiff = touchStartY.current - currentY;
+    const timeDiff = Date.now() - touchStartTime.current;
+    const verticalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
+
+    if (touchIntentionRef.current === null) {
+      if (timeDiff > 50) {
+        // Check for flick up to dismiss (active card)
+        if (isActive && verticalDiff > 15 && verticalVelocity > 0.3 && horizontalDisplacement < 60) {
+          touchIntentionRef.current = 'flick';
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         
-        const minVerticalForScroll = 25;
-        const maxHorizontalDriftForScroll = 10;
-        const strongVerticalRatio = verticalDisplacement > horizontalDisplacement * 3;
+        // Check for flick up to expand (inactive card)
+        if (!isActive && verticalDiff > 10 && verticalVelocity > 0.2 && horizontalDisplacement < 40) {
+          touchIntentionRef.current = 'expand';
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         
-        if (strongVerticalRatio && verticalDisplacement > minVerticalForScroll && horizontalDisplacement < maxHorizontalDriftForScroll) {
-          touchIntentionRef.current = 'vertical';
-        } else if (horizontalDisplacement > verticalDisplacement * 1.5 && horizontalDisplacement > 20) {
+        // Check for horizontal gestures
+        if (events.length > 1 && horizontalDisplacement > verticalDiff * 1.2 && horizontalDisplacement > 15) {
           touchIntentionRef.current = 'horizontal';
-        } else if (horizontalDisplacement > 30) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else if (events.length > 1 && horizontalDisplacement > 25) {
           touchIntentionRef.current = 'swipe';
+          e.preventDefault();
+          e.stopPropagation();
         }
       }
     }
@@ -216,15 +206,14 @@ const EventDayStackCard: React.FC<{
     if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
       e.preventDefault();
       e.stopPropagation();
-    } else if (touchIntentionRef.current === 'vertical') {
-      e.stopPropagation();
-    } else {
+    } else if (touchIntentionRef.current === 'flick') {
+      e.preventDefault();
       e.stopPropagation();
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || events.length <= 1) {
+    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
       resetTouchState();
       return;
     }
@@ -235,16 +224,54 @@ const EventDayStackCard: React.FC<{
       return;
     }
     
-    e.stopPropagation();
+    // Always prevent default to stop any scroll momentum
+    e.preventDefault();
     
     const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
     const diffX = touchStartX.current - touchEndX;
-    const threshold = 50;
-
-    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+    
+    // Handle flick gesture first
+    if (touchIntentionRef.current === 'flick' && isActive && onFlickDismiss) {
+      const verticalDiff = touchStartY.current - touchEndY;
+      const timeDiff = Date.now() - touchStartTime.current;
+      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
+      
       e.preventDefault();
+      e.stopPropagation();
+      
+      // Final validation: ensure it's a strong upward flick - more lenient thresholds
+      if (verticalDiff > 25 && finalVelocity > 0.25) {
+        onFlickDismiss(date);
+        resetTouchState();
+        return;
+      }
+    }
+
+    // Handle expand gesture
+    if (touchIntentionRef.current === 'expand' && !isActive && onToggle) {
+      const verticalDiff = touchStartY.current - touchEndY;
+      const timeDiff = Date.now() - touchStartTime.current;
+      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Final validation: ensure it's an upward gesture
+      if (verticalDiff > 15 && finalVelocity > 0.2) {
+        onToggle();
+        resetTouchState();
+        return;
+      }
+    }
+
+    // Handle carousel swipe
+    if (events.length > 1 && (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe')) {
+      e.preventDefault();
+      e.stopPropagation();
       
       const horizontalDisplacement = Math.abs(diffX);
+      const threshold = 50;
       
       if (horizontalDisplacement > threshold) {
         if (diffX > 0) {
@@ -258,16 +285,11 @@ const EventDayStackCard: React.FC<{
     resetTouchState();
   };
 
-  const handleTouchCancel = (e: React.TouchEvent) => {
-    e.stopPropagation();
+  const handleTouchCancel = () => {
     resetTouchState();
   };
   
-  // Get child info for the event
-  const children = useKicacoStore(state => state.children);
-  
-  // Parse multiple children from comma-separated string (kept for birthday name logic)
-  const childNames = currentEvent.childName ? currentEvent.childName.split(',').map((name: string) => name.trim()).filter((name: string) => name) : [];
+
   
   // Find the global index of this event
   const globalEventIndex = allEvents.findIndex(e => 
@@ -306,7 +328,7 @@ const EventDayStackCard: React.FC<{
   })();
 
   return (
-    <div 
+    <div
       className="relative h-[240px] w-full rounded-xl overflow-hidden bg-white"
       style={{
         boxShadow: isActive 
@@ -335,15 +357,17 @@ const EventDayStackCard: React.FC<{
         } : undefined}
         onDelete={isActive ? handleDelete : undefined}
       />
-      {/* The Tab is an overlay on top of the EventCard */}
+      {/* The Tab is an overlay on top of the EventCard with touch handling */}
       <div 
         className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm"
+        data-card-tab="true"
+        style={{ touchAction: 'manipulation' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
       >
-        <div className="flex h-full items-center justify-between px-4">
+        <div className="flex h-full items-center justify-between px-4" onClick={onToggle}>
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-1.5">
               <StackedChildBadges childName={currentEvent.childName} size="md" maxVisible={3} />
@@ -378,22 +402,18 @@ const EventDayStackCard: React.FC<{
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[1.5px]" style={{ background: `linear-gradient(90deg, transparent, ${dayColors[dayOfWeek]}, transparent)` }}/>
       </div>
-
-      
     </div>
   );
 };
 
 export default function UpcomingEvents() {
   const [input, setInput] = useState("");
-  const location = useLocation();
   const navigate = useNavigate();
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const [scrollRefReady, setScrollRefReady] = useState(false);
   const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const autoscrollFlagRef = useRef(false); // For managing autoscroll after new message
   const mutationObserverRef = useRef<MutationObserver | null>(null); // Ref for the new MutationObserver
   const {
@@ -406,7 +426,6 @@ export default function UpcomingEvents() {
     threadId,
     addMessage,
     removeMessageById,
-    addEvent,
     removeEvent,
   } = useKicacoStore();
   const previousMessagesLengthRef = useRef(messages.length);
@@ -571,6 +590,63 @@ export default function UpcomingEvents() {
 
   const sortedMonths = useMemo(() => Object.keys(eventsByMonth).sort(), [eventsByMonth]);
 
+  // Track if this is from flick dismissal to prevent auto-scroll on manual opens
+  const wasFlickDismissalRef = useRef(false);
+
+  // Handle flick-to-dismiss for event stacks
+  const handleFlickDismiss = useCallback((currentDate: string) => {
+    // Find the current date's position in the reversed dates array
+    const currentMonthKey = format(parse(currentDate, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+    const currentMonthDates = eventsByMonth[currentMonthKey];
+    if (!currentMonthDates) return;
+    
+    const reversedDates = [...currentMonthDates].reverse();
+    const currentIndex = reversedDates.indexOf(currentDate);
+    if (currentIndex === -1) return;
+    
+    // Find the next card to activate (one position lower in the stack)
+    const nextIndex = currentIndex > 0 ? currentIndex - 1 : -1;
+    const nextDate = nextIndex >= 0 ? reversedDates[nextIndex] : null;
+    
+    // Mark that this is from flick dismissal
+    wasFlickDismissalRef.current = true;
+    
+    // Close current card and optionally activate next
+    setActiveDayDate(nextDate);
+  }, [eventsByMonth]);
+
+  // Auto-scroll to newly activated card after flick dismissal (only if not fully visible)
+  useEffect(() => {
+    if (activeDayDate && wasFlickDismissalRef.current) {
+      // Use requestAnimationFrame to ensure the card activation animation has started
+      requestAnimationFrame(() => {
+        const cardElement = document.querySelector(`[data-event-card-date="${activeDayDate}"]`);
+        if (cardElement) {
+          const rect = cardElement.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          
+          // Only scroll if card is actually getting cut off (very conservative)
+          const significantCutoffThreshold = 50; // Only scroll if 50px+ is cut off
+          const isSignificantlyCutOff = 
+            rect.top < -significantCutoffThreshold || 
+            rect.bottom > viewportHeight + significantCutoffThreshold;
+          
+          // Only scroll if the card is being significantly cut off
+          if (isSignificantlyCutOff) {
+            cardElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            });
+          }
+        }
+        
+        // Reset the flag after handling
+        wasFlickDismissalRef.current = false;
+      });
+    }
+  }, [activeDayDate]);
+
   // Assistant-enabled handleSend
   const handleSend = async () => {
     if (!input.trim() || !threadId) return;
@@ -596,15 +672,9 @@ export default function UpcomingEvents() {
   const isFirstLoad = useRef(true);
   useEffect(() => {
       if (isFirstLoad.current && sortedDates.length > 0) {
-          // Find the first date in the current month or later
-          const currentMonth = format(new Date(), 'yyyy-MM');
-          const currentMonthDates = sortedDates.filter(date => {
-              const dateMonth = format(parse(date, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
-              return dateMonth >= currentMonth;
-          });
-          
-          // Set the first date of current month or later as active, or fall back to first date
-          setActiveDayDate(currentMonthDates.length > 0 ? currentMonthDates[0] : sortedDates[0]);
+          // Auto-open the visually first card (top of stack) - which is the latest date due to reversal
+          // The latest date is at the end of sortedDates array
+          setActiveDayDate(sortedDates[sortedDates.length - 1]);
           isFirstLoad.current = false;
       }
   }, [sortedDates]);
@@ -697,7 +767,7 @@ export default function UpcomingEvents() {
                       className="relative"
                       style={{
                           height: `${expandedCardHeight + ((reversedMonthDates.length - 1) * visibleTabHeight)}px`,
-                          marginBottom: activeDayDate === reversedMonthDates[reversedMonthDates.length - 1] ? '196px' : '20px',
+                          marginBottom: activeDateIndex !== -1 ? '240px' : '60px',
                           transition: 'margin-bottom 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                       }}
                     >
@@ -723,6 +793,7 @@ export default function UpcomingEvents() {
                               <div
                                   key={date}
                                   className="absolute left-0 right-0"
+                                  data-event-card-date={date}
                                   style={{
                                       top: `${cardOffset}px`,
                                       zIndex: reversedMonthDates.length - stackPosition,
@@ -744,6 +815,8 @@ export default function UpcomingEvents() {
                                         navigate={navigate}
                                         allEvents={events}
                                         removeEvent={removeEvent}
+                                        onFlickDismiss={handleFlickDismiss}
+                                        onToggle={() => setActiveDayDate(isActive ? null : date)}
                                     />
                                   </div>
                               </div>

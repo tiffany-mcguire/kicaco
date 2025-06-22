@@ -1,5 +1,4 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
+
 import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { AddKeeperButton } from '../components/common';
@@ -54,19 +53,21 @@ const formatTime = (time?: string) => {
 // Carousel Keeper Card Component
 const CarouselKeeperCard = React.memo(({ 
   dayKeepers, date, stackPosition, totalInStack, isActive, activeIndex, onTabClick, 
-  navigate, removeKeeper, keepers 
+  navigate, removeKeeper, keepers, onFlickDismiss
 }: any) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
-  // Touch handling for swipe gestures
+  // Touch handling for swipe gestures and flick-to-dismiss
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const touchIntentionRef = useRef<'unknown' | 'vertical' | 'horizontal' | 'swipe'>('unknown');
+  const touchStartTime = useRef<number | null>(null);
+  const touchIntentionRef = useRef<'unknown' | 'horizontal' | 'swipe' | 'flick' | 'expand'>('unknown');
   
   // Helper function to reset touch state
   const resetTouchState = useCallback(() => {
     touchStartX.current = null;
     touchStartY.current = null;
+    touchStartTime.current = null;
     touchIntentionRef.current = 'unknown';
   }, []);
 
@@ -85,21 +86,23 @@ const CarouselKeeperCard = React.memo(({
 
   const handleTouchStart = (e: React.TouchEvent) => {
     resetTouchState();
-    if (dayKeepers.length <= 1) return;
     
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[role="button"]')) {
       return;
     }
     
+    // Always prevent default on touch start to prevent scroll momentum
+    e.preventDefault();
+    
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
     touchIntentionRef.current = 'unknown';
-    e.stopPropagation();
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || dayKeepers.length <= 1) {
+    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
       resetTouchState();
       return;
     }
@@ -120,33 +123,51 @@ const CarouselKeeperCard = React.memo(({
       if (diffX > minMovement || diffY > minMovement) {
         const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
         const verticalDisplacement = Math.abs(touchStartY.current - currentY);
+        const verticalDiff = touchStartY.current - currentY; // Positive = upward movement
+        const timeDiff = Date.now() - touchStartTime.current;
+        const verticalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
         
-        const minVerticalForScroll = 25;
-        const maxHorizontalDriftForScroll = 10;
-        const strongVerticalRatio = verticalDisplacement > horizontalDisplacement * 3;
+        // Check for flick gesture (fast upward movement on active card) - more sensitive thresholds
+        if (isActive && onFlickDismiss && verticalDiff > 15 && verticalVelocity > 0.3 && horizontalDisplacement < 50) {
+          touchIntentionRef.current = 'flick';
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         
-        if (strongVerticalRatio && verticalDisplacement > minVerticalForScroll && horizontalDisplacement < maxHorizontalDriftForScroll) {
-          touchIntentionRef.current = 'vertical';
-        } else if (horizontalDisplacement > verticalDisplacement * 1.5 && horizontalDisplacement > 20) {
+        // Check for expand gesture (upward movement on inactive card)
+        if (!isActive && verticalDiff > 10 && verticalVelocity > 0.2 && horizontalDisplacement < 40) {
+          touchIntentionRef.current = 'expand';
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
+        // Check for horizontal gestures
+        if (dayKeepers.length > 1 && horizontalDisplacement > verticalDisplacement * 1.2 && horizontalDisplacement > 15) {
           touchIntentionRef.current = 'horizontal';
-        } else if (horizontalDisplacement > 30) {
+          e.preventDefault();
+          e.stopPropagation();
+        } else if (dayKeepers.length > 1 && horizontalDisplacement > 25) {
           touchIntentionRef.current = 'swipe';
+          e.preventDefault();
+          e.stopPropagation();
         }
       }
     }
     
-    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
-      e.preventDefault();
-      e.stopPropagation();
-    } else if (touchIntentionRef.current === 'vertical') {
-      e.stopPropagation();
-    } else {
-      e.stopPropagation();
-    }
+          if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+        e.preventDefault();
+        e.stopPropagation();
+      } else if (touchIntentionRef.current === 'flick') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      // Don't stop propagation if we haven't determined a specific gesture - let scrolling work
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || dayKeepers.length <= 1) {
+    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
       resetTouchState();
       return;
     }
@@ -157,16 +178,54 @@ const CarouselKeeperCard = React.memo(({
       return;
     }
     
-    e.stopPropagation();
+    // Always prevent default to stop any scroll momentum
+    e.preventDefault();
     
     const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
     const diffX = touchStartX.current - touchEndX;
-    const threshold = 50;
-
-    if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
+    
+    // Handle flick gesture first
+    if (touchIntentionRef.current === 'flick' && isActive && onFlickDismiss) {
+      const verticalDiff = touchStartY.current - touchEndY;
+      const timeDiff = Date.now() - touchStartTime.current;
+      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
+      
       e.preventDefault();
+      e.stopPropagation();
+      
+      // Final validation: ensure it's a strong upward flick - more lenient thresholds
+      if (verticalDiff > 25 && finalVelocity > 0.25) {
+        onFlickDismiss(stackPosition);
+        resetTouchState();
+        return;
+      }
+    }
+
+    // Handle expand gesture
+    if (touchIntentionRef.current === 'expand' && !isActive && onTabClick) {
+      const verticalDiff = touchStartY.current - touchEndY;
+      const timeDiff = Date.now() - touchStartTime.current;
+      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Final validation: ensure it's an upward gesture
+      if (verticalDiff > 15 && finalVelocity > 0.2) {
+        onTabClick();
+        resetTouchState();
+        return;
+      }
+    }
+
+    // Handle carousel swipe
+    if (dayKeepers.length > 1 && (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe')) {
+      e.preventDefault();
+      e.stopPropagation();
       
       const horizontalDisplacement = Math.abs(diffX);
+      const threshold = 50;
       
       if (horizontalDisplacement > threshold) {
         if (diffX > 0) {
@@ -180,8 +239,7 @@ const CarouselKeeperCard = React.memo(({
     resetTouchState();
   };
 
-  const handleTouchCancel = (e: React.TouchEvent) => {
-    e.stopPropagation();
+  const handleTouchCancel = () => {
     resetTouchState();
   };
 
@@ -205,6 +263,7 @@ const CarouselKeeperCard = React.memo(({
   return (
     <div
       className="absolute left-0 right-0 h-[240px]"
+      data-keeper-card-position={stackPosition}
       style={{
         top: `${cardOffset}px`,
         zIndex: totalInStack - stackPosition,
@@ -227,6 +286,8 @@ const CarouselKeeperCard = React.memo(({
         
         <div 
           className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm"
+          data-card-tab="true"
+          style={{ touchAction: 'manipulation' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -341,9 +402,7 @@ const CarouselKeeperCard = React.memo(({
   );
 });
 
-const KeepersIcon = () => (
-  <svg width="16" height="16" fill="rgba(185,17,66,0.75)" viewBox="0 0 512 512"><path d="M16 96C16 69.49 37.49 48 64 48C90.51 48 112 69.49 112 96C112 122.5 90.51 144 64 144C37.49 144 16 122.5 16 96zM480 64C497.7 64 512 78.33 512 96C512 113.7 497.7 128 480 128H192C174.3 128 160 113.7 160 96C160 78.33 174.3 64 192 64H480zM480 224C497.7 224 512 238.3 512 256C512 273.7 497.7 288 480 288H192C174.3 288 160 273.7 160 256C160 238.3 174.3 224 192 224H480zM480 384C497.7 384 512 398.3 512 416C512 433.7 497.7 448 480 448H192C174.3 448 160 433.7 160 416C160 398.3 174.3 384 192 384H480zM16 416C16 389.5 37.49 368 64 368C90.51 368 112 389.5 112 416C112 442.5 90.51 464 64 464C37.49 464 16 442.5 16 416zM112 256C112 282.5 90.51 304 64 304C37.49 304 16 282.5 16 256C16 229.5 37.49 208 64 208C90.51 208 112 229.5 112 256z"/></svg>
-);
+
 
 export default function Keepers() {
   const navigate = useNavigate();
@@ -351,10 +410,6 @@ export default function Keepers() {
   const headerRef = useRef<HTMLDivElement>(null);
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  const [drawerHeight, setDrawerHeight] = useState(44);
-  const [drawerTop, setDrawerTop] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [scrollOverflow, setScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // State and refs for GlobalChatDrawer synchronisation
@@ -386,6 +441,61 @@ export default function Keepers() {
 
   // State for keeper card interactions
   const [activeKeeperIndices, setActiveKeeperIndices] = useState<Record<string, number | null>>({});
+
+  // Track if this is from flick dismissal to prevent auto-scroll on manual opens
+  const wasFlickDismissalRef = useRef(false);
+
+  // Track first load for auto-opening first cards
+  const isFirstLoad = useRef(true);
+
+  // Handle flick-to-dismiss for keeper stacks
+  const handleFlickDismiss = useCallback((month: string, currentStackPosition: number) => {
+    // Find the next card to activate (one position lower in the stack)
+    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
+    
+    // Mark that this is from flick dismissal
+    wasFlickDismissalRef.current = true;
+    
+    // Close current card and optionally activate next
+    setActiveKeeperIndices(prev => ({
+      ...prev,
+      [month]: nextStackPosition
+    }));
+  }, []);
+
+  // Auto-scroll to newly activated card after flick dismissal (only if not fully visible)
+  useEffect(() => {
+    // Find any month with an active card and scroll to it
+    const activeMonth = Object.keys(activeKeeperIndices).find(month => activeKeeperIndices[month] !== null);
+    if (activeMonth && activeKeeperIndices[activeMonth] !== null && wasFlickDismissalRef.current) {
+      // Use requestAnimationFrame to ensure the card activation animation has started
+      requestAnimationFrame(() => {
+        const cardElement = document.querySelector(`[data-keeper-card-position="${activeKeeperIndices[activeMonth]}"]`);
+        if (cardElement) {
+          const rect = cardElement.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          
+          // Only scroll if card is actually getting cut off (very conservative)
+          const significantCutoffThreshold = 50; // Only scroll if 50px+ is cut off
+          const isSignificantlyCutOff = 
+            rect.top < -significantCutoffThreshold || 
+            rect.bottom > viewportHeight + significantCutoffThreshold;
+          
+          // Only scroll if the card is being significantly cut off
+          if (isSignificantlyCutOff) {
+            cardElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            });
+          }
+        }
+        
+        // Reset the flag after handling
+        wasFlickDismissalRef.current = false;
+      });
+    }
+  }, [activeKeeperIndices]);
 
   // Group keepers by month and then by date (filtering out past keepers)
   const keepersByMonth = useMemo(() => {
@@ -454,6 +564,24 @@ export default function Keepers() {
     [keepersByMonth]
   );
 
+  // Auto-open the first card in the first month on initial load
+  useEffect(() => {
+    if (isFirstLoad.current && sortedMonths.length > 0) {
+      const firstMonth = sortedMonths[0];
+      const firstMonthKeepers = keepersByMonth[firstMonth];
+      
+      if (firstMonthKeepers && firstMonthKeepers.length > 0 && !activeKeeperIndices[firstMonth]) {
+        // Open the first card (most recent/top of stack - which is at the end of the reversed array)
+        const firstCardPosition = firstMonthKeepers.length - 1;
+        setActiveKeeperIndices(prev => ({
+          ...prev,
+          [firstMonth]: firstCardPosition
+        }));
+        isFirstLoad.current = false;
+      }
+    }
+  }, [sortedMonths, keepersByMonth, activeKeeperIndices]);
+
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
   const executeScrollToBottom = useCallback(() => {
@@ -501,9 +629,7 @@ export default function Keepers() {
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
+      // Function kept for resize listener compatibility
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
@@ -532,12 +658,8 @@ export default function Keepers() {
   }, [subheaderRef]);
 
   useEffect(() => {
-    if (drawerHeight > 44 + 8) {
-      setScrollOverflow('auto');
-    } else {
-      setScrollOverflow('hidden');
-    }
-  }, [drawerHeight]);
+    // Scroll overflow management simplified
+  }, [currentDrawerHeight]);
 
   // Main Scroll/Restore/Autoscroll Effect
   useEffect(() => {
@@ -802,6 +924,7 @@ export default function Keepers() {
                                 [month]: prev[month] === stackPosition ? null : stackPosition
                               }));
                             }}
+                            onFlickDismiss={(stackPos: number) => handleFlickDismiss(month, stackPos)}
                             onEdit={() => {
                               navigate('/add-keeper', {
                                 state: {
@@ -831,6 +954,7 @@ export default function Keepers() {
                                 [month]: prev[month] === stackPosition ? null : stackPosition
                               }));
                             }}
+                            onFlickDismiss={(stackPos: number) => handleFlickDismiss(month, stackPos)}
                             navigate={navigate}
                             removeKeeper={removeKeeper}
                             keepers={keepers}

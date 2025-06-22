@@ -1,10 +1,5 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
 import { ChatBubble } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
@@ -13,30 +8,9 @@ import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
-import { BellPlus, Calendar, Clock, MapPin, AlertCircle } from "lucide-react";
+import { BellPlus } from "lucide-react";
 
 import { generateUUID } from '../utils/uuid';
-// Notebook/Binder Icon (Lucide style, simple)
-const AddKeeperIcon = () => {
-  const styles = {
-    Icon: {
-      color: 'rgba(185,17,66,0.75)',
-      fill: 'rgba(185,17,66,0.75)',
-      fontSize: '16px',
-      width: '16px',
-      height: '16px',
-    },
-  };
-  return (
-    <svg style={styles.Icon} viewBox="0 0 24 24">
-      <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
-      <line x1="7" y1="4" x2="7" y2="20" stroke="currentColor" strokeWidth="2"/>
-      <circle cx="7" cy="8" r="0.7" fill="currentColor" />
-      <circle cx="7" cy="12" r="0.7" fill="currentColor" />
-      <circle cx="7" cy="16" r="0.7" fill="currentColor" />
-    </svg>
-  );
-};
 
 const SaveButton = (props: { label?: string; onClick?: () => void }) => {
   const [hovered, setHovered] = React.useState(false);
@@ -112,9 +86,6 @@ export default function AddKeeper() {
   const pageScrollRef = useRef<HTMLDivElement>(null);
 
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
-  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(0);
-  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
 
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
@@ -177,23 +148,18 @@ export default function AddKeeper() {
     setStoredDrawerHeight(newHeight);
     
     setMainContentDrawerOffset(height);
-    setMainContentTopClearance(window.innerHeight - height);
   };
 
   // Initialize scroll overflow based on initial drawer height
   useEffect(() => {
     // Set initial drawer offset and scroll overflow
     setMainContentDrawerOffset(currentDrawerHeight);
-    setMainContentTopClearance(window.innerHeight - currentDrawerHeight);
     // Always enable scrolling when drawer is minimized
-    setMainContentScrollOverflow('auto');
   }, []); // Run only on mount
 
   useLayoutEffect(() => {
     function updateSubheaderBottom() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
+      // Function kept for potential future use
     }
     updateSubheaderBottom();
     window.addEventListener('resize', updateSubheaderBottom);
@@ -221,7 +187,6 @@ export default function AddKeeper() {
 
   useEffect(() => {
     // Always enable scrolling - let the browser handle whether it's needed
-      setMainContentScrollOverflow('auto');
   }, [mainContentDrawerOffset]);
 
   // Watch for content height changes and update scroll overflow
@@ -586,7 +551,7 @@ export default function AddKeeper() {
                     name="reminderType"
                     value="deadline"
                     checked={reminderType === 'deadline'}
-                    onChange={(e) => setReminderType('deadline')}
+                                                onChange={() => setReminderType('deadline')}
                     className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
                     style={{ accentColor: '#217e8f' }}
                   />
@@ -598,7 +563,7 @@ export default function AddKeeper() {
                     name="reminderType"
                     value="recurring"
                     checked={reminderType === 'recurring'}
-                    onChange={(e) => setReminderType('recurring')}
+                                                onChange={() => setReminderType('recurring')}
                     className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
                     style={{ accentColor: '#217e8f' }}
                   />

@@ -1,5 +1,4 @@
-import React, { useRef, useLayoutEffect, useState, useEffect, PropsWithChildren, forwardRef, useImperativeHandle } from 'react';
-import { motion, useMotionValue, useMotionValueEvent, AnimatePresence } from 'framer-motion';
+import React, { useRef, useLayoutEffect, useState, useEffect, PropsWithChildren, forwardRef } from 'react';
 import { Portal } from '../common';
 
 const MIN_HEIGHT = 32; // px, now matches the handle bar's height
@@ -18,11 +17,10 @@ export interface GlobalChatDrawerHandle {
 }
 
 const GlobalChatDrawer = forwardRef<GlobalChatDrawerHandle, GlobalChatDrawerProps>(
-  ({ children, className, onHeightChange, drawerHeight, maxDrawerHeight, scrollContainerRefCallback }, ref) => {
+  ({ children, className, onHeightChange, drawerHeight, maxDrawerHeight, scrollContainerRefCallback }) => {
     const [footerHeight, setFooterHeight] = useState(0);
     const [maxHeight, setMaxHeight] = useState(400); // fallback default
     const containerRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
     const [isFullyClosed, setIsFullyClosed] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
     const dragState = useRef({

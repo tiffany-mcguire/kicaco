@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useKicacoStore } from '../store/kicacoStore';
-import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { getApiClientInstance } from '../utils/apiClient';
 import { extractKnownFields } from '../utils/kicacoFlow';
 

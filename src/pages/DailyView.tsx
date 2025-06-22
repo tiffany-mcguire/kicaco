@@ -1,10 +1,5 @@
-import { UploadIcon, CameraIconMD, MicIcon, ClipboardIcon2 } from '../components/common';
-import { IconButton } from '../components/common';
-import { ChatBubble, ChatMessageList } from '../components/chat';
-import { HamburgerMenu } from '../components/navigation';
-import { CalendarMenu } from '../components/calendar';
-import { ThreeDotMenu } from '../components/navigation';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ChatMessageList } from '../components/chat';
+import { useLocation, useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { GlobalHeader } from '../components/navigation';
 import { GlobalFooter } from '../components/navigation';
@@ -12,7 +7,7 @@ import { GlobalSubheader } from '../components/navigation';
 import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
-import { motion } from 'framer-motion';
+
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, parse, isToday } from 'date-fns';
 import { EventCard } from '../components/calendar';
@@ -22,90 +17,7 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
 import { ImageUpload } from '../components/common';
-// Rainbow colors for children (matching other pages)
-const childColors = [
-  '#f8b6c2', // Pink
-  '#fbd3a2', // Orange
-  '#fde68a', // Yellow
-  '#bbf7d0', // Green
-  '#c0e2e7', // Blue
-  '#d1d5fa', // Indigo
-  '#e9d5ff', // Purple
-];
 
-const DailyViewIcon = () => (
-  <svg style={{ color: 'rgba(185,17,66,0.75)', fill: 'rgba(185,17,66,0.75)', fontSize: '18px', width: '18px', height: '18px', strokeWidth: '1.5' }} viewBox="0 0 90 90">
-    <path d="M 71.46 29.223 H 2.001 c -1.104 0 -2 -0.895 -2 -2 v -9.194 c 0 -3.051 2.482 -5.533 5.533 -5.533 h 62.395 c 3.051 0 5.532 2.482 5.532 5.533 v 9.194 C 73.46 28.327 72.565 29.223 71.46 29.223 z M 4.001 25.223 h 65.46 v -7.194 c 0 -0.845 -0.687 -1.533 -1.532 -1.533 H 5.534 c -0.845 0 -1.533 0.687 -1.533 1.533 V 25.223 z"/>
-    <path d="M 67.43 82.118 h -61.4 c -3.325 0 -6.03 -2.705 -6.03 -6.03 V 27.223 c 0 -1.104 0.895 -2 2 -2 s 2 0.895 2 2 v 48.865 c 0 1.119 0.911 2.03 2.03 2.03 h 61.4 c 1.119 0 2.03 -0.911 2.03 -2.03 v -6.184 c 0 -1.104 0.895 -2 2 -2 s 2 0.895 2 2 v 6.184 C 73.46 79.413 70.755 82.118 67.43 82.118 z"/>
-    <path d="M 57.596 21.113 c -1.104 0 -2 -0.895 -2 -2 V 9.882 c 0 -1.104 0.895 -2 2 -2 s 2 0.895 2 2 v 9.231 C 59.596 20.217 58.701 21.113 57.596 21.113 z"/>
-    <path d="M 15.865 21.113 c -1.104 0 -2 -0.895 -2 -2 V 9.882 c 0 -1.104 0.895 -2 2 -2 s 2 0.895 2 2 v 9.231 C 17.865 20.217 16.969 21.113 15.865 21.113 z"/>
-    <path d="M 36.731 21.113 c -1.104 0 -2 -0.895 -2 -2 V 9.882 c 0 -1.104 0.895 -2 2 -2 s 2 0.895 2 2 v 9.231 C 38.731 20.217 37.835 21.113 36.731 21.113 z"/>
-    <path d="M 86.1 71.904 H 27.191 c -3.871 0 -7.65 -1.361 -10.641 -3.833 C 5.259 58.743 0.001 45.763 0.001 27.223 c 0 -1.104 0.895 -2 2 -2 h 69.46 c 1.104 0 2 0.895 2 2 c 0 17.266 4.804 29.272 15.118 37.782 c 1.284 1.059 1.75 2.755 1.187 4.32 C 89.203 70.892 87.765 71.904 86.1 71.904 z M 4.023 29.223 C 4.385 45.41 9.201 56.81 19.097 64.987 c 2.276 1.881 5.151 2.917 8.094 2.917 h 58.616 c -10.744 -8.978 -15.959 -21.313 -16.326 -38.681 H 4.023 z"/>
-  </svg>
-);
-
-// Add Event Button
-const AddEventButton = (props: { label?: string; date?: string }) => {
-  const navigate = useNavigate();
-  const [hovered, setHovered] = React.useState(false);
-  const [pressed, setPressed] = React.useState(false);
-  const [focused, setFocused] = React.useState(false);
-
-  const getButtonStyle = () => {
-    let s = {
-      width: '140px',
-      height: '30px',
-      padding: '0px 8px',
-      border: 'none',
-      boxSizing: 'border-box' as const,
-      borderRadius: '6px',
-      fontWeight: 500,
-      fontSize: '14px',
-      lineHeight: '20px',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-      background: '#217e8f',
-      color: '#ffffff',
-      outline: 'none',
-      transition: 'all 0.2s ease',
-    } as React.CSSProperties;
-    if (hovered || focused) {
-      s = {
-        ...s,
-        background: '#1a6e7e',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
-      };
-    }
-    if (pressed) {
-      s = { ...s, transform: 'scale(0.95)' };
-    }
-    s.outline = 'none';
-    return s;
-  };
-
-  const handleClick = () => {
-    setTimeout(() => navigate('/add-event', { state: { date: props.date } }), 150);
-  };
-
-  return (
-    <button
-      style={getButtonStyle()}
-      tabIndex={0}
-      type="button"
-      onClick={handleClick}
-      onMouseDown={() => setPressed(true)}
-      onMouseUp={() => setPressed(false)}
-      onMouseLeave={() => { setPressed(false); setHovered(false); }}
-      onMouseOver={() => setHovered(true)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); setPressed(false); }}
-      className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
-      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(true); }}
-      onKeyUp={e => { if (e.key === ' ' || e.key === 'Enter') setPressed(false); }}
-    >
-      {props.label ?? 'Add Event'}
-    </button>
-  );
-};
 
 // Day Colors for accent line
 const dayColors: { [key: number]: string } = {
@@ -141,7 +53,7 @@ const DailyEventCard: React.FC<{
   setDisplayedEventIndex: (fn: (prev: number) => number) => void;
   removeEvent: (index: number) => void;
 }> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex, removeEvent }) => {
-  const children = useKicacoStore(state => state.children);
+  
   const eventDate = event.date ? parse(event.date, 'yyyy-MM-dd', new Date()) : currentDate;
   const dayOfWeek = currentDate.getDay();
   
@@ -406,10 +318,6 @@ export default function DailyView() {
   const footerRef = useRef<HTMLDivElement>(null);
   const pageScrollRef = useRef<HTMLDivElement>(null);
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
-  const [mainContentTopClearance, setMainContentTopClearance] = useState(window.innerHeight);
-  const [subheaderBottom, setSubheaderBottom] = useState(120);
-  const [dayNavBottom, setDayNavBottom] = useState(160);
-  const [mainContentScrollOverflow, setMainContentScrollOverflow] = useState<'auto' | 'hidden'>('auto');
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
   const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
@@ -430,7 +338,6 @@ export default function DailyView() {
     setChatScrollPosition,
     events,
     keepers,
-    children,
     addEvent,
     addKeeper,
     removeEvent,
@@ -634,7 +541,6 @@ export default function DailyView() {
 
   // Get events for the current day
   const eventsForDay = useMemo(() => {
-    const dateString = format(currentDate, 'yyyy-MM-dd');
     return events.filter(event => {
       if (!event.date) return false;
       try {
@@ -649,7 +555,6 @@ export default function DailyView() {
 
   // Get keepers for the current day
   const keepersForDay = useMemo(() => {
-    const dateString = format(currentDate, 'yyyy-MM-dd');
     return keepers.filter(keeper => {
       if (!keeper.date) return false;
       try {
@@ -925,7 +830,7 @@ export default function DailyView() {
     resetPageTouchState();
   };
 
-  const handlePageTouchCancel = (e: React.TouchEvent) => {
+  const handlePageTouchCancel = () => {
     resetPageTouchState();
   };
 
@@ -936,18 +841,11 @@ export default function DailyView() {
     setStoredDrawerHeight(newHeight);
     
     setMainContentDrawerOffset(height);
-    setMainContentTopClearance(window.innerHeight - height);
   };
 
   useLayoutEffect(() => {
     function updatePositions() {
-      if (subheaderRef.current) {
-        setSubheaderBottom(subheaderRef.current.getBoundingClientRect().bottom);
-      }
-      if (dayNavRef.current) {
-        const navBottom = dayNavRef.current.getBoundingClientRect().bottom;
-        setDayNavBottom(navBottom);
-      }
+      // Position tracking simplified
     }
 
     const calculateMaxDrawerHeight = () => {
@@ -976,8 +874,7 @@ export default function DailyView() {
   }, [subheaderRef.current, footerRef.current, dayNavRef.current]);
 
   useEffect(() => {
-    // Always enable scrolling
-    setMainContentScrollOverflow('auto');
+    // Always enable scrolling - simplified
   }, [mainContentDrawerOffset]);
 
   // Chat Scroll Management Logic
@@ -1445,7 +1342,6 @@ export default function DailyView() {
               // Handle remind later if needed
               console.log('Remind later requested from DailyView');
             }}
-            latestChildName={children[0]?.name || 'your child'}
           />
         </div>
       </GlobalChatDrawer>

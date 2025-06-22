@@ -17,14 +17,12 @@ interface ChatMessageListProps {
   messages: Message[];
   onCreateAccount?: () => void;
   onRemindLater?: () => void;
-  latestChildName?: string;
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
   messages,
   onCreateAccount,
-  onRemindLater,
-  latestChildName = 'your child'
+  onRemindLater
 }) => {
   // Track which messages have already been animated
   const animatedMessagesRef = useRef<Set<string>>(new Set());
