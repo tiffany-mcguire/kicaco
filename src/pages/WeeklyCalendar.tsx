@@ -53,6 +53,9 @@ export default function WeeklyCalendar() {
   const [weekNavBottom, setWeekNavBottom] = useState(160);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
 
+  // Debouncing to prevent rapid-fire stack navigation
+  const lastFlickTimeRef = useRef<number>(0);
+
   // Chat-related state (simplified)
   const [scrollRefReady, setScrollRefReady] = useState(false);
   const internalChatContentScrollRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +97,76 @@ export default function WeeklyCalendar() {
       };
     }), [weekStart]
   );
+
+  // Auto-scroll to ensure expanded card and next tab are visible
+  useEffect(() => {
+    if (activeDayIndex === null || !stackedDaysContainerRef.current || !pageScrollRef.current) return;
+
+    const scrollContainer = pageScrollRef.current;
+    const stackContainer = stackedDaysContainerRef.current;
+    
+    // Calculate the scroll position needed using the EXACT same logic as card positioning
+    const calculateScrollPosition = () => {
+      const visibleTabHeight = 56;
+      const popOffset = 316;
+      const stackGap = 280;
+      const totalInStack = weekDays.length;
+      
+      // EXACT same calculation as in card rendering for the active card
+      let cardOffset = (totalInStack - 1 - activeDayIndex) * visibleTabHeight;
+      
+      // Check if there are cards above this one that need gaps (this matches the card logic exactly)
+      // For the active card: activeDayIndex > stackPosition becomes activeDayIndex > activeDayIndex which is false
+      // So no stackGap is added to the active card itself (correct!)
+      
+      // Since this IS the active card, add popOffset
+      cardOffset += popOffset;
+      
+      // Calculate final position after the -316px transform
+      const finalCardTop = cardOffset - 316; // The transform translateY(-316px)
+      
+      // Calculate container position relative to scroll container
+      const containerRect = stackContainer.getBoundingClientRect();
+      const scrollRect = scrollContainer.getBoundingClientRect();
+      const containerOffsetInScroll = containerRect.top - scrollRect.top + scrollContainer.scrollTop;
+      
+      // Target position: show expanded card with margin above for next tab
+      const desiredMarginAbove = 120; // More space to ensure next tab is visible
+      const targetScrollTop = containerOffsetInScroll + finalCardTop - desiredMarginAbove;
+      
+      // Ensure we don't scroll past the bounds
+      const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+      const finalScrollTop = Math.max(0, Math.min(targetScrollTop, maxScroll));
+      
+      console.log('[WeeklyCalendar] Auto-scroll calculation EXACT MATCH:', {
+        activeDayIndex,
+        totalInStack,
+        baseCardOffset: (totalInStack - 1 - activeDayIndex) * visibleTabHeight,
+        cardOffsetWithPopOffset: cardOffset,
+        finalCardTopAfterTransform: finalCardTop,
+        containerOffsetInScroll,
+        desiredMarginAbove,
+        targetScrollTop,
+        finalScrollTop
+      });
+      
+      return finalScrollTop;
+    };
+
+    // Use a small delay to allow the animation to start, then scroll
+    const scrollTimeout = setTimeout(() => {
+      const targetScroll = calculateScrollPosition();
+      
+      scrollContainer.scrollTo({
+        top: targetScroll,
+        behavior: 'smooth'
+      });
+      
+      console.log('[WeeklyCalendar] Auto-scrolling to position:', targetScroll, 'for active day index:', activeDayIndex);
+    }, 200); // Slightly longer delay to ensure card animation starts
+
+    return () => clearTimeout(scrollTimeout);
+  }, [activeDayIndex, weekDays.length]);
 
   // Memoized helper functions
   const parseTimeForSorting = useCallback((timeStr?: string): number => {
@@ -270,6 +343,40 @@ export default function WeeklyCalendar() {
     navigate('/add-event', { state: { date } });
   }, [navigate]);
 
+  // Handle flick down - dismiss current card to reveal the one "above" it in stack (newer day, higher stack position)
+  const handleFlickDown = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[WeeklyCalendar] handleFlickDown debounced');
+      return;
+    }
+    lastFlickTimeRef.current = now;
+    
+    console.log('[WeeklyCalendar] handleFlickDown called', { currentStackPosition });
+    // Move to next day in stack (higher stack position)
+    const nextStackPosition = currentStackPosition < weekDays.length - 1 ? currentStackPosition + 1 : null;
+    console.log('[WeeklyCalendar] Setting active to', { nextStackPosition });
+    setActiveDayIndex(nextStackPosition);
+  }, [weekDays.length]);
+
+  // Handle flick up - bring back the card "below" it in stack (earlier day, lower stack position)
+  const handleFlickUp = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[WeeklyCalendar] handleFlickUp debounced');
+      return;
+    }
+    lastFlickTimeRef.current = now;
+    
+    console.log('[WeeklyCalendar] handleFlickUp called', { currentStackPosition });
+    // Move to previous day in stack (lower stack position)
+    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
+    console.log('[WeeklyCalendar] Setting active to', { nextStackPosition });
+    setActiveDayIndex(nextStackPosition);
+  }, []);
+
   // Fixed container height to prevent layout shifts
   const containerHeight = 1000; // Height that accommodates expanded cards while limiting excessive scroll
 
@@ -363,6 +470,8 @@ export default function WeeklyCalendar() {
                   removeKeeper={removeKeeper}
                   events={events}
                   keepers={keepers}
+                  onFlickDown={handleFlickDown}
+                  onFlickUp={handleFlickUp}
                 />
               );
             })}
@@ -400,8 +509,200 @@ export default function WeeklyCalendar() {
 const DayCard = React.memo(({ 
   day, dayEvents, dayKeepers, isActive, accentColor, accentColorSoft, 
   finalAccentSoft, finalBoxShadow, cardOffset, stackPosition, totalInStack,
-  onToggle, formatTime12, navigate, removeEvent, removeKeeper, events, keepers 
+  onToggle, formatTime12, navigate, removeEvent, removeKeeper, events, keepers,
+  onFlickDown, onFlickUp
 }: any) => {
+  // Tab touch state - only for tab area
+  const tabTouchRef = useRef<{
+    isTracking: boolean;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    startTime: number;
+    dragOffset: number;
+    isDragging: boolean;
+    hasMovedSignificantly: boolean;
+  }>({
+    isTracking: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    startTime: 0,
+    dragOffset: 0,
+    isDragging: false,
+    hasMovedSignificantly: false,
+  });
+
+  // Tab visual feedback
+  const [tabVisual, setTabVisual] = useState<{
+    isDragging: boolean;
+    dragOffset: number;
+    dragOffsetX: number;
+    scale: number;
+    brightness: number;
+  }>({
+    isDragging: false,
+    dragOffset: 0,
+    dragOffsetX: 0,
+    scale: 1,
+    brightness: 1,
+  });
+
+  // Simplified haptic feedback
+  const haptic = {
+    light: () => navigator.vibrate?.(25),
+    medium: () => navigator.vibrate?.(50),
+    success: () => navigator.vibrate?.([40, 20, 40]),
+  };
+
+  // Clear touch state
+  const clearTabTouchState = useCallback(() => {
+    tabTouchRef.current.isTracking = false;
+    tabTouchRef.current.isDragging = false;
+    tabTouchRef.current.hasMovedSignificantly = false;
+    setTabVisual({
+      isDragging: false,
+      dragOffset: 0,
+      dragOffsetX: 0,
+      scale: 1,
+      brightness: 1,
+    });
+  }, []);
+
+  // TAB TOUCH HANDLERS - ONLY ON TAB AREA
+  const handleTabTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only handle touches that start on the tab area
+    const target = e.target as HTMLElement;
+    if (!target.closest('[data-tab-touch-area="true"]')) {
+      return;
+    }
+
+    e.preventDefault(); // Prevent scroll only on tab area
+    
+    const touch = e.touches[0];
+    const now = Date.now();
+    
+    tabTouchRef.current = {
+      isTracking: true,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      currentX: touch.clientX,
+      currentY: touch.clientY,
+      startTime: now,
+      dragOffset: 0,
+      isDragging: false,
+      hasMovedSignificantly: false,
+    };
+
+    haptic.light();
+    console.log('[Day Card Tab Touch] Started');
+  }, [haptic]);
+
+  const handleTabTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!tabTouchRef.current.isTracking) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - tabTouchRef.current.startX;
+    const deltaY = touch.clientY - tabTouchRef.current.startY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    
+    tabTouchRef.current.currentX = touch.clientX;
+    tabTouchRef.current.currentY = touch.clientY;
+
+    // Mark significant movement
+    if (absDeltaX > 8 || absDeltaY > 8) {
+      tabTouchRef.current.hasMovedSignificantly = true;
+    }
+
+    // Start dragging if significant movement in any direction
+    if ((absDeltaX > 10 || absDeltaY > 10) && !tabTouchRef.current.isDragging) {
+      tabTouchRef.current.isDragging = true;
+      setTabVisual(prev => ({
+        ...prev,
+        isDragging: true,
+        scale: 1.02,
+        brightness: 1.1,
+      }));
+      haptic.medium();
+      console.log('[Day Card Tab Touch] Drag started');
+    }
+
+    // Update visual feedback during drag - allow movement in all directions
+    if (tabTouchRef.current.isDragging) {
+      e.preventDefault(); // Only prevent default during active drag
+      
+      // Allow free movement around the screen with some dampening
+      const dragOffsetX = Math.max(-100, Math.min(100, deltaX * 0.4));
+      const dragOffsetY = Math.max(-100, Math.min(100, deltaY * 0.4));
+      
+      tabTouchRef.current.dragOffset = dragOffsetY; // Keep for gesture detection
+      
+      setTabVisual(prev => ({
+        ...prev,
+        dragOffset: dragOffsetY,
+        dragOffsetX: dragOffsetX, // Add X offset for free movement
+      }));
+    }
+  }, [haptic]);
+
+  const handleTabTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!tabTouchRef.current.isTracking) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - tabTouchRef.current.startX;
+    const deltaY = touch.clientY - tabTouchRef.current.startY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    const timeElapsed = Date.now() - tabTouchRef.current.startTime;
+    
+    console.log(`[Day Card Tab Touch] End - deltaY: ${deltaY.toFixed(1)}, time: ${timeElapsed}ms, isDragging: ${tabTouchRef.current.isDragging}`);
+    
+    let actionTaken = false;
+
+    // Handle FLICK gestures - more forgiving criteria when card is open
+    const flickTimeThreshold = isActive ? 800 : 600; // More time allowed when card is open
+    const flickDistanceThreshold = isActive ? 30 : 40; // Less distance needed when card is open
+    
+    if (timeElapsed < flickTimeThreshold && absDeltaY > flickDistanceThreshold) {
+      if (deltaY > 0) {
+        // FLICK DOWN = expose card above it (lower stack position)
+        console.log('[Day Card Tab Touch] Flick DOWN - exposing card above', { stackPosition, hasHandler: !!onFlickDown, isActive });
+        onFlickDown?.(stackPosition);
+        haptic.success();
+        actionTaken = true;
+      } else if (deltaY < 0) {
+        // FLICK UP = expose card below it (higher stack position)
+        console.log('[Day Card Tab Touch] Flick UP - exposing card below', { stackPosition, totalInStack, hasHandler: !!onFlickUp, isActive });
+        onFlickUp?.(stackPosition, totalInStack);
+        haptic.success();
+        actionTaken = true;
+      }
+    }
+    
+    // Handle tap if no vertical gesture detected
+    if (!actionTaken && !tabTouchRef.current.hasMovedSignificantly && timeElapsed < 300) {
+      console.log('[Day Card Tab Touch] Tap action');
+      onToggle?.();
+      haptic.medium();
+      actionTaken = true;
+    }
+
+    // Prevent click event if we performed a gesture
+    if (actionTaken) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    clearTabTouchState();
+  }, [isActive, onToggle, onFlickDown, onFlickUp, stackPosition, totalInStack, haptic, clearTabTouchState]);
+
+  const handleTabTouchCancel = useCallback(() => {
+    console.log('[Day Card Tab Touch] Cancelled');
+    clearTabTouchState();
+  }, [clearTabTouchState]);
   return (
     <div
       className="absolute left-0 right-0"
@@ -413,22 +714,30 @@ const DayCard = React.memo(({
       <div
         className="bg-white rounded-xl shadow-sm overflow-hidden relative"
         style={{
-          transform: isActive ? 'translateY(-316px) scale(1.02)' : 'translateY(0)',
-          transition: 'transform 0.3s ease-out', // Only transform, nothing else
+          transform: `${isActive ? 'translateY(-316px) scale(1.02)' : 'translateY(0)'} translateY(${tabVisual.dragOffset}px) translateX(${tabVisual.dragOffsetX || 0}px) scale(${isActive ? 1.02 * tabVisual.scale : tabVisual.scale})`,
+          transition: tabVisual.isDragging ? 'none' : 'transform 0.3s ease-out',
           borderWidth: '1px',
           borderStyle: 'solid',
           borderColor: finalAccentSoft,
           boxShadow: finalBoxShadow,
+          filter: `brightness(${tabVisual.brightness})`,
         }}
       >
-        {/* Day Header */}
+        {/* Day Header - TAB AREA WITH TOUCH ENABLED */}
         <div
-          onClick={onToggle}
           className="relative px-4 py-2 cursor-pointer border-b"
+          data-tab-touch-area="true"
+          onTouchStart={handleTabTouchStart}
+          onTouchMove={handleTabTouchMove}
+          onTouchEnd={handleTabTouchEnd}
+          onTouchCancel={handleTabTouchCancel}
+          onClick={onToggle}
           style={{
             backgroundColor: accentColor,
             borderBottomColor: finalAccentSoft,
-            boxShadow: `inset 0 8px 15px -3px #0000001A, inset 0 -8px 15px -3px #0000001A`
+            boxShadow: `inset 0 8px 15px -3px #0000001A, inset 0 -8px 15px -3px #0000001A`,
+            touchAction: 'none',
+            background: tabVisual.isDragging ? `linear-gradient(135deg, ${accentColor}, rgba(59, 130, 246, 0.1))` : accentColor,
           }}
         >
           <div className="relative flex items-baseline justify-between" style={{ zIndex: 1 }}>
@@ -510,6 +819,13 @@ const DayCard = React.memo(({
             keepers={keepers}
           />
         </div>
+
+        {/* Drag indicator - positioned below tab to avoid bleeding through blur */}
+        {tabVisual.isDragging && (
+          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-[11px] px-2 py-1 rounded-full pointer-events-none border border-white/20 z-20 whitespace-nowrap">
+            Swipe tab up/down to navigate
+          </div>
+        )}
       </div>
     </div>
   );
