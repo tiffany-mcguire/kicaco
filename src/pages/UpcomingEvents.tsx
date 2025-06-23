@@ -1071,15 +1071,7 @@ export default function UpcomingEvents() {
   const expandedCardHeight = 240;
   const popOffset = expandedCardHeight - visibleTabHeight;
 
-  const isFirstLoad = useRef(true);
-  useEffect(() => {
-      if (isFirstLoad.current && sortedDates.length > 0) {
-          // Auto-open the visually first card (top of stack) - which is the latest date due to reversal
-          // The latest date is at the end of sortedDates array
-          setActiveDayDate(sortedDates[sortedDates.length - 1]);
-          isFirstLoad.current = false;
-      }
-  }, [sortedDates]);
+  // No auto-opening of cards on initial load
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -1160,15 +1152,20 @@ export default function UpcomingEvents() {
                 const reversedMonthDates = [...monthDates].reverse();
                 const activeDateIndex = activeDayDate ? reversedMonthDates.indexOf(activeDayDate) : -1;
                 
-                // Check if there's an active card from the immediately previous month that could overlap this header
-                const prevMonth = monthIndex > 0 ? sortedMonths[monthIndex - 1] : null;
-                const hasPreviousActiveCard = prevMonth && activeDayDate && 
-                  eventsByMonth[prevMonth] && eventsByMonth[prevMonth].includes(activeDayDate);
+                // Calculate global position offset for this month to ensure unique data-event-card-position values
+                const globalPositionOffset = sortedMonths.slice(0, monthIndex).reduce((offset, prevMonth) => {
+                  return offset + eventsByMonth[prevMonth].length;
+                }, 0);
+                
+                // Check if there's an active card from ANY previous month that could overlap this header
+                const hasOverlappingActiveCard = activeDayDate && sortedMonths.slice(0, monthIndex).some(prevMonth => 
+                  eventsByMonth[prevMonth] && eventsByMonth[prevMonth].includes(activeDayDate)
+                );
 
                 return (
                   <div key={month}>
                     <h2 className={`text-sm font-medium text-gray-600 mb-4 ml-1 transition-all duration-380 ${
-                      hasPreviousActiveCard ? 'pt-20' : ''
+                      hasOverlappingActiveCard ? 'pt-48' : ''
                     }`}>
                       {format(parse(month, 'yyyy-MM', new Date()), 'MMMM yyyy')}
                     </h2>
@@ -1181,15 +1178,18 @@ export default function UpcomingEvents() {
                       }}
                     >
                       {reversedMonthDates.map((date, idx) => {
-                          const stackPosition = idx;
+                          // Use local idx for all visual positioning (keeps existing logic intact)
+                          const localStackPosition = idx;
+                          // Use global position for data attribute to ensure uniqueness across months
+                          const globalStackPosition = idx + globalPositionOffset;
                           const isActive = activeDayDate === date;
                           
-                          // Calculate the card's vertical offset
+                          // Calculate the card's vertical offset (using local position for visual consistency)
                           // Cards stack from bottom to top
-                          let cardOffset = (reversedMonthDates.length - 1 - stackPosition) * visibleTabHeight;
+                          let cardOffset = (reversedMonthDates.length - 1 - localStackPosition) * visibleTabHeight;
                           
                           // If there's an active card below this one, push this card up
-                          if (activeDateIndex !== -1 && activeDateIndex > stackPosition) {
+                          if (activeDateIndex !== -1 && activeDateIndex > localStackPosition) {
                               cardOffset += popOffset;
                           }
                           
@@ -1203,10 +1203,10 @@ export default function UpcomingEvents() {
                                   key={date}
                                   className="absolute left-0 right-0 h-[240px]"
                                   data-event-card-date={date}
-                                  data-event-card-position={stackPosition}
+                                  data-event-card-position={globalStackPosition}
                                   style={{
                                       top: `${cardOffset}px`,
-                                      zIndex: reversedMonthDates.length - stackPosition,
+                                      zIndex: reversedMonthDates.length - localStackPosition,
                                       transition: 'top 380ms cubic-bezier(0.4, 0, 0.2, 1)',
                                   }}
                               >
@@ -1214,7 +1214,7 @@ export default function UpcomingEvents() {
                                       <EnhancedEventCard
                                         event={eventsByDate[date][0]}
                                         date={date}
-                                        stackPosition={stackPosition}
+                                        stackPosition={globalStackPosition}
                                         totalInStack={reversedMonthDates.length}
                                         isActive={isActive}
                                         activeIndex={activeDateIndex}
@@ -1254,7 +1254,7 @@ export default function UpcomingEvents() {
                                       <CarouselEventCard
                                         dayEvents={eventsByDate[date]}
                                         date={date}
-                                        stackPosition={stackPosition}
+                                        stackPosition={globalStackPosition}
                                         totalInStack={reversedMonthDates.length}
                                         isActive={isActive}
                                         activeIndex={activeDateIndex}

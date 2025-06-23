@@ -1,4 +1,3 @@
-
 import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { AddKeeperButton } from '../components/common';
@@ -18,11 +17,65 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
 
+// Haptic feedback utility
+const haptic = {
+  light: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+  },
+  medium: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(20);
+    }
+  },
+  success: () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate([15, 10, 15]);
+    }
+  }
+};
+
 // Day colors for accent line (same as EventCard and UpcomingEvents)
 const dayColors: { [key: number]: string } = {
   0: '#f8b6c2', 1: '#ffd8b5', 2: '#fde68a', 3: '#bbf7d0',
   4: '#c0e2e7', 5: '#d1d5fa', 6: '#e9d5ff',
 };
+
+// Touch state interfaces
+interface TabTouchState {
+  isTracking: boolean;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  startTime: number;
+  dragOffset: number;
+  isDragging: boolean;
+  hasMovedSignificantly: boolean;
+}
+
+interface Keeper {
+  keeperName: string;
+  date: string;
+  childName: string;
+  description?: string;
+  time?: string;
+}
+
+interface DateGroup {
+  date: string;
+  keepers: Keeper[];
+  month?: string;
+}
+
+interface TabVisualState {
+  isDragging: boolean;
+  dragOffset: number;
+  dragOffsetX: number;
+  scale: number;
+  brightness: number;
+}
 
 // Helper functions
 const formatDate = (date?: string) => {
@@ -44,211 +97,232 @@ const formatTime = (time?: string) => {
     try {
       const dateObj = parse(normalized, pattern, new Date());
       if (!isNaN(dateObj.getTime())) return format(dateObj, 'hh:mm a');
-    } catch {}
+    } catch {
+      // Pattern failed to parse, continue to next pattern
+    }
   }
   const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
   return isNaN(dateObj.getTime()) ? time : format(dateObj, 'hh:mm a');
 };
 
 // Carousel Keeper Card Component
+interface CarouselKeeperCardProps {
+  dayKeepers: Keeper[];
+  date: string;
+  stackPosition: number;
+  totalInStack: number;
+  isActive: boolean;
+  activeIndex: number | null;
+  onTabClick: () => void;
+  navigate: (path: string, options?: { state?: { keeper?: Keeper; keeperIndex?: number; isEdit?: boolean } }) => void;
+  removeKeeper: (index: number) => void;
+  keepers: Keeper[];
+  onFlickDown?: (stackPosition: number) => void;
+  onFlickUp?: (stackPosition: number) => void;
+}
+
 const CarouselKeeperCard = React.memo(({ 
   dayKeepers, date, stackPosition, totalInStack, isActive, activeIndex, onTabClick, 
-  navigate, removeKeeper, keepers, onFlickDismiss
-}: any) => {
+  navigate, removeKeeper, keepers, onFlickDown, onFlickUp
+}: CarouselKeeperCardProps) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
-  // Touch handling for swipe gestures and flick-to-dismiss
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
-  const touchStartTime = useRef<number | null>(null);
-  const touchIntentionRef = useRef<'unknown' | 'horizontal' | 'swipe' | 'flick' | 'expand'>('unknown');
-  
-  // Helper function to reset touch state
-  const resetTouchState = useCallback(() => {
-    touchStartX.current = null;
-    touchStartY.current = null;
-    touchStartTime.current = null;
-    touchIntentionRef.current = 'unknown';
+  // Tab touch state - only for tab area
+  const tabTouchRef = useRef<TabTouchState>({
+    isTracking: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    startTime: 0,
+    dragOffset: 0,
+    isDragging: false,
+    hasMovedSignificantly: false,
+  });
+
+  // Tab visual feedback
+  const [tabVisual, setTabVisual] = useState<TabVisualState>({
+    isDragging: false,
+    dragOffset: 0,
+    dragOffsetX: 0,
+    scale: 1,
+    brightness: 1,
+  });
+
+  // Clear touch state
+  const clearTabTouchState = useCallback(() => {
+    tabTouchRef.current.isTracking = false;
+    tabTouchRef.current.isDragging = false;
+    tabTouchRef.current.hasMovedSignificantly = false;
+    setTabVisual({
+      isDragging: false,
+      dragOffset: 0,
+      dragOffsetX: 0,
+      scale: 1,
+      brightness: 1,
+    });
   }, []);
 
-  // Handle swipe navigation
-  const handleSwipe = (direction: number) => {
-    if (dayKeepers.length <= 1) return;
-    
-    if (direction > 0) {
-      // Swipe left - next keeper
-      setCurrentIdx((currentIdx + 1) % dayKeepers.length);
-    } else {
-      // Swipe right - previous keeper
-      setCurrentIdx((currentIdx - 1 + dayKeepers.length) % dayKeepers.length);
-    }
-  };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    resetTouchState();
-    
+
+  // TAB TOUCH HANDLERS - ONLY ON TAB AREA (same as KeeperCard)
+  const handleTabTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only handle touches that start on the tab area
     const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('[role="button"]')) {
+    if (!target.closest('[data-tab-touch-area="true"]')) {
       return;
     }
+
+    e.preventDefault(); // Prevent scroll only on tab area
     
-    // Always prevent default on touch start to prevent scroll momentum
+    const touch = e.touches[0];
+    const now = Date.now();
+    
+    tabTouchRef.current = {
+      isTracking: true,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      currentX: touch.clientX,
+      currentY: touch.clientY,
+      startTime: now,
+      dragOffset: 0,
+      isDragging: false,
+      hasMovedSignificantly: false,
+    };
+
+    haptic.light();
+    console.log('[CarouselKeeper Tab Touch] Started');
+  }, []);
+
+  const handleTabTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!tabTouchRef.current.isTracking) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - tabTouchRef.current.startX;
+    const deltaY = touch.clientY - tabTouchRef.current.startY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    
+    tabTouchRef.current.currentX = touch.clientX;
+    tabTouchRef.current.currentY = touch.clientY;
+
+    // Mark significant movement
+    if (absDeltaX > 8 || absDeltaY > 8) {
+      tabTouchRef.current.hasMovedSignificantly = true;
+    }
+
+    // Start dragging if significant movement in any direction
+    if ((absDeltaX > 10 || absDeltaY > 10) && !tabTouchRef.current.isDragging) {
+      tabTouchRef.current.isDragging = true;
+      setTabVisual(prev => ({
+        ...prev,
+        isDragging: true,
+        scale: 1.02,
+        brightness: 1.1,
+      }));
+      haptic.medium();
+      console.log('[CarouselKeeper Tab Touch] Drag started');
+    }
+
+    // Update visual feedback during drag - allow movement in all directions
+    if (tabTouchRef.current.isDragging) {
+      e.preventDefault(); // Only prevent default during active drag
+      
+      // Allow free movement around the screen with some dampening
+      const dragOffsetX = Math.max(-100, Math.min(100, deltaX * 0.4));
+      const dragOffsetY = Math.max(-100, Math.min(100, deltaY * 0.4));
+      
+      tabTouchRef.current.dragOffset = dragOffsetY; // Keep for gesture detection
+      
+      setTabVisual(prev => ({
+        ...prev,
+        dragOffset: dragOffsetY,
+        dragOffsetX: dragOffsetX, // Add X offset for free movement
+      }));
+    }
+  }, []);
+
+  const handleTabTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!tabTouchRef.current.isTracking) return;
+    
+    // Always stop propagation to prevent multiple cards from responding
     e.preventDefault();
+    e.stopPropagation();
     
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-    touchIntentionRef.current = 'unknown';
-  };
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - tabTouchRef.current.startX;
+    const deltaY = touch.clientY - tabTouchRef.current.startY;
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+    const timeElapsed = Date.now() - tabTouchRef.current.startTime;
+    
+    console.log(`[CarouselKeeper Tab Touch] End - deltaY: ${deltaY.toFixed(1)}, time: ${timeElapsed}ms, isDragging: ${tabTouchRef.current.isDragging}`);
+    
+    let actionTaken = false;
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
-      resetTouchState();
-      return;
-    }
-
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('[role="button"]')) {
-      return;
-    }
+    // Handle FLICK gestures - more forgiving criteria when card is open
+    const flickTimeThreshold = isActive ? 800 : 600; // More time allowed when card is open
+    const flickDistanceThreshold = isActive ? 30 : 40; // Less distance needed when card is open
     
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const diffX = Math.abs(touchStartX.current - currentX);
-    const diffY = Math.abs(touchStartY.current - currentY);
-    
-    if (touchIntentionRef.current === 'unknown') {
-      const minMovement = 15;
-      
-      if (diffX > minMovement || diffY > minMovement) {
-        const horizontalDisplacement = Math.abs(touchStartX.current - currentX);
-        const verticalDisplacement = Math.abs(touchStartY.current - currentY);
-        const verticalDiff = touchStartY.current - currentY; // Positive = upward movement
-        const timeDiff = Date.now() - touchStartTime.current;
-        const verticalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
-        
-        // Check for flick gesture (fast upward movement on active card) - more sensitive thresholds
-        if (isActive && onFlickDismiss && verticalDiff > 15 && verticalVelocity > 0.3 && horizontalDisplacement < 50) {
-          touchIntentionRef.current = 'flick';
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        
-        // Check for expand gesture (upward movement on inactive card)
-        if (!isActive && verticalDiff > 10 && verticalVelocity > 0.2 && horizontalDisplacement < 40) {
-          touchIntentionRef.current = 'expand';
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        
-        // Check for horizontal gestures
-        if (dayKeepers.length > 1 && horizontalDisplacement > verticalDisplacement * 1.2 && horizontalDisplacement > 15) {
-          touchIntentionRef.current = 'horizontal';
-          e.preventDefault();
-          e.stopPropagation();
-        } else if (dayKeepers.length > 1 && horizontalDisplacement > 25) {
-          touchIntentionRef.current = 'swipe';
-          e.preventDefault();
-          e.stopPropagation();
-        }
+    if (timeElapsed < flickTimeThreshold && absDeltaY > flickDistanceThreshold) {
+      if (deltaY > 0) {
+        // FLICK DOWN = expose card above it (lower stack position)
+        console.log('[CarouselKeeper Tab Touch] Flick DOWN - exposing card above', { stackPosition, hasHandler: !!onFlickDown, isActive });
+        onFlickDown?.(stackPosition);
+        haptic.success();
+        actionTaken = true;
+      } else if (deltaY < 0) {
+        // FLICK UP = expose card below it (higher stack position)
+        console.log('[CarouselKeeper Tab Touch] Flick UP - exposing card below', { stackPosition, totalInStack, hasHandler: !!onFlickUp, isActive });
+        onFlickUp?.(stackPosition);
+        haptic.success();
+        actionTaken = true;
       }
     }
     
-          if (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe') {
-        e.preventDefault();
-        e.stopPropagation();
-      } else if (touchIntentionRef.current === 'flick') {
-        e.preventDefault();
-        e.stopPropagation();
+    // Handle tap if no vertical gesture detected
+    if (!actionTaken && !tabTouchRef.current.hasMovedSignificantly && timeElapsed < 300) {
+      console.log('[CarouselKeeper Tab Touch] Tap action');
+      onTabClick?.();
+      haptic.medium();
+      actionTaken = true;
+    }
+
+    // Horizontal swipe for carousel (only if not dragging vertically)
+    if (!actionTaken && absDeltaX > 40 && absDeltaX > absDeltaY * 1.5) {
+      if (deltaX > 0 && currentIdx > 0) {
+        setCurrentIdx(prev => prev - 1);
+        haptic.medium();
+        actionTaken = true;
+        console.log('[CarouselKeeper Tab Touch] Swipe to previous');
+      } else if (deltaX < 0 && currentIdx < dayKeepers.length - 1) {
+        setCurrentIdx(prev => prev + 1);
+        haptic.medium();
+        actionTaken = true;
+        console.log('[CarouselKeeper Tab Touch] Swipe to next');
       }
-      // Don't stop propagation if we haven't determined a specific gesture - let scrolling work
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
-      resetTouchState();
-      return;
     }
 
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('[role="button"]')) {
-      resetTouchState();
-      return;
-    }
-    
-    // Always prevent default to stop any scroll momentum
-    e.preventDefault();
-    
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const diffX = touchStartX.current - touchEndX;
-    
-    // Handle flick gesture first
-    if (touchIntentionRef.current === 'flick' && isActive && onFlickDismiss) {
-      const verticalDiff = touchStartY.current - touchEndY;
-      const timeDiff = Date.now() - touchStartTime.current;
-      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
-      
+    // Prevent click event if we performed a gesture
+    if (actionTaken) {
       e.preventDefault();
       e.stopPropagation();
-      
-      // Final validation: ensure it's a strong upward flick - more lenient thresholds
-      if (verticalDiff > 25 && finalVelocity > 0.25) {
-        onFlickDismiss(stackPosition);
-        resetTouchState();
-        return;
-      }
     }
 
-    // Handle expand gesture
-    if (touchIntentionRef.current === 'expand' && !isActive && onTabClick) {
-      const verticalDiff = touchStartY.current - touchEndY;
-      const timeDiff = Date.now() - touchStartTime.current;
-      const finalVelocity = timeDiff > 0 ? Math.abs(verticalDiff) / timeDiff : 0;
-      
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Final validation: ensure it's an upward gesture
-      if (verticalDiff > 15 && finalVelocity > 0.2) {
-        onTabClick();
-        resetTouchState();
-        return;
-      }
-    }
+    clearTabTouchState();
+  }, [isActive, onTabClick, onFlickDown, onFlickUp, stackPosition, totalInStack, currentIdx, dayKeepers.length, setCurrentIdx, clearTabTouchState]);
 
-    // Handle carousel swipe
-    if (dayKeepers.length > 1 && (touchIntentionRef.current === 'horizontal' || touchIntentionRef.current === 'swipe')) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const horizontalDisplacement = Math.abs(diffX);
-      const threshold = 50;
-      
-      if (horizontalDisplacement > threshold) {
-        if (diffX > 0) {
-          handleSwipe(1);
-        } else {
-          handleSwipe(-1);
-        }
-      }
-    }
-    
-    resetTouchState();
-  };
-
-  const handleTouchCancel = () => {
-    resetTouchState();
-  };
+  const handleTabTouchCancel = useCallback(() => {
+    console.log('[CarouselKeeper Tab Touch] Cancelled');
+    clearTabTouchState();
+  }, [clearTabTouchState]);
 
   const keeper = dayKeepers[currentIdx];
   const dayOfWeek = date ? parse(date, 'yyyy-MM-dd', new Date()).getDay() : 0;
   const isTodayKeeper = date ? isToday(parse(date, 'yyyy-MM-dd', new Date())) : false;
   const imageUrl = getKicacoEventPhoto(keeper.keeperName || 'keeper');
 
-  // Calculate card positioning (same as KeeperCard)
+  // Calculate card positioning - exact copy from ThirtyDayKeeperOutlook
   const visibleTabHeight = 56;
   let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
   
@@ -264,20 +338,22 @@ const CarouselKeeperCard = React.memo(({
     <div
       className="absolute left-0 right-0 h-[240px]"
       data-keeper-card-position={stackPosition}
+      data-keeper-card-date={date}
       style={{
         top: `${cardOffset}px`,
         zIndex: totalInStack - stackPosition,
-        transition: 'all 300ms ease-in-out',
+        transition: tabVisual.isDragging ? 'none' : 'all 380ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <div
         className="relative w-full h-full rounded-xl overflow-hidden bg-white"
         style={{
-          transform: isActive ? 'translateY(-176px) scale(1.02)' : 'translateY(0)',
-          transition: 'all 300ms ease-in-out',
+          transform: `translateY(${(isActive ? -176 : 0) + tabVisual.dragOffset}px) translateX(${tabVisual.dragOffsetX || 0}px) scale(${isActive ? 1.02 * tabVisual.scale : tabVisual.scale})`,
+          transition: tabVisual.isDragging ? 'none' : 'all 380ms cubic-bezier(0.4, 0, 0.2, 1)',
           boxShadow: isActive 
             ? '0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)' 
             : '0 4px 12px rgba(0, 0, 0, 0.15)',
+          filter: `brightness(${tabVisual.brightness})`,
         }}
       >
         <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -285,13 +361,17 @@ const CarouselKeeperCard = React.memo(({
         <div className="absolute inset-0 bg-black/[.65]" />
         
         <div 
-          className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm"
-          data-card-tab="true"
-          style={{ touchAction: 'manipulation' }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
+          className="absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm cursor-pointer"
+          data-tab-touch-area="true"
+          onTouchStart={handleTabTouchStart}
+          onTouchMove={handleTabTouchMove}
+          onTouchEnd={handleTabTouchEnd}
+          onTouchCancel={handleTabTouchCancel}
+          style={{ 
+            touchAction: 'none',
+            background: tabVisual.isDragging ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+            borderRadius: tabVisual.isDragging ? '12px 12px 0 0' : '0'
+          }}
         >
           <div className="flex h-full items-center justify-between px-4" onClick={onTabClick}>
             <div className="flex flex-col justify-center">
@@ -339,7 +419,7 @@ const CarouselKeeperCard = React.memo(({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const globalKeeperIndex = keepers.findIndex((k: any) => 
+                const globalKeeperIndex = keepers.findIndex((k: Keeper) => 
                   k.keeperName === keeper.keeperName && 
                   k.date === keeper.date && 
                   k.childName === keeper.childName &&
@@ -380,7 +460,7 @@ const CarouselKeeperCard = React.memo(({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const globalKeeperIndex = keepers.findIndex((k: any) => 
+                const globalKeeperIndex = keepers.findIndex((k: Keeper) => 
                   k.keeperName === keeper.keeperName && 
                   k.date === keeper.date && 
                   k.childName === keeper.childName &&
@@ -397,12 +477,23 @@ const CarouselKeeperCard = React.memo(({
             </button>
           </div>
         )}
+
+        {/* Drag indicator - positioned below tab to avoid bleeding through blur */}
+        {tabVisual.isDragging && (
+          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full pointer-events-none border border-white/20 z-20">
+            {onFlickDown || onFlickUp 
+              ? 'Flick up/down to navigate stack • Swipe left/right for carousel'
+              : (dayKeepers.length > 1 
+                ? 'Swipe left/right for carousel' 
+                : (isActive ? 'Drag to close' : 'Drag up to expand')
+              )
+            }
+          </div>
+        )}
       </div>
     </div>
   );
 });
-
-
 
 export default function Keepers() {
   const navigate = useNavigate();
@@ -439,38 +530,21 @@ export default function Keepers() {
     removeKeeper,
   } = useKicacoStore();
 
-  // State for keeper card interactions
-  const [activeKeeperIndices, setActiveKeeperIndices] = useState<Record<string, number | null>>({});
+  // State for keeper card interactions - using single index like ThirtyDayKeeperOutlook
+  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number | null>(null);
 
   // Track if this is from flick dismissal to prevent auto-scroll on manual opens
   const wasFlickDismissalRef = useRef(false);
 
-  // Track first load for auto-opening first cards
-  const isFirstLoad = useRef(true);
-
-  // Handle flick-to-dismiss for keeper stacks
-  const handleFlickDismiss = useCallback((month: string, currentStackPosition: number) => {
-    // Find the next card to activate (one position lower in the stack)
-    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
-    
-    // Mark that this is from flick dismissal
-    wasFlickDismissalRef.current = true;
-    
-    // Close current card and optionally activate next
-    setActiveKeeperIndices(prev => ({
-      ...prev,
-      [month]: nextStackPosition
-    }));
-  }, []);
+  // Debouncing to prevent rapid-fire stack navigation
+  const lastFlickTimeRef = useRef<number>(0);
 
   // Auto-scroll to newly activated card after flick dismissal (only if not fully visible)
   useEffect(() => {
-    // Find any month with an active card and scroll to it
-    const activeMonth = Object.keys(activeKeeperIndices).find(month => activeKeeperIndices[month] !== null);
-    if (activeMonth && activeKeeperIndices[activeMonth] !== null && wasFlickDismissalRef.current) {
+    if (activeKeeperIndex !== null && wasFlickDismissalRef.current) {
       // Use requestAnimationFrame to ensure the card activation animation has started
       requestAnimationFrame(() => {
-        const cardElement = document.querySelector(`[data-keeper-card-position="${activeKeeperIndices[activeMonth]}"]`);
+        const cardElement = document.querySelector(`[data-keeper-card-position="${activeKeeperIndex}"]`);
         if (cardElement) {
           const rect = cardElement.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
@@ -495,7 +569,7 @@ export default function Keepers() {
         wasFlickDismissalRef.current = false;
       });
     }
-  }, [activeKeeperIndices]);
+  }, [activeKeeperIndex]);
 
   // Group keepers by month and then by date (filtering out past keepers)
   const keepersByMonth = useMemo(() => {
@@ -524,13 +598,13 @@ export default function Keepers() {
     }, {} as Record<string, typeof keepers>);
 
     // Then group by date within each month
-    const result: Record<string, { date: string; keepers: any[] }[]> = {};
+    const result: Record<string, DateGroup[]> = {};
     
     Object.keys(monthGroups).forEach(month => {
       const monthKeepers = monthGroups[month];
       
       // Group by date within this month
-      const dateGroups: { [date: string]: any[] } = {};
+      const dateGroups: { [date: string]: Keeper[] } = {};
       monthKeepers.forEach(keeper => {
         if (!dateGroups[keeper.date]) {
           dateGroups[keeper.date] = [];
@@ -564,23 +638,63 @@ export default function Keepers() {
     [keepersByMonth]
   );
 
-  // Auto-open the first card in the first month on initial load
-  useEffect(() => {
-    if (isFirstLoad.current && sortedMonths.length > 0) {
-      const firstMonth = sortedMonths[0];
-      const firstMonthKeepers = keepersByMonth[firstMonth];
-      
-      if (firstMonthKeepers && firstMonthKeepers.length > 0 && !activeKeeperIndices[firstMonth]) {
-        // Open the first card (most recent/top of stack - which is at the end of the reversed array)
-        const firstCardPosition = firstMonthKeepers.length - 1;
-        setActiveKeeperIndices(prev => ({
-          ...prev,
-          [firstMonth]: firstCardPosition
-        }));
-        isFirstLoad.current = false;
-      }
+  // Create a flat list of all date groups for global stack positioning (exactly like ThirtyDayKeeperOutlook)
+  const allDateGroups = useMemo(() => {
+    const allGroups: Array<DateGroup & { month: string }> = [];
+    
+    sortedMonths.forEach(month => {
+      const monthGroups = keepersByMonth[month];
+      monthGroups.forEach(group => {
+        allGroups.push({
+          ...group,
+          month
+        });
+      });
+    });
+    
+    // Sort all groups by date
+    return allGroups.sort((a, b) => {
+      const dateA = parse(a.date, 'yyyy-MM-dd', new Date());
+      const dateB = parse(b.date, 'yyyy-MM-dd', new Date());
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [sortedMonths, keepersByMonth]);
+
+  // Handle flick down - dismiss current card to reveal the one "above" it in stack (exact copy from ThirtyDayKeeperOutlook)
+  const handleFlickDown = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[Keepers] handleFlickDown debounced');
+      return;
     }
-  }, [sortedMonths, keepersByMonth, activeKeeperIndices]);
+    lastFlickTimeRef.current = now;
+    
+    console.log('[Keepers] handleFlickDown called', { currentStackPosition });
+    // Get total cards by counting grouped dates
+    const totalCards = document.querySelectorAll('[data-keeper-card-position]').length;
+    const nextStackPosition = currentStackPosition < totalCards - 1 ? currentStackPosition + 1 : null;
+    console.log('[Keepers] Setting active to', { nextStackPosition });
+    setActiveKeeperIndex(nextStackPosition);
+  }, []);
+
+  // Handle flick up - bring back the card "below" it in stack (exact copy from ThirtyDayKeeperOutlook)
+  const handleFlickUp = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[Keepers] handleFlickUp debounced');
+      return;
+    }
+    lastFlickTimeRef.current = now;
+    
+    console.log('[Keepers] handleFlickUp called', { currentStackPosition });
+    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
+    console.log('[Keepers] Setting active to', { nextStackPosition });
+    setActiveKeeperIndex(nextStackPosition);
+  }, []);
+
+  // No auto-opening of cards on initial load (consistent with other pages)
 
   const currentDrawerHeight = storedDrawerHeight !== null && storedDrawerHeight !== undefined ? storedDrawerHeight : 32;
 
@@ -659,6 +773,7 @@ export default function Keepers() {
 
   useEffect(() => {
     // Scroll overflow management simplified
+    console.log('Drawer height changed:', currentDrawerHeight);
   }, [currentDrawerHeight]);
 
   // Main Scroll/Restore/Autoscroll Effect
@@ -860,40 +975,53 @@ export default function Keepers() {
       />
       <div
         ref={scrollRef}
-        className="keepers-content-scroll bg-gray-50 flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto p-4"
         style={{
           paddingBottom: `${currentDrawerHeight + (footerRef.current?.getBoundingClientRect().height || 0) + 200}px`, // Added extra padding for expanded keeper cards
         }}
       >
         {keepers && keepers.length > 0 ? (
-          <div className="max-w-md mx-auto px-4 pb-4">
-            {sortedMonths.map((month, monthIndex) => {
+          <div className="max-w-md mx-auto">
+            <div className="space-y-8">
+              {sortedMonths.map((month, monthIndex) => {
               const monthDateGroups = keepersByMonth[month];
               // Reverse the date groups so earliest is last (will be at bottom of stack)
               const reversedDateGroups = [...monthDateGroups].reverse();
-              const activeIndex = activeKeeperIndices[month];
+
+              // Find if any card in this month is active - adapted from UpcomingEvents structure
+              const activeDate = activeKeeperIndex !== null ? 
+                allDateGroups[allDateGroups.length - 1 - activeKeeperIndex]?.date : null;
+              const activeDateIndex = activeDate ? reversedDateGroups.findIndex(g => g.date === activeDate) : -1;
+              
+                              // Check if there's an active card from ANY previous month that could overlap this header
+                const hasOverlappingActiveCard = activeDate && sortedMonths.slice(0, monthIndex).some(prevMonth => 
+                  keepersByMonth[prevMonth] && keepersByMonth[prevMonth].some(g => g.date === activeDate)
+                );
 
               return (
-                <div key={month} className="mb-6">
-                  <h2 className="text-sm font-medium text-gray-600 mb-3 ml-1">
+                <div key={month}>
+                  <h2 className={`text-sm font-medium text-gray-600 mb-4 ml-1 transition-all duration-380 ${
+                    hasOverlappingActiveCard ? 'pt-48' : ''
+                  }`}>
                     {format(parse(month, 'yyyy-MM', new Date()), 'MMMM yyyy')}
                   </h2>
                   <div
                     className="relative"
                     style={{
                       height: `${240 + ((reversedDateGroups.length - 1) * 56)}px`,
-                      marginBottom: activeIndex === reversedDateGroups.length - 1 ? '196px' : (monthIndex < sortedMonths.length - 1 ? '40px' : '20px'),
-                      transition: 'margin-bottom 300ms ease-in-out',
+                      marginBottom: activeDateIndex !== -1 ? '32px' : '20px',
+                      transition: 'margin-bottom 380ms cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    {reversedDateGroups.map((dayGroup, idx) => {
-                      const stackPosition = idx;
-                      const isActive = activeIndex === stackPosition;
+                    {reversedDateGroups.map((dayGroup) => {
+                      // Calculate global stack position - find this group in the flat allDateGroups array
+                      const globalStackPosition = allDateGroups.length - 1 - allDateGroups.findIndex(g => g.date === dayGroup.date && g.month === month);
+                      const isActive = activeKeeperIndex === globalStackPosition;
                       
                       // If only one keeper for this day, use the original KeeperCard
                       if (dayGroup.keepers.length === 1) {
                         const keeper = dayGroup.keepers[0];
-                        const originalKeeperIndex = keepers.findIndex(k => 
+                        const originalKeeperIndex = keepers.findIndex((k: Keeper) => 
                           k.keeperName === keeper.keeperName && 
                           k.date === keeper.date &&
                           k.childName === keeper.childName
@@ -905,56 +1033,53 @@ export default function Keepers() {
                           }
                         };
                         
-                        return (
-                          <KeeperCard
-                            key={`${keeper.keeperName}-${keeper.date}-${stackPosition}`}
-                            keeperName={keeper.keeperName}
-                            date={keeper.date}
-                            childName={keeper.childName}
-                            description={keeper.description}
-                            time={keeper.time}
-                            index={stackPosition}
-                            stackPosition={stackPosition}
-                            totalInStack={reversedDateGroups.length}
-                            isActive={isActive}
-                            activeIndex={activeIndex ?? null}
-                            onTabClick={() => {
-                              setActiveKeeperIndices(prev => ({
-                                ...prev,
-                                [month]: prev[month] === stackPosition ? null : stackPosition
-                              }));
-                            }}
-                            onFlickDismiss={(stackPos: number) => handleFlickDismiss(month, stackPos)}
-                            onEdit={() => {
-                              navigate('/add-keeper', {
-                                state: {
-                                  isEdit: true,
-                                  keeper: keeper,
-                                  keeperIndex: originalKeeperIndex
-                                }
-                              });
-                            }}
-                            onDelete={isActive ? handleDelete : undefined}
-                          />
-                        );
+                                                  return (
+                            <KeeperCard
+                              key={`${keeper.keeperName}-${keeper.date}-${globalStackPosition}`}
+                              keeperName={keeper.keeperName}
+                              date={keeper.date}
+                              childName={keeper.childName}
+                              description={keeper.description}
+                              time={keeper.time}
+                              index={globalStackPosition}
+                              stackPosition={globalStackPosition}
+                              totalInStack={allDateGroups.length}
+                              isActive={isActive}
+                              activeIndex={activeKeeperIndex}
+                              onTabClick={() => {
+                                setActiveKeeperIndex(activeKeeperIndex === globalStackPosition ? null : globalStackPosition);
+                              }}
+                              onFlickDown={handleFlickDown}
+                              onFlickUp={handleFlickUp}
+                              onEdit={() => {
+                                navigate('/add-keeper', {
+                                  state: {
+                                    isEdit: true,
+                                    keeper: keeper,
+                                    keeperIndex: originalKeeperIndex
+                                  }
+                                });
+                              }}
+                              onDelete={isActive ? handleDelete : undefined}
+                              dataPosition={globalStackPosition}
+                            />
+                          );
                       } else {
                         // Multiple keepers for this day - use carousel
                         return (
                           <CarouselKeeperCard
-                            key={`${dayGroup.date}-${stackPosition}`}
+                            key={`${dayGroup.date}-${globalStackPosition}`}
                             dayKeepers={dayGroup.keepers}
                             date={dayGroup.date}
-                            stackPosition={stackPosition}
-                            totalInStack={reversedDateGroups.length}
+                            stackPosition={globalStackPosition}
+                            totalInStack={allDateGroups.length}
                             isActive={isActive}
-                            activeIndex={activeIndex ?? null}
+                            activeIndex={activeKeeperIndex}
                             onTabClick={() => {
-                              setActiveKeeperIndices(prev => ({
-                                ...prev,
-                                [month]: prev[month] === stackPosition ? null : stackPosition
-                              }));
+                              setActiveKeeperIndex(activeKeeperIndex === globalStackPosition ? null : globalStackPosition);
                             }}
-                            onFlickDismiss={(stackPos: number) => handleFlickDismiss(month, stackPos)}
+                            onFlickDown={handleFlickDown}
+                            onFlickUp={handleFlickUp}
                             navigate={navigate}
                             removeKeeper={removeKeeper}
                             keepers={keepers}
@@ -966,6 +1091,7 @@ export default function Keepers() {
                 </div>
               );
             })}
+            </div>
           </div>
         ) : (
           <div className="text-center py-10">
