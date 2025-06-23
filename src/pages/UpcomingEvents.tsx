@@ -835,60 +835,6 @@ export default function UpcomingEvents() {
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
 
-  // Handle flick down - dismiss current card to reveal the one "above" it in stack (newer date, higher stack position)
-  const handleFlickDown = useCallback((currentStackPosition: number) => {
-    const now = Date.now();
-    // Debounce: ignore if less than 200ms since last flick
-    if (now - lastFlickTimeRef.current < 200) {
-      console.log('[UpcomingEvents] handleFlickDown debounced');
-      return;
-    }
-    lastFlickTimeRef.current = now;
-    
-    console.log('[UpcomingEvents] handleFlickDown called', { currentStackPosition });
-    // Get total cards by counting grouped dates
-    const totalCards = document.querySelectorAll('[data-event-card-position]').length;
-    const nextStackPosition = currentStackPosition < totalCards - 1 ? currentStackPosition + 1 : null;
-    console.log('[UpcomingEvents] Setting active to', { nextStackPosition });
-    
-    // Find the date at the next stack position
-    if (nextStackPosition !== null) {
-      const targetCard = document.querySelector(`[data-event-card-position="${nextStackPosition}"]`);
-      const targetDate = targetCard?.getAttribute('data-event-card-date');
-      if (targetDate) {
-        setActiveDayDate(targetDate);
-      }
-    } else {
-      setActiveDayDate(null);
-    }
-  }, []);
-
-  // Handle flick up - bring back the card "below" it in stack (older date, lower stack position)
-  const handleFlickUp = useCallback((currentStackPosition: number) => {
-    const now = Date.now();
-    // Debounce: ignore if less than 200ms since last flick
-    if (now - lastFlickTimeRef.current < 200) {
-      console.log('[UpcomingEvents] handleFlickUp debounced');
-      return;
-    }
-    lastFlickTimeRef.current = now;
-    
-    console.log('[UpcomingEvents] handleFlickUp called', { currentStackPosition });
-    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
-    console.log('[UpcomingEvents] Setting active to', { nextStackPosition });
-    
-    // Find the date at the next stack position
-    if (nextStackPosition !== null) {
-      const targetCard = document.querySelector(`[data-event-card-position="${nextStackPosition}"]`);
-      const targetDate = targetCard?.getAttribute('data-event-card-date');
-      if (targetDate) {
-        setActiveDayDate(targetDate);
-      }
-    } else {
-      setActiveDayDate(null);
-    }
-  }, []);
-
   const executeScrollToBottom = useCallback(() => {
     const sc = internalChatContentScrollRef.current;
     if (!sc || !scrollRefReady) {
@@ -1047,7 +993,95 @@ export default function UpcomingEvents() {
 
   const sortedMonths = useMemo(() => Object.keys(eventsByMonth).sort(), [eventsByMonth]);
 
+  // Handle flick down - dismiss current card to reveal the one "above" it in stack (newer date, higher stack position)
+  const handleFlickDown = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[UpcomingEvents] handleFlickDown debounced');
+      return;
+    }
+    lastFlickTimeRef.current = now;
+    
+    console.log('[UpcomingEvents] handleFlickDown called', { currentStackPosition });
+    
+    // Find the current card to get its date and month context
+    const currentCard = document.querySelector(`[data-event-card-position="${currentStackPosition}"]`);
+    const currentDate = currentCard?.getAttribute('data-event-card-date');
+    
+    if (!currentDate) {
+      console.log('[UpcomingEvents] Could not find current card date');
+      return;
+    }
+    
+    // Find which month this card belongs to and get the local stack
+    const currentMonth = format(parse(currentDate, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+    const monthDates = eventsByMonth[currentMonth];
+    if (!monthDates) {
+      console.log('[UpcomingEvents] Could not find month for current date');
+      return;
+    }
+    
+    const reversedMonthDates = [...monthDates].reverse();
+    const currentLocalIndex = reversedMonthDates.indexOf(currentDate);
+    
+    // Move to next card in local stack (higher index = older date, lower in visual stack)
+    const nextLocalIndex = currentLocalIndex + 1;
+    
+    if (nextLocalIndex < reversedMonthDates.length) {
+      const nextDate = reversedMonthDates[nextLocalIndex];
+      console.log('[UpcomingEvents] Flick down to next card:', { currentDate, nextDate, currentLocalIndex, nextLocalIndex });
+      setActiveDayDate(nextDate);
+    } else {
+      console.log('[UpcomingEvents] Flick down - no more cards in stack');
+      setActiveDayDate(null);
+    }
+  }, [eventsByMonth]);
 
+  // Handle flick up - bring back the card "below" it in stack (older date, lower stack position)
+  const handleFlickUp = useCallback((currentStackPosition: number) => {
+    const now = Date.now();
+    // Debounce: ignore if less than 200ms since last flick
+    if (now - lastFlickTimeRef.current < 200) {
+      console.log('[UpcomingEvents] handleFlickUp debounced');
+      return;
+    }
+    lastFlickTimeRef.current = now;
+    
+    console.log('[UpcomingEvents] handleFlickUp called', { currentStackPosition });
+    
+    // Find the current card to get its date and month context
+    const currentCard = document.querySelector(`[data-event-card-position="${currentStackPosition}"]`);
+    const currentDate = currentCard?.getAttribute('data-event-card-date');
+    
+    if (!currentDate) {
+      console.log('[UpcomingEvents] Could not find current card date');
+      return;
+    }
+    
+    // Find which month this card belongs to and get the local stack
+    const currentMonth = format(parse(currentDate, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+    const monthDates = eventsByMonth[currentMonth];
+    if (!monthDates) {
+      console.log('[UpcomingEvents] Could not find month for current date');
+      return;
+    }
+    
+    const reversedMonthDates = [...monthDates].reverse();
+    const currentLocalIndex = reversedMonthDates.indexOf(currentDate);
+    
+    // Move to previous card in local stack (lower index = newer date, higher in visual stack)
+    const nextLocalIndex = currentLocalIndex - 1;
+    
+    if (nextLocalIndex >= 0) {
+      const nextDate = reversedMonthDates[nextLocalIndex];
+      console.log('[UpcomingEvents] Flick up to previous card:', { currentDate, nextDate, currentLocalIndex, nextLocalIndex });
+      setActiveDayDate(nextDate);
+    } else {
+      console.log('[UpcomingEvents] Flick up - no more cards in stack');
+      setActiveDayDate(null);
+    }
+  }, [eventsByMonth]);
 
   // Assistant-enabled handleSend
   const handleSend = async () => {

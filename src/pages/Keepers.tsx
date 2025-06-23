@@ -119,13 +119,17 @@ interface CarouselKeeperCardProps {
   keepers: Keeper[];
   onFlickDown?: (stackPosition: number) => void;
   onFlickUp?: (stackPosition: number) => void;
+  globalStackPosition?: number;
 }
 
 const CarouselKeeperCard = React.memo(({ 
   dayKeepers, date, stackPosition, totalInStack, isActive, activeIndex, onTabClick, 
-  navigate, removeKeeper, keepers, onFlickDown, onFlickUp
+  navigate, removeKeeper, keepers, onFlickDown, onFlickUp, globalStackPosition
 }: CarouselKeeperCardProps) => {
   const [currentIdx, setCurrentIdx] = useState(0);
+  
+  // Constants for positioning - matching other components
+  const visibleTabHeight = 56;
   
   // Tab touch state - only for tab area
   const tabTouchRef = useRef<TabTouchState>({
@@ -267,14 +271,14 @@ const CarouselKeeperCard = React.memo(({
     if (timeElapsed < flickTimeThreshold && absDeltaY > flickDistanceThreshold) {
       if (deltaY > 0) {
         // FLICK DOWN = expose card above it (lower stack position)
-        console.log('[CarouselKeeper Tab Touch] Flick DOWN - exposing card above', { stackPosition, hasHandler: !!onFlickDown, isActive });
-        onFlickDown?.(stackPosition);
+        console.log('[CarouselKeeper Tab Touch] Flick DOWN - exposing card above', { globalStackPosition, hasHandler: !!onFlickDown, isActive });
+        onFlickDown?.(globalStackPosition || stackPosition);
         haptic.success();
         actionTaken = true;
       } else if (deltaY < 0) {
         // FLICK UP = expose card below it (higher stack position)
-        console.log('[CarouselKeeper Tab Touch] Flick UP - exposing card below', { stackPosition, totalInStack, hasHandler: !!onFlickUp, isActive });
-        onFlickUp?.(stackPosition);
+        console.log('[CarouselKeeper Tab Touch] Flick UP - exposing card below', { globalStackPosition, totalInStack, hasHandler: !!onFlickUp, isActive });
+        onFlickUp?.(globalStackPosition || stackPosition);
         haptic.success();
         actionTaken = true;
       }
@@ -310,7 +314,7 @@ const CarouselKeeperCard = React.memo(({
     }
 
     clearTabTouchState();
-  }, [isActive, onTabClick, onFlickDown, onFlickUp, stackPosition, totalInStack, currentIdx, dayKeepers.length, setCurrentIdx, clearTabTouchState]);
+  }, [isActive, onTabClick, onFlickDown, onFlickUp, globalStackPosition, stackPosition, totalInStack, currentIdx, dayKeepers.length, setCurrentIdx, clearTabTouchState]);
 
   const handleTabTouchCancel = useCallback(() => {
     console.log('[CarouselKeeper Tab Touch] Cancelled');
@@ -322,14 +326,16 @@ const CarouselKeeperCard = React.memo(({
   const isTodayKeeper = date ? isToday(parse(date, 'yyyy-MM-dd', new Date())) : false;
   const imageUrl = getKicacoEventPhoto(keeper.keeperName || 'keeper');
 
-  // Calculate card positioning - exact copy from ThirtyDayKeeperOutlook
-  const visibleTabHeight = 56;
+  // Calculate card positioning - using standard approach
+  // Calculate the card's vertical offset using local position within this month
   let cardOffset = (totalInStack - 1 - stackPosition) * visibleTabHeight;
   
+  // If there's an active card below this one in the local stack, push this card up
   if (activeIndex !== null && activeIndex !== undefined && activeIndex > stackPosition) {
     cardOffset += 176;
   }
   
+  // If this card is active, compensate for its transform
   if (isActive) {
     cardOffset += 176;
   }
@@ -337,7 +343,7 @@ const CarouselKeeperCard = React.memo(({
   return (
     <div
       className="absolute left-0 right-0 h-[240px]"
-      data-keeper-card-position={stackPosition}
+      data-keeper-card-position={globalStackPosition || stackPosition}
       data-keeper-card-date={date}
       style={{
         top: `${cardOffset}px`,
@@ -530,8 +536,8 @@ export default function Keepers() {
     removeKeeper,
   } = useKicacoStore();
 
-  // State for keeper card interactions - using single index like ThirtyDayKeeperOutlook
-  const [activeKeeperIndex, setActiveKeeperIndex] = useState<number | null>(null);
+  // State for keeper card interactions - using same pattern as UpcomingEvents
+  const [activeDayDate, setActiveDayDate] = useState<string | null>(null);
 
   // Track if this is from flick dismissal to prevent auto-scroll on manual opens
   const wasFlickDismissalRef = useRef(false);
@@ -541,10 +547,10 @@ export default function Keepers() {
 
   // Auto-scroll to newly activated card after flick dismissal (only if not fully visible)
   useEffect(() => {
-    if (activeKeeperIndex !== null && wasFlickDismissalRef.current) {
+    if (activeDayDate !== null && wasFlickDismissalRef.current) {
       // Use requestAnimationFrame to ensure the card activation animation has started
       requestAnimationFrame(() => {
-        const cardElement = document.querySelector(`[data-keeper-card-position="${activeKeeperIndex}"]`);
+        const cardElement = document.querySelector(`[data-keeper-card-date="${activeDayDate}"]`);
         if (cardElement) {
           const rect = cardElement.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
@@ -569,7 +575,7 @@ export default function Keepers() {
         wasFlickDismissalRef.current = false;
       });
     }
-  }, [activeKeeperIndex]);
+  }, [activeDayDate]);
 
   // Group keepers by month and then by date (filtering out past keepers)
   const keepersByMonth = useMemo(() => {
@@ -660,7 +666,7 @@ export default function Keepers() {
     });
   }, [sortedMonths, keepersByMonth]);
 
-  // Handle flick down - dismiss current card to reveal the one "above" it in stack (exact copy from ThirtyDayKeeperOutlook)
+  // Handle flick down - dismiss current card to reveal the one "above" it in stack (exact copy from UpcomingEvents)
   const handleFlickDown = useCallback((currentStackPosition: number) => {
     const now = Date.now();
     // Debounce: ignore if less than 200ms since last flick
@@ -671,14 +677,41 @@ export default function Keepers() {
     lastFlickTimeRef.current = now;
     
     console.log('[Keepers] handleFlickDown called', { currentStackPosition });
-    // Get total cards by counting grouped dates
-    const totalCards = document.querySelectorAll('[data-keeper-card-position]').length;
-    const nextStackPosition = currentStackPosition < totalCards - 1 ? currentStackPosition + 1 : null;
-    console.log('[Keepers] Setting active to', { nextStackPosition });
-    setActiveKeeperIndex(nextStackPosition);
-  }, []);
+    
+    // Find the current card to get its date and month context
+    const currentCard = document.querySelector(`[data-keeper-card-position="${currentStackPosition}"]`);
+    const currentDate = currentCard?.getAttribute('data-keeper-card-date');
+    
+    if (!currentDate) {
+      console.log('[Keepers] Could not find current card date');
+      return;
+    }
+    
+    // Find which month this card belongs to and get the local stack
+    const currentMonth = format(parse(currentDate, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+    const monthDateGroups = keepersByMonth[currentMonth];
+    if (!monthDateGroups) {
+      console.log('[Keepers] Could not find month for current date');
+      return;
+    }
+    
+    const reversedDateGroups = [...monthDateGroups].reverse();
+    const currentLocalIndex = reversedDateGroups.findIndex(g => g.date === currentDate);
+    
+    // Move to next card in local stack (higher index = older date, lower in visual stack)
+    const nextLocalIndex = currentLocalIndex + 1;
+    
+    if (nextLocalIndex < reversedDateGroups.length) {
+      const nextDate = reversedDateGroups[nextLocalIndex].date;
+      console.log('[Keepers] Flick down to next card:', { currentDate, nextDate, currentLocalIndex, nextLocalIndex });
+      setActiveDayDate(nextDate);
+    } else {
+      console.log('[Keepers] Flick down - no more cards in stack');
+      setActiveDayDate(null);
+    }
+  }, [keepersByMonth]);
 
-  // Handle flick up - bring back the card "below" it in stack (exact copy from ThirtyDayKeeperOutlook)
+  // Handle flick up - bring back the card "below" it in stack (exact copy from UpcomingEvents)
   const handleFlickUp = useCallback((currentStackPosition: number) => {
     const now = Date.now();
     // Debounce: ignore if less than 200ms since last flick
@@ -689,10 +722,39 @@ export default function Keepers() {
     lastFlickTimeRef.current = now;
     
     console.log('[Keepers] handleFlickUp called', { currentStackPosition });
-    const nextStackPosition = currentStackPosition > 0 ? currentStackPosition - 1 : null;
-    console.log('[Keepers] Setting active to', { nextStackPosition });
-    setActiveKeeperIndex(nextStackPosition);
-  }, []);
+    
+    // Find the current card to get its date and month context
+    const currentCard = document.querySelector(`[data-keeper-card-position="${currentStackPosition}"]`);
+    const currentDate = currentCard?.getAttribute('data-keeper-card-date');
+    
+    if (!currentDate) {
+      console.log('[Keepers] Could not find current card date');
+      return;
+    }
+    
+    // Find which month this card belongs to and get the local stack
+    const currentMonth = format(parse(currentDate, 'yyyy-MM-dd', new Date()), 'yyyy-MM');
+    const monthDateGroups = keepersByMonth[currentMonth];
+    if (!monthDateGroups) {
+      console.log('[Keepers] Could not find month for current date');
+      return;
+    }
+    
+    const reversedDateGroups = [...monthDateGroups].reverse();
+    const currentLocalIndex = reversedDateGroups.findIndex(g => g.date === currentDate);
+    
+    // Move to previous card in local stack (lower index = newer date, higher in visual stack)
+    const nextLocalIndex = currentLocalIndex - 1;
+    
+    if (nextLocalIndex >= 0) {
+      const nextDate = reversedDateGroups[nextLocalIndex].date;
+      console.log('[Keepers] Flick up to previous card:', { currentDate, nextDate, currentLocalIndex, nextLocalIndex });
+      setActiveDayDate(nextDate);
+    } else {
+      console.log('[Keepers] Flick up - no more cards in stack');
+      setActiveDayDate(null);
+    }
+  }, [keepersByMonth]);
 
   // No auto-opening of cards on initial load (consistent with other pages)
 
@@ -988,14 +1050,12 @@ export default function Keepers() {
               // Reverse the date groups so earliest is last (will be at bottom of stack)
               const reversedDateGroups = [...monthDateGroups].reverse();
 
-              // Find if any card in this month is active - adapted from UpcomingEvents structure
-              const activeDate = activeKeeperIndex !== null ? 
-                allDateGroups[allDateGroups.length - 1 - activeKeeperIndex]?.date : null;
-              const activeDateIndex = activeDate ? reversedDateGroups.findIndex(g => g.date === activeDate) : -1;
+              // Find if any card in this month is active - exact copy from UpcomingEvents structure
+              const activeDateIndex = activeDayDate ? reversedDateGroups.findIndex(g => g.date === activeDayDate) : -1;
               
                               // Check if there's an active card from ANY previous month that could overlap this header
-                const hasOverlappingActiveCard = activeDate && sortedMonths.slice(0, monthIndex).some(prevMonth => 
-                  keepersByMonth[prevMonth] && keepersByMonth[prevMonth].some(g => g.date === activeDate)
+                const hasOverlappingActiveCard = activeDayDate && sortedMonths.slice(0, monthIndex).some(prevMonth => 
+                  keepersByMonth[prevMonth] && keepersByMonth[prevMonth].some(g => g.date === activeDayDate)
                 );
 
               return (
@@ -1013,10 +1073,12 @@ export default function Keepers() {
                       transition: 'margin-bottom 380ms cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    {reversedDateGroups.map((dayGroup) => {
-                      // Calculate global stack position - find this group in the flat allDateGroups array
+                    {reversedDateGroups.map((dayGroup, idx) => {
+                      // Use local idx for all visual positioning (keeps existing logic intact)
+                      const localStackPosition = idx;
+                      // Use global position for data attribute to ensure uniqueness across months
                       const globalStackPosition = allDateGroups.length - 1 - allDateGroups.findIndex(g => g.date === dayGroup.date && g.month === month);
-                      const isActive = activeKeeperIndex === globalStackPosition;
+                      const isActive = activeDayDate === dayGroup.date;
                       
                       // If only one keeper for this day, use the original KeeperCard
                       if (dayGroup.keepers.length === 1) {
@@ -1041,16 +1103,16 @@ export default function Keepers() {
                               childName={keeper.childName}
                               description={keeper.description}
                               time={keeper.time}
-                              index={globalStackPosition}
-                              stackPosition={globalStackPosition}
-                              totalInStack={allDateGroups.length}
+                              index={localStackPosition}
+                              stackPosition={localStackPosition}
+                              totalInStack={reversedDateGroups.length}
                               isActive={isActive}
-                              activeIndex={activeKeeperIndex}
+                              activeIndex={activeDateIndex}
                               onTabClick={() => {
-                                setActiveKeeperIndex(activeKeeperIndex === globalStackPosition ? null : globalStackPosition);
+                                setActiveDayDate(activeDayDate === dayGroup.date ? null : dayGroup.date);
                               }}
-                              onFlickDown={handleFlickDown}
-                              onFlickUp={handleFlickUp}
+                              onFlickDown={() => handleFlickDown(globalStackPosition)}
+                              onFlickUp={() => handleFlickUp(globalStackPosition)}
                               onEdit={() => {
                                 navigate('/add-keeper', {
                                   state: {
@@ -1071,18 +1133,19 @@ export default function Keepers() {
                             key={`${dayGroup.date}-${globalStackPosition}`}
                             dayKeepers={dayGroup.keepers}
                             date={dayGroup.date}
-                            stackPosition={globalStackPosition}
-                            totalInStack={allDateGroups.length}
+                            stackPosition={localStackPosition}
+                            totalInStack={reversedDateGroups.length}
                             isActive={isActive}
-                            activeIndex={activeKeeperIndex}
+                            activeIndex={activeDateIndex}
                             onTabClick={() => {
-                              setActiveKeeperIndex(activeKeeperIndex === globalStackPosition ? null : globalStackPosition);
+                              setActiveDayDate(activeDayDate === dayGroup.date ? null : dayGroup.date);
                             }}
                             onFlickDown={handleFlickDown}
                             onFlickUp={handleFlickUp}
                             navigate={navigate}
                             removeKeeper={removeKeeper}
                             keepers={keepers}
+                            globalStackPosition={globalStackPosition}
                           />
                         );
                       }

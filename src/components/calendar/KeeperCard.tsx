@@ -334,6 +334,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
     <div
       className="absolute left-0 right-0 h-[240px]"
       data-keeper-card-position={dataPosition !== undefined ? dataPosition : stackPosition}
+      data-keeper-card-date={date}
       style={{
         top: `${cardOffset}px`,
         zIndex: totalInStack - stackPosition,
