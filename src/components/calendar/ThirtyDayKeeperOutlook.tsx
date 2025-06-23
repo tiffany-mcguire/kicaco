@@ -435,8 +435,8 @@ const CarouselKeeperCard = React.memo(({
 
         {/* Drag indicator - positioned below tab to avoid bleeding through blur */}
         {tabVisual.isDragging && (
-          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full pointer-events-none border border-white/20 z-20">
-            Flick up/down to navigate stack
+          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-[11px] px-2 py-1 rounded-full pointer-events-none border border-white/20 z-20 whitespace-nowrap">
+            Swipe tab up/down to navigate
           </div>
         )}
       </div>
