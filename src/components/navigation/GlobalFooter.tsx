@@ -6,6 +6,7 @@ interface GlobalFooterProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSend?: () => void;
   onUploadClick?: () => void;
+  onPasteClick?: () => void;
   placeholder?: string;
   leftButtons?: ReactNode;
   rightButtons?: ReactNode;
@@ -15,7 +16,7 @@ interface GlobalFooterProps {
 }
 
 const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
-  ({ value, onChange, onSend, onUploadClick, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false, clearActiveButton = false }, ref) => {
+  ({ value, onChange, onSend, onUploadClick, onPasteClick, placeholder = 'Type a message…', leftButtons, rightButtons, className = '', disabled = false, clearActiveButton = false }, ref) => {
     const [activeButton, setActiveButton] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,7 +87,10 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
                 IconComponent={props => <ClipboardIcon2 {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} 
                 aria-label="Paste" 
                 isActive={activeButton === 'paste'}
-                onClick={() => handleButtonClick('paste')}
+                onClick={() => {
+                  handleButtonClick('paste');
+                  onPasteClick?.();
+                }}
               />
               <IconButton 
                 variant="frameless" 

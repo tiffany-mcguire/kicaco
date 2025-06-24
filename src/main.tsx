@@ -13,12 +13,30 @@ import EditChild from './pages/EditChild';
 import AddEvent from './pages/AddEvent';
 import AddKeeper from './pages/AddKeeper';
 import DailyView from './pages/DailyView';
+import ShareProcessor from './pages/ShareProcessor';
 import './index.css';
+
+// Register service worker for PWA functionality
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('SW registered: ', registration);
+      })
+      .catch((registrationError) => {
+        console.log('SW registration failed: ', registrationError);
+      });
+  });
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
+        {/* Share target route - standalone, outside main app layout */}
+        <Route path="/share" element={<ShareProcessor />} />
+        
+        {/* Main app routes */}
         <Route path="/" element={<App />}>
           <Route index element={<Home />} />
           <Route path="upcoming-events" element={<UpcomingEvents />} />

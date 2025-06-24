@@ -15,6 +15,7 @@ import { PasswordModal, ImageUpload } from '../components/common';
 import { Home as HomeIcon } from "lucide-react";
 import { GlobalSubheader } from '../components/navigation';
 import { generateUUID } from '../utils/uuid';
+import { smartPaste, analyzeContentForEvents, shareToKicaco, ShareableContent } from '../utils/shareHandler';
 
 // Add NodeJS type definition
 declare global {
@@ -223,6 +224,7 @@ export default function Home() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
+  const [pasteProcessing, setPasteProcessing] = useState(false);
 
   // Track the most recent event's childName for use in signup flow
   const latestChildName = useKicacoStore(state => (state.events[0]?.childName || 'your child'));
@@ -465,6 +467,115 @@ export default function Home() {
     await handleEventMessage(userText);
   };
 
+  // Handle smart paste
+  const handleSmartPaste = async () => {
+    if (pasteProcessing || isInitializing || !threadId) return;
+
+    try {
+      setPasteProcessing(true);
+      
+      // Get clipboard content
+      const pasteContent = await smartPaste();
+      if (!pasteContent) {
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant',
+          content: 'No content found in clipboard. Try copying some text, a link, or an image first!'
+        });
+        return;
+      }
+
+      // Analyze content for events
+      const analysis = analyzeContentForEvents(pasteContent);
+      
+      // Add thinking message
+      const thinkingId = 'paste-thinking';
+      addMessage({
+        id: thinkingId,
+        sender: 'assistant',
+        content: 'Kicaco is analyzing your pasted content'
+      });
+
+      // Process based on content type
+      if (pasteContent.type === 'file' && pasteContent.files && pasteContent.files.length > 0) {
+        // Handle pasted images (screenshots, etc.)
+        const imageFile = pasteContent.files[0];
+        
+        // Remove thinking message
+        removeMessageById(thinkingId);
+        
+        // Use existing image upload flow
+        const apiClient = getApiClientInstance();
+        
+        try {
+          const response = await apiClient.uploadImage(
+            threadId, 
+            imageFile, 
+            "Please analyze this pasted image and extract ALL event information. Create events/keepers immediately with any information you find."
+          );
+          
+          // Handle created events/keepers
+          if (response.createdEvents && response.createdEvents.length > 0) {
+            response.createdEvents.forEach(event => addEvent(event));
+          }
+          if (response.createdKeepers && response.createdKeepers.length > 0) {
+            response.createdKeepers.forEach(keeper => addKeeper(keeper));
+          }
+          
+          // Add AI response
+          addMessage({
+            id: generateUUID(),
+            sender: 'assistant',
+            content: response.response
+          });
+          
+        } catch (error) {
+          addMessage({
+            id: generateUUID(),
+            sender: 'assistant',
+            content: 'Sorry, I had trouble processing that image. Please try again.'
+          });
+        }
+      } else {
+        // Handle text/URL content
+        const displayContent = pasteContent.title 
+          ? `${pasteContent.title}\n${pasteContent.text || ''}`
+          : pasteContent.text || pasteContent.url || '';
+
+        // Add user message showing what was pasted
+        addMessage({
+          id: generateUUID(),
+          sender: 'user',
+          content: `📋 Pasted: ${displayContent}`
+        });
+
+        const message = analysis.hasEvents 
+          ? `I pasted this content: "${displayContent}". Please analyze this and extract any events or tasks. Create them immediately if you find clear information, then ask for any missing details.`
+          : `I pasted this: "${displayContent}". This might contain schedule information - can you help me turn this into events or tasks?`;
+
+        // Process with AI
+        await handleEventMessage(message);
+        
+        // Remove the thinking message
+        removeMessageById(thinkingId);
+      }
+
+      // Clear footer active state
+      setClearFooterActiveButton(true);
+      setTimeout(() => setClearFooterActiveButton(false), 100);
+
+    } catch (error) {
+      console.error('Error in smart paste:', error);
+      addMessage({
+        id: generateUUID(),
+        sender: 'assistant',
+        content: 'Sorry, I had trouble accessing your clipboard. Please try copying the content again.'
+      });
+    } finally {
+      setPasteProcessing(false);
+    }
+  };
+
   // Handle image upload
   const handleImageUpload = () => {
     setShowImageUpload(true);
@@ -560,6 +671,8 @@ export default function Home() {
           value=""
           onChange={() => {}}
           onSend={() => {}}
+          onUploadClick={() => {}}
+          onPasteClick={() => {}}
           disabled
         />
       </div>
@@ -664,7 +777,8 @@ export default function Home() {
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSend}
         onUploadClick={handleImageUpload}
-        disabled={isInitializing || !threadId}
+        onPasteClick={handleSmartPaste}
+        disabled={isInitializing || !threadId || pasteProcessing}
         clearActiveButton={clearFooterActiveButton}
       />
       

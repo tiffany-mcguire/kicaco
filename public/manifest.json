@@ -1,0 +1,46 @@
+{
+  "name": "Kicaco - Family Assistant",
+  "short_name": "Kicaco",
+  "description": "Smart family calendar and assistant that helps organize your family's schedule",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#217e8f",
+  "theme_color": "#217e8f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "text/plain", ".pdf", ".doc", ".docx"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/share",
+      "accept": {
+        "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+        "text/plain": [".txt"],
+        "application/pdf": [".pdf"]
+      }
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "utilities"],
+  "screenshots": []
+} 
