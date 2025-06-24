@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { addDays, format } from 'date-fns';
+import { generateRecurringEvents, generateRecurringKeepers } from '../utils/recurringEvents';
 
 // Helper to generate dynamic mock dates
 const getMockDate = (dayOffset: number): string => {
@@ -16,6 +17,11 @@ type Event = {
   isAllDay?: boolean;
   noTimeYet?: boolean;
   notes?: string;
+  isRecurring?: boolean;
+  recurringPattern?: 'daily' | 'weekly' | 'monthly' | null;
+  recurringEndDate?: string | null;
+  recurringDays?: string[] | null; // For weekly: ['monday', 'wednesday']
+  recurringParentId?: string; // Links generated events to their parent
 };
 
 type ChatMessage = {
@@ -35,6 +41,11 @@ type Keeper = {
   description?: string;
   isAllDay?: boolean;
   noTimeYet?: boolean;
+  isRecurring?: boolean;
+  recurringPattern?: 'daily' | 'weekly' | 'monthly' | null;
+  recurringEndDate?: string | null;
+  recurringDays?: string[] | null;
+  recurringParentId?: string;
 };
 
 export type ChildProfile = {
@@ -129,7 +140,7 @@ const mockKeepers: Keeper[] = [
 
 export const useKicacoStore = create(
   persist<KicacoState>(
-    (set, get) => ({
+    (set) => ({
       threadId: null,
       setThreadId: (id: string) => set({ threadId: id }),
 
@@ -158,9 +169,16 @@ export const useKicacoStore = create(
             updatedEvents[existingIndex] = { ...updatedEvents[existingIndex], ...event } as Event;
             return { events: updatedEvents };
           } else {
-            // Add new event
-            console.log('Adding new event:', event);
-            return { events: [event as Event, ...state.events] };
+            // Handle recurring events
+            if (event.isRecurring && event.recurringPattern && event.recurringEndDate) {
+              console.log('Adding recurring event:', event);
+              const recurringEvents = generateRecurringEvents(event as Event);
+              return { events: [...recurringEvents, ...state.events] };
+            } else {
+              // Add single event
+              console.log('Adding new event:', event);
+              return { events: [event as Event, ...state.events] };
+            }
           }
         }),
       updateEvent: (index: number, event: Partial<Event>) =>
@@ -201,9 +219,16 @@ export const useKicacoStore = create(
             updatedKeepers[existingIndex] = { ...updatedKeepers[existingIndex], ...keeper } as Keeper;
             return { keepers: updatedKeepers };
           } else {
-            // Add new keeper
-            console.log('Adding new keeper:', keeper);
-            return { keepers: [keeper as Keeper, ...state.keepers] };
+            // Handle recurring keepers
+            if (keeper.isRecurring && keeper.recurringPattern && keeper.recurringEndDate) {
+              console.log('Adding recurring keeper:', keeper);
+              const recurringKeepers = generateRecurringKeepers(keeper as Keeper);
+              return { keepers: [...recurringKeepers, ...state.keepers] };
+            } else {
+              // Add single keeper
+              console.log('Adding new keeper:', keeper);
+              return { keepers: [keeper as Keeper, ...state.keepers] };
+            }
           }
         });
       },

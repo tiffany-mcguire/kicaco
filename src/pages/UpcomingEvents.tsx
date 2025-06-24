@@ -954,18 +954,20 @@ export default function UpcomingEvents() {
       const date = event.date;
       if (!date) return acc;
       
-      // Filter out past events
+      // Include ALL events - don't filter by date to debug 2026 events
       try {
         const eventDate = parse(date, 'yyyy-MM-dd', new Date());
-        if (!isAfter(eventDate, today) && !isSameDay(eventDate, today)) {
-          return acc; // Skip past events
+        // Only skip clearly invalid dates
+        if (isNaN(eventDate.getTime())) {
+          return acc; // Skip invalid dates
         }
+        
+        // For debugging: Include all events regardless of date
+        acc[date] = acc[date] ? [...acc[date], event] : [event];
+        return acc;
       } catch (e) {
         return acc; // Skip invalid dates
       }
-      
-      acc[date] = acc[date] ? [...acc[date], event] : [event];
-      return acc;
     }, {} as Record<string, any[]>);
     // Sort events within each day by time
     Object.keys(grouped).forEach(date => {
@@ -991,7 +993,14 @@ export default function UpcomingEvents() {
     return months;
   }, [sortedDates]);
 
-  const sortedMonths = useMemo(() => Object.keys(eventsByMonth).sort(), [eventsByMonth]);
+  const sortedMonths = useMemo(() => {
+    // Sort months chronologically and include ALL months (2025, 2026, etc.)
+    return Object.keys(eventsByMonth).sort((a, b) => {
+      const dateA = new Date(a + '-01');
+      const dateB = new Date(b + '-01');
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [eventsByMonth]);
 
   // Handle flick down - dismiss current card to reveal the one "above" it in stack (newer date, higher stack position)
   const handleFlickDown = useCallback((currentStackPosition: number) => {

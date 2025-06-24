@@ -15,7 +15,7 @@ import { PasswordModal, ImageUpload } from '../components/common';
 import { Home as HomeIcon } from "lucide-react";
 import { GlobalSubheader } from '../components/navigation';
 import { generateUUID } from '../utils/uuid';
-import { smartPaste, analyzeContentForEvents, shareToKicaco, ShareableContent } from '../utils/shareHandler';
+import { smartPaste, analyzeContentForEvents } from '../utils/shareHandler';
 
 // Add NodeJS type definition
 declare global {
@@ -29,8 +29,6 @@ const intro = [
   "Type it, say it, snap a photo, upload a flyer, or paste in a note - whatever makes your day easier, I'll turn it into a real event. No forms, no fuss.",
   "Want to give it a try? Tell me about your next event! If you miss any vital details, I'll be sure to ask for them.",
 ];
-
-
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
@@ -469,14 +467,23 @@ export default function Home() {
 
   // Handle smart paste
   const handleSmartPaste = async () => {
-    if (pasteProcessing || isInitializing || !threadId) return;
+    console.log('🚀 Smart paste button clicked!', { pasteProcessing, isInitializing, threadId });
+    
+    if (pasteProcessing || isInitializing || !threadId) {
+      console.log('❌ Paste blocked:', { pasteProcessing, isInitializing, threadId });
+      return;
+    }
 
     try {
       setPasteProcessing(true);
+      console.log('📋 Starting clipboard read...');
       
       // Get clipboard content
       const pasteContent = await smartPaste();
+      console.log('📋 Clipboard result:', pasteContent);
+      
       if (!pasteContent) {
+        console.log('❌ No paste content found');
         addMessage({
           id: generateUUID(),
           sender: 'assistant',
@@ -485,24 +492,15 @@ export default function Home() {
         return;
       }
 
-      // Analyze content for events
-      const analysis = analyzeContentForEvents(pasteContent);
-      
-      // Add thinking message
-      const thinkingId = 'paste-thinking';
-      addMessage({
-        id: thinkingId,
-        sender: 'assistant',
-        content: 'Kicaco is analyzing your pasted content'
-      });
+        // Analyze content for events
+        const analysis = analyzeContentForEvents(pasteContent);
+        console.log('🔍 Content analysis:', analysis);
 
       // Process based on content type
       if (pasteContent.type === 'file' && pasteContent.files && pasteContent.files.length > 0) {
+        console.log('📎 Processing file content...');
         // Handle pasted images (screenshots, etc.)
         const imageFile = pasteContent.files[0];
-        
-        // Remove thinking message
-        removeMessageById(thinkingId);
         
         // Use existing image upload flow
         const apiClient = getApiClientInstance();
@@ -530,6 +528,7 @@ export default function Home() {
           });
           
         } catch (error) {
+          console.error('❌ File processing error:', error);
           addMessage({
             id: generateUUID(),
             sender: 'assistant',
@@ -537,10 +536,13 @@ export default function Home() {
           });
         }
       } else {
+        console.log('📝 Processing text content...');
         // Handle text/URL content
         const displayContent = pasteContent.title 
           ? `${pasteContent.title}\n${pasteContent.text || ''}`
           : pasteContent.text || pasteContent.url || '';
+
+        console.log('📝 Display content:', displayContent);
 
         // Add user message showing what was pasted
         addMessage({
@@ -549,15 +551,19 @@ export default function Home() {
           content: `📋 Pasted: ${displayContent}`
         });
 
-        const message = analysis.hasEvents 
-          ? `I pasted this content: "${displayContent}". Please analyze this and extract any events or tasks. Create them immediately if you find clear information, then ask for any missing details.`
-          : `I pasted this: "${displayContent}". This might contain schedule information - can you help me turn this into events or tasks?`;
-
-        // Process with AI
-        await handleEventMessage(message);
+        // Add current date context for better date resolution
+        const currentDate = new Date();
+        const dateContext = `CURRENT CONTEXT: Today is ${currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} (${currentDate.getFullYear()}). When creating events, use the current year as context but allow events in any future year (2025, 2026, 2027, etc.) based on the content.`;
         
-        // Remove the thinking message
-        removeMessageById(thinkingId);
+        const message = analysis.hasEvents 
+          ? `${dateContext}\n\nI pasted this content: "${displayContent}". Please analyze this and extract any events or tasks. Create them immediately if you find clear information, then ask for any missing details.`
+          : `${dateContext}\n\nI pasted this: "${displayContent}". This might contain schedule information - can you help me turn this into events or tasks?`;
+
+        console.log('🤖 Sending message to AI:', message);
+
+        // Process with AI - handleEventMessage manages its own thinking messages
+        await handleEventMessage(message);
+        console.log('✅ handleEventMessage completed');
       }
 
       // Clear footer active state
@@ -566,15 +572,43 @@ export default function Home() {
 
     } catch (error) {
       console.error('Error in smart paste:', error);
-      addMessage({
-        id: generateUUID(),
-        sender: 'assistant',
-        content: 'Sorry, I had trouble accessing your clipboard. Please try copying the content again.'
-      });
+      
+      // Provide helpful guidance for iOS users without breaking the UX
+      const errorMessage = error instanceof Error ? error.message : '';
+      console.log('🚨 Smart paste error type:', errorMessage);
+      
+      if (errorMessage.includes('CLIPBOARD_NOT_SUPPORTED')) {
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant',
+          content: '📋 Your browser doesn\'t support clipboard access yet. Try this instead: copy your text, then type it into the chat - I\'ll still process it with AI! Or use the upload button for images.'
+        });
+      } else if (errorMessage.includes('user interaction') || errorMessage.includes('NotAllowedError')) {
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant',
+          content: 'Hmm, I need clipboard permission first. Try copying your content again and then tapping paste immediately after. iOS Safari can be picky about clipboard timing!'
+        });
+      } else if (errorMessage.includes('permission')) {
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant',
+          content: 'Looks like I need clipboard access. Go to Safari Settings → Advanced → Website Data → Allow clipboard access, or try the share feature from your Messages app instead!'
+        });
+      } else {
+        addMessage({
+          id: generateUUID(),
+          sender: 'assistant',
+          content: '🤔 I don\'t see anything in your clipboard yet. Try this: copy some text from Messages, Mail, or Safari, then immediately tap the paste button again. The timing matters on iOS!'
+        });
+      }
     } finally {
+      console.log('🔄 Resetting pasteProcessing to false');
       setPasteProcessing(false);
     }
   };
+
+
 
   // Handle image upload
   const handleImageUpload = () => {
@@ -672,7 +706,7 @@ export default function Home() {
           onChange={() => {}}
           onSend={() => {}}
           onUploadClick={() => {}}
-          onPasteClick={() => {}}
+          onPasteClick={handleSmartPaste}
           disabled
         />
       </div>
@@ -796,6 +830,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+
 
     </div>
   );

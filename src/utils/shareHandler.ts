@@ -1,4 +1,4 @@
-import { generateUUID } from './uuid';
+// import { generateUUID } from './uuid';
 
 export interface ShareableContent {
   type: 'text' | 'url' | 'rich' | 'file';
@@ -39,39 +39,123 @@ export const isWebShareSupported = (): boolean => {
   return 'share' in navigator;
 };
 
-// Check if browser supports native clipboard API
+// Check if browser supports native clipboard API with iOS Safari compatibility
 export const isClipboardAPISupported = (): boolean => {
-  return 'clipboard' in navigator && 'readText' in navigator.clipboard;
+  // Basic clipboard API check
+  if (!('clipboard' in navigator)) {
+    console.log('📋 Navigator.clipboard not available');
+    return false;
+  }
+  
+  // Check for readText method (most important for our use case)
+  if (!('readText' in navigator.clipboard)) {
+    console.log('📋 navigator.clipboard.readText not available');
+    return false;
+  }
+  
+  // Additional iOS Safari compatibility check
+  try {
+    // iOS Safari requires secure context (HTTPS)
+    if (!window.isSecureContext) {
+      console.log('📋 Not in secure context (HTTPS required for clipboard)');
+      return false;
+    }
+    
+    console.log('✅ Clipboard API appears to be supported');
+    return true;
+  } catch (error) {
+    console.log('📋 Error checking clipboard support:', error);
+    return false;
+  }
 };
 
-// Enhanced paste function that detects content type
+// Enhanced paste function that detects content type with iOS Safari support  
 export const smartPaste = async (): Promise<ShareableContent | null> => {
+  console.log('🔍 Smart paste initiated...');
+  
   try {
-    // Try to read from clipboard
-    if (isClipboardAPISupported()) {
-      // Try to read rich content first (if available)
+    // Check for clipboard API support with detailed logging
+    const clipboardSupported = isClipboardAPISupported();
+    console.log('📋 Clipboard API support check:', clipboardSupported);
+    
+    if (!clipboardSupported) {
+      console.log('❌ Clipboard API not supported - trying fallback approach');
+      // Instead of failing immediately, try a direct attempt
       try {
-        const clipboardItems = await navigator.clipboard.read();
-        for (const item of clipboardItems) {
-          // Handle files (images, etc.)
-          const files: File[] = [];
-          for (const type of item.types) {
-            if (type.startsWith('image/') || type.startsWith('application/')) {
+        console.log('🔄 Attempting direct clipboard read despite detection failure...');
+        const directText = await navigator.clipboard.readText();
+        if (directText && directText.trim()) {
+          console.log('✅ Direct clipboard read succeeded!');
+          return analyzeTextContent(directText);
+        }
+      } catch (directError) {
+        console.log('❌ Direct clipboard read also failed:', directError);
+      }
+      throw new Error('CLIPBOARD_NOT_SUPPORTED');
+    }
+
+    // Multiple attempts for iOS Safari reliability
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`📋 Clipboard read attempt ${attempts}/${maxAttempts}`);
+      
+      try {
+        // Try simple text read first (most reliable on iOS)
+        const text = await navigator.clipboard.readText();
+        console.log('✅ Successfully read clipboard text:', text ? `${text.length} chars` : 'empty');
+        
+        if (text && text.trim()) {
+          console.log('🎯 Found valid clipboard text, analyzing...');
+          return analyzeTextContent(text);
+        } else if (text === '') {
+          console.log('📝 Clipboard is empty, continuing to rich content check...');
+        }
+      } catch (textError) {
+        console.log(`⚠️ Text clipboard read failed (attempt ${attempts}):`, textError);
+      }
+
+      // Small delay between attempts
+      if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Try rich content read (may not work on iOS Safari)
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      console.log('Clipboard items found:', clipboardItems.length);
+      
+      for (const item of clipboardItems) {
+        console.log('Processing clipboard item types:', item.types);
+        
+        // Handle files (images, etc.)
+        const files: File[] = [];
+        for (const type of item.types) {
+          if (type.startsWith('image/') || type.startsWith('application/')) {
+            try {
               const blob = await item.getType(type);
               const file = new File([blob], `clipboard-${Date.now()}`, { type });
               files.push(file);
+            } catch (fileError) {
+              console.log('Failed to read file type:', type, fileError);
             }
           }
-          
-          if (files.length > 0) {
-            return {
-              type: 'file',
-              files
-            };
-          }
+        }
+        
+        if (files.length > 0) {
+          console.log('Found clipboard files:', files.length);
+          return {
+            type: 'file',
+            files
+          };
+        }
 
-          // Handle HTML content
-          if (item.types.includes('text/html')) {
+        // Handle HTML content
+        if (item.types.includes('text/html')) {
+          try {
             const blob = await item.getType('text/html');
             const html = await blob.text();
             const plainText = await navigator.clipboard.readText();
@@ -81,29 +165,51 @@ export const smartPaste = async (): Promise<ShareableContent | null> => {
               html,
               text: plainText
             };
+          } catch (htmlError) {
+            console.log('Failed to read HTML content:', htmlError);
           }
         }
-      } catch (error) {
-        console.log('Rich clipboard reading failed, falling back to text');
-      }
 
-      // Fallback to plain text
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        return analyzeTextContent(text);
+        // Handle plain text from clipboard items
+        if (item.types.includes('text/plain')) {
+          try {
+            const blob = await item.getType('text/plain');
+            const text = await blob.text();
+            if (text && text.trim()) {
+              return analyzeTextContent(text);
+            }
+          } catch (plainError) {
+            console.log('Failed to read plain text from item:', plainError);
+          }
+        }
       }
+    } catch (richError) {
+      console.log('Rich clipboard read failed:', richError);
     }
 
     return null;
-  } catch (error) {
-    console.error('Error reading clipboard:', error);
-    return null;
-  }
+      } catch (error) {
+      console.error('Error reading clipboard:', error);
+      
+      // Provide specific error types for better user feedback
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorName = error instanceof Error ? error.name : '';
+      
+      if (errorMessage === 'CLIPBOARD_NOT_SUPPORTED') {
+        throw new Error('Clipboard access is not supported in this browser.');
+      } else if (errorMessage === 'CLIPBOARD_PERMISSION_DENIED') {
+        throw new Error('Clipboard access was denied. Please allow clipboard access in your browser settings.');
+      } else if (errorName === 'NotAllowedError') {
+        throw new Error('Clipboard access requires user interaction. Please try again after copying content.');
+      } else {
+        throw new Error('Unable to access clipboard. Please try copying the content again.');
+      }
+    }
 };
 
 // Analyze text content for event-related information
 const analyzeTextContent = (text: string): ShareableContent => {
-  const lowerText = text.toLowerCase();
+  // const lowerText = text.toLowerCase();
   
   // Check if it's a URL
   try {

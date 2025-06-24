@@ -15,20 +15,17 @@
       "purpose": "any maskable"
     }
   ],
+  "apple-touch-icon": "/vite.svg",
+  "apple-mobile-web-app-capable": "yes",
+  "apple-mobile-web-app-status-bar-style": "default",
+  "apple-mobile-web-app-title": "Kicaco",
   "share_target": {
     "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
+    "method": "GET",
     "params": {
       "title": "title",
       "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "files",
-          "accept": ["image/*", "text/plain", ".pdf", ".doc", ".docx"]
-        }
-      ]
+      "url": "url"
     }
   },
   "file_handlers": [

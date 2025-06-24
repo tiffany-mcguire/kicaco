@@ -82,7 +82,7 @@ const IconButton: React.FC<IconButtonProps> = ({ IconComponent, style, variant =
         if (isHeaderButton) {
           s = {
             ...s,
-            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+            backgroundColor: 'rgba(255, 255, 255, 0.45)',
             color: '#217e8f',
           };
         } else {
@@ -99,7 +99,7 @@ const IconButton: React.FC<IconButtonProps> = ({ IconComponent, style, variant =
           s = { 
             ...s, 
             transform: 'scale(0.9)',
-            backgroundColor: 'rgba(255, 255, 255, 0.4)',
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
             color: '#1a6e7e',
           };
         } else {

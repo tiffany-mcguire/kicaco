@@ -1,9 +1,9 @@
 import OpenAI from 'openai';
-import { extractKnownFields, getNextFieldToPrompt, ParsedFields, shouldCreateKeeper } from './kicacoFlow';
+import { ParsedFields } from './kicacoFlow';
 import conversationController, { ConversationMode } from './conversationMode';
 
-const verbose = false;
-const MAX_RETRIES = 1;
+// const verbose = false;
+// const MAX_RETRIES = 1;
 const MAX_MEMORY_MESSAGES = 5; // Store last 5 message exchanges
 const MEMORY_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -33,7 +33,7 @@ if (!import.meta.env.VITE_OPENAI_API_KEY) {
 }
 
 // Memory management functions
-function addToMemory(role: 'user' | 'assistant', content: string) {
+function addToMemory(_role: 'user' | 'assistant', _content: string) {
   const now = Date.now();
   
   // Check if memory has expired
@@ -44,8 +44,8 @@ function addToMemory(role: 'user' | 'assistant', content: string) {
   
   // Add new message
   sessionMemory.push({
-    role,
-    content,
+    role: _role,
+    content: _content,
     timestamp: now
   });
   
@@ -65,7 +65,7 @@ function clearMemory() {
 }
 
 // Helper function to generate app-driven prompts
-function generateFieldPrompt(field: string, knownChildren: string[] = [], eventName?: string, isKeeper?: boolean): string {
+function generateFieldPrompt(field: string, _knownChildren: string[] = [], eventName?: string, isKeeper?: boolean): string {
   // Adaptive, warm child name prompt
   if (field === 'childName' || field === 'confirmChild') {
     // Fallback if eventName is missing
@@ -131,23 +131,23 @@ function generateFieldPrompt(field: string, knownChildren: string[] = [], eventN
 }
 
 // Helper function to generate confirmation message
-function generateConfirmationMessage(fields: ParsedFields): string {
+function generateConfirmationMessage(_fields: ParsedFields): string {
   const parts = [];
   
-  if (fields.childName) {
-    parts.push(`${fields.childName}'s`);
+  if (_fields.childName) {
+    parts.push(`${_fields.childName}'s`);
   }
-  if (fields.eventName) {
-    parts.push(fields.eventName);
+  if (_fields.eventName) {
+    parts.push(_fields.eventName);
   }
-  if (fields.date) {
-    parts.push(`on ${fields.date}`);
+  if (_fields.date) {
+    parts.push(`on ${_fields.date}`);
   }
-  if (fields.time) {
-    parts.push(`at ${fields.time}`);
+  if (_fields.time) {
+    parts.push(`at ${_fields.time}`);
   }
-  if (fields.location) {
-    parts.push(`in ${fields.location}`);
+  if (_fields.location) {
+    parts.push(`in ${_fields.location}`);
   }
   
   return `Okay! I've saved ${parts.join(' ')}. Want to change anything?`;

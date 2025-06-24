@@ -133,7 +133,7 @@ class BackendApiClient implements ApiClient {
 
 // Direct OpenAI implementation (existing code)
 class DirectOpenAIClient implements ApiClient {
-  async createThread(systemPrompt: string): Promise<string> {
+  async createThread(_systemPrompt: string): Promise<string> {
     // Import the existing createOpenAIThread function
     const { createOpenAIThread } = await import('./talkToKicaco');
     return createOpenAIThread();
@@ -147,7 +147,7 @@ class DirectOpenAIClient implements ApiClient {
     return { response };
   }
 
-  async uploadImage(threadId: string, imageFile: File, prompt?: string): Promise<ImageUploadResponse> {
+  async uploadImage(_threadId: string, _imageFile: File, _prompt?: string): Promise<ImageUploadResponse> {
     // For direct OpenAI implementation, we'll need to implement image upload
     // For now, throw an error indicating this feature requires the backend proxy
     throw new Error('Image upload is only available when using the backend proxy. Please enable VITE_USE_BACKEND_PROXY=true in your environment.');

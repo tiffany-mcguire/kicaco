@@ -10,4 +10,6 @@ export { default as StackedChildBadges } from './StackedChildBadges';
 export { default as SearchBar } from './SearchBar';
 export { default as SearchResults } from './SearchResults';
 export { default as ImageUpload } from './ImageUpload';
-export * from './icons'; 
+export { default as ManualPasteModal } from './ManualPasteModal';
+export * from './icons';
+export * from './ChildFilterDropdown'; 

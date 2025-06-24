@@ -104,7 +104,11 @@ async function handleFunctionCalls(threadId, runId, createdEventsTracker = [], c
             location: args.location,
             isAllDay: args.isAllDay || false,
             noTimeYet: args.noTimeYet || false,
-            notes: args.notes || ''
+            notes: args.notes || '',
+            isRecurring: args.isRecurring || false,
+            recurringPattern: args.recurringPattern || null, // 'weekly', 'daily', 'monthly'
+            recurringEndDate: args.recurringEndDate || null,
+            recurringDays: args.recurringDays || null // For weekly: ['monday', 'wednesday'] 
           };
           
           // Check if this is an update to an existing event (same name, child, date)
@@ -167,7 +171,11 @@ async function handleFunctionCalls(threadId, runId, createdEventsTracker = [], c
             childName: args.childName,
             description: args.description || '',
             time: args.time,
-            location: args.location
+            location: args.location,
+            isRecurring: args.isRecurring || false,
+            recurringPattern: args.recurringPattern || null,
+            recurringEndDate: args.recurringEndDate || null,
+            recurringDays: args.recurringDays || null
           };
           
           // Check if this is an update to an existing keeper (same name, child, date)
@@ -260,16 +268,59 @@ app.post('/api/messages', async (req, res) => {
       return res.status(400).json({ error: 'Missing threadId or message' });
     }
     
-    // Add message to thread
+    // Check for active runs and wait for them to complete BEFORE adding message
+    console.log('Checking for active runs on thread:', threadId);
+    let waitAttempts = 0;
+    const maxWaitAttempts = 10; // Wait up to 10 seconds
+    
+    while (waitAttempts < maxWaitAttempts) {
+      try {
+        const existingRuns = await openai.beta.threads.runs.list(threadId, { limit: 3 });
+        const activeRuns = existingRuns.data.filter(run => 
+          ['queued', 'in_progress', 'requires_action'].includes(run.status)
+        );
+        
+        if (activeRuns.length === 0) {
+          console.log('No active runs found, proceeding with message...');
+          break;
+        }
+        
+        console.log(`Found ${activeRuns.length} active runs. Waiting... (attempt ${waitAttempts + 1}/${maxWaitAttempts})`);
+        activeRuns.forEach(run => {
+          console.log(`- Run ${run.id}: ${run.status}`);
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        waitAttempts++;
+      } catch (checkError) {
+        console.log('Error checking for active runs:', checkError.message);
+        break;
+      }
+    }
+    
+    if (waitAttempts >= maxWaitAttempts) {
+      throw new Error('Another operation is in progress. Please wait a moment and try again.');
+    }
+    
+    // Add message to thread (only after ensuring no active runs)
+    console.log('Adding message to thread...');
+    
+    // Add current date context to regular messages for consistency
+    const currentDate = new Date();
+    const dateContext = `CURRENT CONTEXT: Today is ${currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} (${currentDate.getFullYear()}). When creating events, use the current year as context but allow events in any future year (2025, 2026, 2027, etc.) based on the content.`;
+    const messageWithContext = `${dateContext}\n\n${message}`;
+    
     await openai.beta.threads.messages.create(threadId, {
       role: 'user',
-      content: message
+      content: messageWithContext
     });
     
-    // Create run
+    // Create run (should succeed now that we've ensured no active runs)
+    console.log('Creating run...');
     const run = await openai.beta.threads.runs.create(threadId, {
       assistant_id: process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID
     });
+    console.log(`Successfully created run: ${run.id}`);
     
     // Poll for completion
     let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
@@ -315,7 +366,9 @@ app.post('/api/messages', async (req, res) => {
     }
     
     if (runStatus.status !== 'completed') {
-      throw new Error(`Run did not complete. Final status: ${runStatus.status}`);
+      console.error(`Run did not complete within ${maxAttempts} attempts. Final status: ${runStatus.status}`);
+      console.error('Run details:', runStatus);
+      throw new Error(`Run timed out. Final status: ${runStatus.status}. Please try again.`);
     }
     
     // Get messages
@@ -401,7 +454,7 @@ app.post('/api/upload-image', upload.single('image'), async (req, res) => {
 
     // Create message with text and image file, including current date context
     const currentDate = new Date();
-    const dateContext = `CURRENT CONTEXT: Today is ${currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} (${currentDate.getFullYear()}). CRITICAL: All events must be in ${currentDate.getFullYear()} or later, never 2023 or past years.`;
+    const dateContext = `CURRENT CONTEXT: Today is ${currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} (${currentDate.getFullYear()}). When creating events, use the current year as context but allow events in any future year (2025, 2026, 2027, etc.) based on the content.`;
     
     const messageText = `${dateContext}\n\n${prompt || "Please analyze this image and extract ALL event information. Create events/keepers immediately with any information you find. After creating them, you MUST ask follow-up questions for any missing required information (location, child name, time, etc.) one at a time. Treat this as the START of a conversation, not the end."}`;
     

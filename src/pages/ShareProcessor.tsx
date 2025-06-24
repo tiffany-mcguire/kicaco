@@ -46,7 +46,7 @@ const ShareProcessor: React.FC = () => {
   useEffect(() => {
     const extractShareData = async () => {
       try {
-        // Check if this is a POST request with FormData (from share target)
+        // Check for URL parameters from share target (GET method)
         if (window.location.search.includes('title=') || window.location.search.includes('text=')) {
           const title = searchParams.get('title') || '';
           const text = searchParams.get('text') || '';

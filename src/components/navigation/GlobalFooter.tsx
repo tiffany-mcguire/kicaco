@@ -87,7 +87,9 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
                 IconComponent={props => <ClipboardIcon2 {...props} className="w-6 h-6 sm:w-8 sm:h-8" />} 
                 aria-label="Paste" 
                 isActive={activeButton === 'paste'}
+                disabled={disabled}
                 onClick={() => {
+                  console.log('🔥 Paste button clicked in GlobalFooter!', { disabled, onPasteClick: !!onPasteClick });
                   handleButtonClick('paste');
                   onPasteClick?.();
                 }}

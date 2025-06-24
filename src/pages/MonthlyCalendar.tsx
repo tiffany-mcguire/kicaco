@@ -10,78 +10,10 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
-import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parse, getDaysInMonth, isPast, startOfDay } from 'date-fns';
+import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, parse, getDaysInMonth, isPast, startOfDay, isBefore } from 'date-fns';
 
 import { generateUUID } from '../utils/uuid';
-
-// Filter Dropdown Component
-const ChildFilterDropdown: React.FC<{
-  children: { name: string }[];
-  selectedChildren: string[];
-  onToggleChild: (name: string) => void;
-  onClear: () => void;
-}> = ({ children, selectedChildren, onToggleChild, onClear }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors bg-[#c0e2e7]/40 text-[#217e8f] hover:bg-[#c0e2e7]/60"
-        aria-label="Filter by child"
-      >
-        <FilterIcon size={12} />
-        <span>Filter</span>
-      </button>
-
-      {isOpen && (
-        <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-100">
-          <ul className="py-1">
-            {children.map(child => (
-              <li key={child.name}>
-                <label className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedChildren.includes(child.name)}
-                    onChange={() => onToggleChild(child.name)}
-                    className="h-4 w-4 rounded border-gray-300 text-[#217e8f] focus:ring-[#217e8f]/50"
-                  />
-                  <span className="ml-3">{child.name}</span>
-                </label>
-              </li>
-            ))}
-            {selectedChildren.length > 0 && (
-              <>
-                <li className="border-t border-gray-100 my-1" />
-                <li>
-                  <button 
-                    onClick={onClear} 
-                    className="w-full text-left block px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
-                  >
-                    Clear Filter
-                  </button>
-                </li>
-              </>
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};
-
-
+import { ChildFilterDropdown } from '../components/common';
 
 const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) => {
   const navigate = useNavigate();
@@ -154,7 +86,7 @@ export default function MonthlyCalendar() {
   const footerRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(null);
   const [fadeOutDate, setFadeOutDate] = useState<Date | null>(null);
@@ -162,6 +94,8 @@ export default function MonthlyCalendar() {
   const { messages, threadId, addMessage, removeMessageById, events, keepers, children, drawerHeight: storedDrawerHeight, setDrawerHeight: setStoredDrawerHeight } = useKicacoStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
+
+  const isMonthInPast = isBefore(startOfDay(endOfMonth(currentMonth)), startOfDay(new Date()));
 
   useEffect(() => {
     setIsMounted(true);
@@ -177,6 +111,11 @@ export default function MonthlyCalendar() {
     setSelectedDate(null);
   };
 
+  const goToSpecificMonth = (date: Date) => {
+    setCurrentMonth(date);
+    setSelectedDate(null);
+  };
+
   const handleToggleChildFilter = (childName: string) => {
     setFilteredChildren(prev =>
       prev.includes(childName)
@@ -186,8 +125,6 @@ export default function MonthlyCalendar() {
   };
 
   const handleClearFilter = () => setFilteredChildren([]);
-
-
 
   // Filtered events and keepers
   const filteredEvents = useMemo(() => {
@@ -434,7 +371,7 @@ export default function MonthlyCalendar() {
           >
             {/* Month Navigation */}
             <div 
-              className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center p-3 rounded-t-lg"
+              className="flex items-center justify-center p-3 rounded-t-lg relative"
               style={{
                 borderTop: '1px solid #c0e2e780',
                 borderLeft: '1px solid #c0e2e780',
@@ -442,26 +379,103 @@ export default function MonthlyCalendar() {
                 boxShadow: '0 -2px 5px -1px #c0e2e780, inset 0 -3px 6px -2px #c0e2e780',
               }}
             >
-              <button onClick={goToPreviousMonth} className="p-1 rounded-full hover:bg-gray-100">
-                <ChevronLeft size={20} className="text-gray-600" />
-              </button>
-
-              <div className="flex justify-center">
+              {/* Left - Filter Icon (positioned absolutely) */}
+              <div className="absolute left-2 top-1/2 -translate-y-1/2">
                 <ChildFilterDropdown 
                   children={children}
                   selectedChildren={filteredChildren}
                   onToggleChild={handleToggleChildFilter}
                   onClear={handleClearFilter}
+                  isActive={filteredChildren.length > 0}
                 />
               </div>
 
-              <h2 className="text-lg font-medium text-gray-700">{dateFormat(currentMonth, "MMMM yyyy")}</h2>
+              {/* Center - Navigation */}
+              <div className="flex items-center gap-1">
+                <button onClick={goToPreviousMonth} className="p-1 rounded hover:bg-gray-100 active:scale-95">
+                  <ChevronLeft className="w-4 h-4 text-gray-500" />
+                </button>
 
-              <div />
+                {/* "Current" button for future months */}
+                {!isSameMonth(currentMonth, new Date()) && !isMonthInPast && (
+                  <button
+                    onClick={() => {
+                      setCurrentMonth(new Date());
+                      setSelectedDate(null);
+                    }}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    ← Current
+                  </button>
+                )}
 
-              <button onClick={goToNextMonth} className="p-1 rounded-full hover:bg-gray-100">
-                <ChevronRight size={20} className="text-gray-600" />
-              </button>
+                <h2 className="text-[15px] font-normal text-gray-700 truncate">
+                  {dateFormat(currentMonth, 'MMMM yyyy')}
+                  {isSameMonth(currentMonth, new Date()) && (
+                    <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+                      Current
+                    </span>
+                  )}
+                </h2>
+
+                {/* "Current" button for past months */}
+                {!isSameMonth(currentMonth, new Date()) && isMonthInPast && (
+                  <button
+                    onClick={() => {
+                      setCurrentMonth(new Date());
+                      setSelectedDate(null);
+                    }}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    Current →
+                  </button>
+                )}
+                
+                {/* Spacer to balance layout */}
+                {(isSameMonth(currentMonth, new Date()) || !isMonthInPast) && (
+                  <div className="w-[20px] flex-shrink-0"></div>
+                )}
+
+                <button onClick={goToNextMonth} className="p-1 rounded hover:bg-gray-100 active:scale-95">
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Right - Calendar Icon (positioned absolutely) */}
+              <div className="absolute right-3">
+                <button 
+                  onClick={() => {
+                    // Create a temporary month input element
+                    const tempInput = document.createElement('input');
+                    tempInput.type = 'month';
+                    tempInput.value = dateFormat(currentMonth, 'yyyy-MM');
+                    tempInput.style.position = 'absolute';
+                    tempInput.style.left = '-9999px';
+                    tempInput.style.opacity = '0';
+                    
+                    document.body.appendChild(tempInput);
+                    
+                    tempInput.addEventListener('change', () => {
+                      if (tempInput.value) {
+                        goToSpecificMonth(new Date(tempInput.value + '-01'));
+                      }
+                      document.body.removeChild(tempInput);
+                    });
+                    
+                    // Trigger the month picker
+                    if (tempInput.showPicker) {
+                      tempInput.showPicker();
+                    } else {
+                      tempInput.focus();
+                      tempInput.click();
+                    }
+                  }}
+                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  title="Pick month"
+                >
+                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
 
             {/* Static Day of Week Header */}

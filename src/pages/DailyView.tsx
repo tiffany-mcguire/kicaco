@@ -8,16 +8,15 @@ import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, subDays, isSameDay, parse, isToday } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
+import { format, addDays, subDays, isSameDay, parse, isToday, isBefore, startOfDay } from 'date-fns';
 import { EventCard } from '../components/calendar';
 import { KeeperCard } from '../components/calendar';
-import { StackedChildBadges } from '../components/common';
+import { StackedChildBadges, ChildFilterDropdown } from '../components/common';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
 import { ImageUpload } from '../components/common';
-
 
 // Day Colors for accent line
 const dayColors: { [key: number]: string } = {
@@ -338,6 +337,7 @@ export default function DailyView() {
     setChatScrollPosition,
     events,
     keepers,
+    children,
     addEvent,
     addKeeper,
     removeEvent,
@@ -350,8 +350,40 @@ export default function DailyView() {
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
+  const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
+
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
+
+  // Filter functions
+  const handleToggleChildFilter = useCallback((childName: string) => {
+    setFilteredChildren(prev =>
+      prev.includes(childName)
+        ? prev.filter(name => name !== childName)
+        : [...prev, childName]
+    );
+  }, []);
+
+  const handleClearFilter = useCallback(() => setFilteredChildren([]), []);
+
+  // Filtered events and keepers
+  const filteredEvents = useMemo(() => {
+    if (filteredChildren.length === 0) return events;
+    return events.filter(event => {
+      if (!event.childName) return false;
+      const eventChildren = event.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => eventChildren.includes(selectedChild));
+    });
+  }, [events, filteredChildren]);
+
+  const filteredKeepers = useMemo(() => {
+    if (filteredChildren.length === 0) return keepers;
+    return keepers.filter(keeper => {
+      if (!keeper.childName) return false;
+      const keeperChildren = keeper.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => keeperChildren.includes(selectedChild));
+    });
+  }, [keepers, filteredChildren]);
   
   // Get location state to check if we need to focus on a specific item
   const locationState = location.state as { 
@@ -388,7 +420,7 @@ export default function DailyView() {
       setHighlightedEvent(locationState.targetEvent);
 
       // Use the same eventsForDay that the component uses for rendering
-      const currentEventsForDay = events.filter(event => {
+      const currentEventsForDay = filteredEvents.filter(event => {
         if (!event.date) return false;
         try {
           const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
@@ -419,7 +451,7 @@ export default function DailyView() {
       setHighlightedKeeper(locationState.targetKeeper);
       
       // Use the same keepersForDay that the component uses for rendering
-      const currentKeepersForDay = keepers.filter(keeper => {
+      const currentKeepersForDay = filteredKeepers.filter(keeper => {
         if (!keeper.date) return false;
         try {
           const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
@@ -457,7 +489,7 @@ export default function DailyView() {
     if (itemHandled) {
       navigate('.', { replace: true, state: {} });
     }
-  }, [locationState, currentDate, events, keepers, navigate]);
+  }, [locationState, currentDate, filteredEvents, filteredKeepers, navigate]);
   
   // Add CSS for search highlights
   useEffect(() => {
@@ -541,7 +573,7 @@ export default function DailyView() {
 
   // Get events for the current day
   const eventsForDay = useMemo(() => {
-    return events.filter(event => {
+    return filteredEvents.filter(event => {
       if (!event.date) return false;
       try {
         const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
@@ -551,11 +583,11 @@ export default function DailyView() {
         return false;
       }
     }).sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
-  }, [events, currentDate]);
+  }, [filteredEvents, currentDate]);
 
   // Get keepers for the current day
   const keepersForDay = useMemo(() => {
-    return keepers.filter(keeper => {
+    return filteredKeepers.filter(keeper => {
       if (!keeper.date) return false;
       try {
         const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
@@ -565,7 +597,7 @@ export default function DailyView() {
         return false;
       }
     });
-  }, [keepers, currentDate]);
+  }, [filteredKeepers, currentDate]);
 
   // Touch handling for keeper carousel
   const touchStartX = useRef<number | null>(null);
@@ -834,8 +866,6 @@ export default function DailyView() {
     resetPageTouchState();
   };
 
-
-
   const handleGlobalDrawerHeightChange = (height: number) => {
     const newHeight = Math.max(Math.min(height, maxDrawerHeight), 32);
     setStoredDrawerHeight(newHeight);
@@ -1080,6 +1110,8 @@ export default function DailyView() {
     });
   };
 
+  const isDateInPast = isBefore(startOfDay(currentDate), startOfDay(new Date()));
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <GlobalHeader ref={headerRef} />
@@ -1088,48 +1120,130 @@ export default function DailyView() {
         icon={<Calendar />}
         title="Daily View"
       />
+      
       {/* Day Navigation - made sticky below subheader */}
-      <div ref={dayNavRef} className="sticky z-[95] flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full"
+      <div 
+        ref={dayNavRef} 
+        className="sticky z-[95] bg-gray-50"
         style={{ 
-          top: 'calc(4rem + 58px)' // 64px header + ~58px subheader
+          top: 'calc(4rem + 67px)' // 64px header + ~67px subheader
         }}
         data-card-alley
       >
-        <button
-          onClick={goToPreviousDay}
-          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
-        >
-          <ChevronLeft className="w-4 h-4 text-gray-500" />
-        </button>
-        {!isToday(currentDate) && (
-          <button
-            onClick={() => {
-              setCurrentDate(new Date());
-              setDisplayedEventIndex(0);
-              setDisplayedKeeperIndex(0);
-            }}
-            className="ml-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95"
-          >
-            ← Today
-          </button>
-        )}
-        <h2 className={`text-base font-normal text-gray-700 ${isToday(currentDate) ? 'mx-3' : 'mx-2'}`}>
-          {format(currentDate, 'EEEE, MMMM d, yyyy')}
-          {isToday(currentDate) && (
-            <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
-              Today
-            </span>
-          )}
-        </h2>
-        {!isToday(currentDate) && (
-          <div className="w-[20px]"></div>
-        )}
-        <button
-          onClick={goToNextDay}
-          className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
-        >
-          <ChevronRight className="w-4 h-4 text-gray-500" />
-        </button>
+        <div className="px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="relative flex items-center justify-center py-2">
+              {/* Left - Filter Icon (positioned absolutely) */}
+              <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                <ChildFilterDropdown 
+                  children={children}
+                  selectedChildren={filteredChildren}
+                  onToggleChild={handleToggleChildFilter}
+                  onClear={handleClearFilter}
+                  isActive={filteredChildren.length > 0}
+                />
+              </div>
+
+              {/* Center - Navigation (with padding to avoid icons) */}
+              <div className="flex items-center justify-center min-w-0 px-10">
+                <button
+                  onClick={goToPreviousDay}
+                  className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-500" />
+                </button>
+                
+                {/* "Today" button - shows for future dates */}
+                {!isToday(currentDate) && !isDateInPast && (
+                  <button
+                    onClick={() => {
+                      setCurrentDate(new Date());
+                      setDisplayedEventIndex(0);
+                      setDisplayedKeeperIndex(0);
+                    }}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    ← Today
+                  </button>
+                )}
+
+                <h2 className={`text-[15px] font-normal text-gray-700 truncate ${isToday(currentDate) ? 'mx-3' : 'mx-1'}`}>
+                  {format(currentDate, 'EEEE, MMMM d, yyyy')}
+                  {isToday(currentDate) && (
+                    <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+                      Today
+                    </span>
+                  )}
+                </h2>
+
+                {/* "Today" button - shows for past dates */}
+                {!isToday(currentDate) && isDateInPast && (
+                  <button
+                    onClick={() => {
+                      setCurrentDate(new Date());
+                      setDisplayedEventIndex(0);
+                      setDisplayedKeeperIndex(0);
+                    }}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    Today →
+                  </button>
+                )}
+                
+                {/* Spacer to balance the layout when Today button is on the left or not shown */}
+                {(isToday(currentDate) || !isDateInPast) && (
+                  <div className="w-[20px] flex-shrink-0"></div>
+                )}
+
+                <button
+                  onClick={goToNextDay}
+                  className="p-1 rounded hover:bg-gray-100 transition-colors active:scale-95"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              
+              {/* Right - Calendar Icon (positioned absolutely) */}
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <button 
+                  onClick={() => {
+                    // Create a temporary date input element
+                    const tempInput = document.createElement('input');
+                    tempInput.type = 'date';
+                    tempInput.value = format(currentDate, 'yyyy-MM-dd');
+                    tempInput.style.position = 'absolute';
+                    tempInput.style.left = '-9999px';
+                    tempInput.style.opacity = '0';
+                    
+                    document.body.appendChild(tempInput);
+                    
+                    tempInput.addEventListener('change', () => {
+                      if (tempInput.value) {
+                        const newDate = new Date(tempInput.value + 'T12:00:00'); // Set to noon to avoid timezone issues
+                        setCurrentDate(newDate);
+                        setDisplayedEventIndex(0);
+                        setDisplayedKeeperIndex(0);
+                      }
+                      document.body.removeChild(tempInput);
+                    });
+                    
+                    // Trigger the date picker
+                    if (tempInput.showPicker) {
+                      tempInput.showPicker();
+                    } else {
+                      tempInput.focus();
+                      tempInput.click();
+                    }
+                  }}
+                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  title="Pick date"
+                >
+                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div
         ref={pageScrollRef}

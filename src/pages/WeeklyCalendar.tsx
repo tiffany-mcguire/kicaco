@@ -8,11 +8,79 @@ import { GlobalChatDrawer } from '../components/chat';
 import { ChatMessageList } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
-import { Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
-import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse } from 'date-fns';
-import { parse as parseDate, format as formatDateFns } from 'date-fns';
+import { Calendar, ChevronLeft, ChevronRight, Trash2, Filter as FilterIcon } from 'lucide-react';
+import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse, isThisWeek, getYear, getMonth, isBefore, startOfDay } from 'date-fns';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { generateUUID } from '../utils/uuid';
+// import { ChildFilterDropdown } from '../components/common';
+
+// Filter Dropdown Component
+const ChildFilterDropdown: React.FC<{
+  children: { name: string }[];
+  selectedChildren: string[];
+  onToggleChild: (name: string) => void;
+  onClear: () => void;
+  isActive: boolean;
+}> = ({ children, selectedChildren, onToggleChild, onClear, isActive }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className={`p-1 rounded-full transition-colors bg-[#c0e2e7]/20 text-[#217e8f] hover:bg-[#c0e2e7]/30 active:scale-95 ${isActive ? 'border border-gray-100' : ''}`}
+        aria-label="Filter by child"
+        title="Filter"
+      >
+        <FilterIcon className="w-4 h-4" strokeWidth={1.5} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-100">
+          <ul className="py-1">
+            {children.map(child => (
+              <li key={child.name}>
+                <label className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedChildren.includes(child.name)}
+                    onChange={() => onToggleChild(child.name)}
+                    className="h-4 w-4 rounded border-gray-300 text-[#217e8f] focus:ring-[#217e8f]/50"
+                  />
+                  <span className="ml-3">{child.name}</span>
+                </label>
+              </li>
+            ))}
+            {selectedChildren.length > 0 && (
+              <>
+                <li className="border-t border-gray-100 my-1" />
+                <li>
+                  <button 
+                    onClick={onClear} 
+                    className="w-full text-left block px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                  >
+                    Clear Filter
+                  </button>
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Simple button component without state management overhead
 const AddByDayButton = React.memo(({ onClick }: { onClick?: () => void }) => (
@@ -52,6 +120,7 @@ export default function WeeklyCalendar() {
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const [weekNavBottom, setWeekNavBottom] = useState(160);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
+  const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
 
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
@@ -79,6 +148,36 @@ export default function WeeklyCalendar() {
     removeKeeper,
   } = useKicacoStore();
 
+  // Filter functions
+  const handleToggleChildFilter = useCallback((childName: string) => {
+    setFilteredChildren(prev =>
+      prev.includes(childName)
+        ? prev.filter(name => name !== childName)
+        : [...prev, childName]
+    );
+  }, []);
+
+  const handleClearFilter = useCallback(() => setFilteredChildren([]), []);
+
+  // Filtered events and keepers
+  const filteredEvents = useMemo(() => {
+    if (filteredChildren.length === 0) return events;
+    return events.filter(event => {
+      if (!event.childName) return false;
+      const eventChildren = event.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => eventChildren.includes(selectedChild));
+    });
+  }, [events, filteredChildren]);
+
+  const filteredKeepers = useMemo(() => {
+    if (filteredChildren.length === 0) return keepers;
+    return keepers.filter(keeper => {
+      if (!keeper.childName) return false;
+      const keeperChildren = keeper.childName.split(',').map(name => name.trim());
+      return filteredChildren.some(selectedChild => keeperChildren.includes(selectedChild));
+    });
+  }, [keepers, filteredChildren]);
+
   const currentDrawerHeight = storedDrawerHeight ?? 32;
 
   // Memoized calculations
@@ -97,6 +196,21 @@ export default function WeeklyCalendar() {
       };
     }), [weekStart]
   );
+
+  const weekEnd = addDays(weekStart, 6);
+  let displayRange;
+  const isWeekInPast = isBefore(startOfDay(weekEnd), startOfDay(new Date()));
+
+  if (getYear(weekStart) !== getYear(weekEnd)) {
+    // Spans years: "Dec 29, 24 - Jan 03, 25"
+    displayRange = `${format(weekStart, 'MMM d, yy')} - ${format(weekEnd, 'MMM d, yy')}`;
+  } else if (getMonth(weekStart) !== getMonth(weekEnd)) {
+    // Spans months: "Aug 31 - Sep 6, 2025"
+    displayRange = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+  } else {
+    // Same month: "August 3 - 9, 2025"
+    displayRange = `${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'd, yyyy')}`;
+  }
 
   // Auto-scroll to ensure expanded card and next tab are visible
   useEffect(() => {
@@ -179,21 +293,21 @@ export default function WeeklyCalendar() {
     const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
     for (const pattern of patterns) {
       try {
-        const dateObj = parseDate(normalized, pattern, new Date());
+        const dateObj = parse(normalized, pattern, new Date());
         if (!isNaN(dateObj.getTime())) {
-          return parseInt(formatDateFns(dateObj, 'HHmm'), 10);
+          return parseInt(format(dateObj, 'HHmm'), 10);
         }
       } catch {}
     }
     const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
     if (!isNaN(dateObj.getTime())) {
-      return parseInt(formatDateFns(dateObj, 'HHmm'), 10);
+      return parseInt(format(dateObj, 'HHmm'), 10);
     }
     return 2400;
   }, []);
 
   const getEventsForDay = useCallback((dateString: string) => {
-    return events
+    return filteredEvents
       .filter(event => {
         if (!event.date) return false;
         try {
@@ -205,10 +319,10 @@ export default function WeeklyCalendar() {
         }
       })
       .sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
-  }, [events, parseTimeForSorting]);
+  }, [filteredEvents, parseTimeForSorting]);
 
   const getKeepersForDay = useCallback((dateString: string) => {
-    return keepers.filter(keeper => {
+    return filteredKeepers.filter(keeper => {
       if (!keeper.date) return false;
       try {
         const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
@@ -218,7 +332,7 @@ export default function WeeklyCalendar() {
         return false;
       }
     });
-  }, [keepers]);
+  }, [filteredKeepers]);
 
   const formatTime12 = useCallback((time?: string) => {
     if (!time) return '';
@@ -230,15 +344,15 @@ export default function WeeklyCalendar() {
     const patterns = ['h:mm a', 'h a', 'h:mma', 'ha', 'H:mm'];
     for (const pattern of patterns) {
       try {
-        const dateObj = parseDate(normalized, pattern, new Date());
+        const dateObj = parse(normalized, pattern, new Date());
         if (!isNaN(dateObj.getTime())) {
-          return formatDateFns(dateObj, 'hh:mm a').toUpperCase();
+          return format(dateObj, 'hh:mm a').toUpperCase();
         }
       } catch {}
     }
     const dateObj = new Date(`1970-01-01T${normalized.replace(/ /g, '')}`);
     if (!isNaN(dateObj.getTime())) {
-      return formatDateFns(dateObj, 'hh:mm a').toUpperCase();
+      return format(dateObj, 'hh:mm a').toUpperCase();
     }
     return time;
   }, []);
@@ -387,24 +501,112 @@ export default function WeeklyCalendar() {
         ref={subheaderRef}
         icon={<Calendar />}
         title="Weekly Calendar"
-        action={<AddByDayButton onClick={() => handleAddEventClick(null)} />}
       />
       
       {/* Week Navigation */}
       <div 
         ref={weekNavRef} 
-        className="sticky z-[95] flex items-center justify-center py-2 bg-gray-50 max-w-2xl mx-auto w-full"
-        style={{ top: 'calc(4rem + 58px)' }}
+        className="sticky z-[95] bg-gray-50"
+        style={{ top: 'calc(4rem + 67px)' }}
       >
-        <button onClick={goToPreviousWeek} className="p-1 rounded hover:bg-gray-100 active:scale-95">
-          <ChevronLeft className="w-4 h-4 text-gray-500" />
-        </button>
-        <h2 className="text-base font-normal text-gray-700 mx-3">
-          {format(weekStart, 'MMMM d')} - {format(addDays(weekStart, 6), 'MMMM d')} ({format(addDays(weekStart, 6), 'yyyy')})
-        </h2>
-        <button onClick={goToNextWeek} className="p-1 rounded hover:bg-gray-100 active:scale-95">
-          <ChevronRight className="w-4 h-4 text-gray-500" />
-        </button>
+        <div className="px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="relative flex items-center justify-center py-2">
+              {/* Left - Filter Icon (positioned absolutely) */}
+              <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                <ChildFilterDropdown 
+                  children={children}
+                  selectedChildren={filteredChildren}
+                  onToggleChild={handleToggleChildFilter}
+                  onClear={handleClearFilter}
+                  isActive={filteredChildren.length > 0}
+                />
+              </div>
+
+              {/* Center - Navigation (with padding to avoid icons) */}
+              <div className="flex items-center justify-center min-w-0 px-10">
+                <button onClick={goToPreviousWeek} className="p-1 rounded hover:bg-gray-100 active:scale-95">
+                  <ChevronLeft className="w-4 h-4 text-gray-500" />
+                </button>
+                
+                {/* "Current" button for future weeks */}
+                {!isThisWeek(weekStart) && !isWeekInPast && (
+                  <button
+                    onClick={() => setCurrentWeek(new Date())}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    ← Current
+                  </button>
+                )}
+                
+                <h2 className={`text-[15px] font-normal text-gray-700 truncate ${isThisWeek(weekStart) ? 'mx-3' : 'mx-1'}`}>
+                  {displayRange}
+                  {isThisWeek(weekStart) && (
+                    <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
+                      Current
+                    </span>
+                  )}
+                </h2>
+                
+                {/* "Current" button for past weeks */}
+                {!isThisWeek(weekStart) && isWeekInPast && (
+                  <button
+                    onClick={() => setCurrentWeek(new Date())}
+                    className="mx-1 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 px-2 py-0.5 rounded-full transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    Current →
+                  </button>
+                )}
+
+                {/* Spacer to balance layout */}
+                {(isThisWeek(weekStart) || !isWeekInPast) && (
+                  <div className="w-[20px] flex-shrink-0"></div>
+                )}
+                
+                <button onClick={goToNextWeek} className="p-1 rounded hover:bg-gray-100 active:scale-95">
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              
+              {/* Right - Calendar Icon (positioned absolutely) */}
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <button 
+                  onClick={() => {
+                    // Create a temporary date input element
+                    const tempInput = document.createElement('input');
+                    tempInput.type = 'date';
+                    tempInput.value = format(weekStart, 'yyyy-MM-dd');
+                    tempInput.style.position = 'absolute';
+                    tempInput.style.left = '-9999px';
+                    tempInput.style.opacity = '0';
+                    
+                    document.body.appendChild(tempInput);
+                    
+                    tempInput.addEventListener('change', () => {
+                      if (tempInput.value) {
+                        const selectedDate = new Date(tempInput.value);
+                        setCurrentWeek(startOfWeek(selectedDate, { weekStartsOn: 0 }));
+                      }
+                      document.body.removeChild(tempInput);
+                    });
+                    
+                    // Trigger the date picker
+                    if (tempInput.showPicker) {
+                      tempInput.showPicker();
+                    } else {
+                      tempInput.focus();
+                      tempInput.click();
+                    }
+                  }}
+                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  title="Jump to specific week"
+                >
+                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -416,7 +618,7 @@ export default function WeeklyCalendar() {
           height: `calc(100vh - ${weekNavBottom}px)`,
         }}
       >
-        <div className="px-4 pt-2 pb-[20px]">
+        <div className="px-4 pt-4 pb-[20px]">
           <div
             ref={stackedDaysContainerRef}
             className="relative max-w-2xl mx-auto"
@@ -490,7 +692,6 @@ export default function WeeklyCalendar() {
             messages={messages}
             onCreateAccount={() => console.log('Account creation requested')}
             onRemindLater={() => console.log('Remind later requested')}
-            latestChildName={children[0]?.name || 'your child'}
           />
         </div>
       </GlobalChatDrawer>
@@ -1011,7 +1212,7 @@ const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, format
   }
 
   const evt = dayEvents[currentIdx];
-  const eventDate = evt.date ? parseDate(evt.date, 'yyyy-MM-dd', new Date()) : new Date();
+  const eventDate = evt.date ? parse(evt.date, 'yyyy-MM-dd', new Date()) : new Date();
   const dayOfWeek = eventDate.getDay();
   
   const globalEventIndex = events.findIndex((e: any) => 

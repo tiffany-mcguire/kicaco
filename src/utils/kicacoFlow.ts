@@ -1,4 +1,4 @@
-import { format, addDays, addWeeks, parse, isDate } from 'date-fns';
+import { format, addDays, addWeeks } from 'date-fns';
 import { ConversationModeController } from './conversationMode';
 
 export interface ParsedFields {
@@ -11,12 +11,12 @@ export interface ParsedFields {
   timeVague?: boolean;
 }
 
-interface Conversation {
-  messages: Array<{
-    sender: 'user' | 'assistant';
-    content: string;
-  }>;
-}
+// interface Conversation {
+//   messages: Array<{
+//     sender: 'user' | 'assistant';
+//     content: string;
+//   }>;
+// }
 
 // Generic event name patterns to detect
 const GENERIC_EVENT_NAMES = [
@@ -119,13 +119,13 @@ export function extractKnownFields(
   // Extract date patterns
   // First check for relative dates
   const lowerMessage = message.toLowerCase();
-  let foundRelativeDate = false;
+  // let foundRelativeDate = false;
   for (const [pattern, getDate] of Object.entries(RELATIVE_DATE_PATTERNS)) {
     if (lowerMessage.includes(pattern)) {
       const date = getDate();
       console.log('Resolved relative date:', date, 'ISO:', format(date, 'yyyy-MM-dd'));
       fields.date = format(date, 'yyyy-MM-dd'); // Store as ISO
-      foundRelativeDate = true;
+      // foundRelativeDate = true;
       break;
     }
   }

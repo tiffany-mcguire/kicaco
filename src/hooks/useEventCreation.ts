@@ -143,6 +143,15 @@ export const useEventCreation = () => {
       }
     } catch (error: any) {
       console.error('Error in message handling:', error);
+      console.error('Full error object:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        cause: error.cause
+      });
+      console.error('Thread ID:', threadId);
+      console.error('User text:', userText);
+      
       removeMessageById(thinkingId);
       
       // Provide more specific error messages
@@ -153,8 +162,10 @@ export const useEventCreation = () => {
         errorMessage = 'I\'m having trouble connecting. Please check your internet connection and try again.';
       } else if (error.message?.includes('CORS') || error.message?.includes('browser')) {
         errorMessage = 'Your browser is blocking the connection. Try using the desktop version or a different browser.';
+      } else if (error.message?.includes('HTTP error')) {
+        errorMessage = `Connection error: ${error.message}. Please check if the server is running.`;
       } else {
-        errorMessage += 'Please try again in a moment.';
+        errorMessage += `Please try again in a moment. (Error: ${error.message})`;
       }
       
       addMessage({

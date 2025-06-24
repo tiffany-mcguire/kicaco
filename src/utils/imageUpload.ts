@@ -1,6 +1,6 @@
-import { getApiClientInstance, ImageUploadResponse } from './apiClient';
-import { generateUUID } from './uuid';
-import { useKicacoStore } from '../store/kicacoStore';
+import { getApiClientInstance } from './apiClient';
+// import { generateUUID } from './uuid';
+// import { useKicacoStore } from '../store/kicacoStore';
 
 export interface ImageUploadOptions {
   threadId: string;
