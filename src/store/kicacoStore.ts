@@ -116,7 +116,7 @@ const mockEvents: Event[] = [
   // Today's events
   { eventName: 'Soccer Practice', childName: 'Alex', date: getMockDate(0), time: '4:00 PM', location: 'Heatherwood Field', notes: 'Remember to bring shin guards!' },
   
-  // Upcoming events (next week)
+  // Upcoming events (next week) - Enhanced with new image categories
   { eventName: 'Dentist Appointment', childName: 'Emma', date: getMockDate(2), time: '10:30 AM', location: 'Dr. Smile\'s Office' },
   { eventName: 'Library Day', childName: 'Leo', date: getMockDate(3), time: '11:00 AM', location: 'City Library', notes: 'Return the dinosaur books.' },
   { eventName: 'Birthday Party', childName: 'Alex', date: getMockDate(5), time: '2:00 PM', location: '123 Fun Street', notes: 'Sarah\'s birthday party' },
@@ -124,15 +124,64 @@ const mockEvents: Event[] = [
   { eventName: 'Swimming Lesson', childName: 'Emma', date: getMockDate(9), time: '11:00 AM', location: 'Community Pool' },
   { eventName: 'Playdate', childName: 'Leo', date: getMockDate(12), time: '3:00 PM', location: 'Central Park', notes: 'Playing with Noah' },
   
-  // Additional events to showcase new images
+  // School & Educational Events
   { eventName: 'Math Tutoring', childName: 'Alex', date: getMockDate(14), time: '4:00 PM', location: 'Learning Center', notes: 'Session with Mrs. Johnson' },
-  { eventName: 'Haircut Appointment', childName: 'Leo', date: getMockDate(16), time: '2:30 PM', location: 'Kids Cuts Salon' },
-  { eventName: 'Homework Club', childName: 'Emma', date: getMockDate(18), time: '3:30 PM', location: 'After School Program' },
-  { eventName: 'Basketball Game', childName: 'Alex', date: getMockDate(20), time: '6:00 PM', location: 'School Gym', notes: 'vs Eagles - Season starts next month!' },
-  { eventName: 'Music Concert', childName: 'Emma', date: getMockDate(22), time: '7:00 PM', location: 'School Auditorium', notes: 'Emma is performing!' },
-  { eventName: 'Tennis Lesson', childName: 'Leo', date: getMockDate(24), time: '10:00 AM', location: 'Tennis Club' },
+  { eventName: 'Homework Club', childName: 'Emma', date: getMockDate(16), time: '3:30 PM', location: 'After School Program' },
+  { eventName: 'Parent-Teacher Conference', childName: 'Leo', date: getMockDate(18), time: '5:00 PM', location: 'Little Sprouts Daycare', notes: 'Meeting with Ms. Sarah' },
+  { eventName: 'Picture Day', childName: 'Alex', date: getMockDate(20), time: '9:00 AM', location: 'School', notes: 'Wear the blue shirt!' },
+  { eventName: 'Book Fair', childName: 'Emma', date: getMockDate(22), time: '2:00 PM', location: 'School Library', notes: 'Budget: $20' },
+  { eventName: 'Field Trip to Natural History Museum', childName: 'Leo', date: getMockDate(24), time: '9:30 AM', location: 'Natural History Museum', notes: 'Dinosaur exhibit!' },
   { eventName: 'Art Class', childName: 'Emma', date: getMockDate(26), time: '1:00 PM', location: 'Community Center', notes: 'Painting landscapes today' },
-  { eventName: 'Scout Meeting', childName: 'Alex', date: getMockDate(28), time: '6:00 PM', location: 'Scout Hall', notes: 'Working on camping badge' },
+  { eventName: 'School Supplies Shopping', childName: 'Alex', date: getMockDate(28), time: '10:00 AM', location: 'Target', notes: 'Back-to-school list ready' },
+  
+  // Sports & Activities
+  { eventName: 'Basketball Game', childName: 'Alex', date: getMockDate(30), time: '6:00 PM', location: 'School Gym', notes: 'vs Eagles - Season starts next month!' },
+  { eventName: 'Tennis Lesson', childName: 'Leo', date: getMockDate(32), time: '10:00 AM', location: 'Tennis Club' },
+  { eventName: 'Teen Sports Camp', childName: 'Emma', date: getMockDate(34), time: '8:00 AM', location: 'Sports Complex', notes: 'Week-long camp' },
+  { eventName: 'Playground Meetup', childName: 'Leo', date: getMockDate(36), time: '3:00 PM', location: 'Riverside Park', notes: 'With the neighborhood kids' },
+  { eventName: 'Cheerleading Practice', childName: 'Emma', date: getMockDate(38), time: '4:00 PM', location: 'School Gym' },
+  { eventName: 'Football Game', childName: 'Alex', date: getMockDate(40), time: '7:00 PM', location: 'High School Stadium', notes: 'Homecoming game!' },
+  
+  // Medical & Health
+  { eventName: 'Eye Exam', childName: 'Emma', date: getMockDate(42), time: '2:30 PM', location: 'Vision Center', notes: 'Annual check' },
+  { eventName: 'Vaccine Appointment', childName: 'Leo', date: getMockDate(44), time: '11:00 AM', location: 'Pediatric Clinic', notes: 'School required shots' },
+  { eventName: 'Prescription Pickup', childName: 'Alex', date: getMockDate(46), time: '4:00 PM', location: 'CVS Pharmacy', notes: 'Allergy medication' },
+  { eventName: 'Physical Exam', childName: 'Emma', date: getMockDate(48), time: '9:00 AM', location: 'Family Doctor', notes: 'Sports clearance' },
+  
+  // Personal Care & Shopping
+  { eventName: 'Haircut Appointment', childName: 'Leo', date: getMockDate(50), time: '2:30 PM', location: 'Kids Cuts Salon' },
+  { eventName: 'Back-to-School Clothes Shopping', childName: 'Emma', date: getMockDate(52), time: '11:00 AM', location: 'Mall', notes: 'New semester wardrobe' },
+  { eventName: 'Donate Old Clothes', childName: 'Alex', date: getMockDate(54), time: '10:00 AM', location: 'Goodwill', notes: 'Clean out closet' },
+  
+  // Entertainment & Social
+  { eventName: 'Music Concert', childName: 'Emma', date: getMockDate(56), time: '7:00 PM', location: 'School Auditorium', notes: 'Emma is performing!' },
+  { eventName: 'Scout Meeting', childName: 'Alex', date: getMockDate(58), time: '6:00 PM', location: 'Scout Hall', notes: 'Working on camping badge' },
+  { eventName: 'Game Night', childName: 'Leo', date: getMockDate(60), time: '6:30 PM', location: 'Home', notes: 'Family board game night' },
+  { eventName: 'Ice Cream Social', childName: 'Emma', date: getMockDate(62), time: '3:00 PM', location: 'School Cafeteria', notes: 'End of year celebration' },
+  { eventName: 'Bake Sale', childName: 'Alex', date: getMockDate(64), time: '8:00 AM', location: 'School Entrance', notes: 'Fundraiser for field trip' },
+  
+  // Transportation & Travel
+  { eventName: 'Carpool to Soccer', childName: 'Leo', date: getMockDate(66), time: '3:30 PM', location: 'Pick up at school', notes: 'Mrs. Johnson driving' },
+  { eventName: 'Family Vacation', childName: 'Emma', date: getMockDate(68), time: '6:00 AM', location: 'Airport', notes: 'Flight to Disney World!' },
+  { eventName: 'Work from Home Day', childName: 'Alex', date: getMockDate(70), time: '9:00 AM', location: 'Home', notes: 'Parent working from home' },
+  
+  // Educational Outings
+  { eventName: 'Aquarium Visit', childName: 'Leo', date: getMockDate(72), time: '10:00 AM', location: 'City Aquarium', notes: 'Marine life exhibit' },
+  { eventName: 'Art Museum Tour', childName: 'Emma', date: getMockDate(74), time: '1:00 PM', location: 'Metropolitan Art Museum', notes: 'School group tour' },
+  { eventName: 'Nature Hike', childName: 'Alex', date: getMockDate(76), time: '8:00 AM', location: 'State Park', notes: 'Scout outdoor activity' },
+  
+  // Zoo Visits
+  { eventName: 'Zoo Trip - Bear Exhibit', childName: 'Leo', date: getMockDate(78), time: '10:30 AM', location: 'City Zoo', notes: 'New bear habitat opening' },
+  { eventName: 'Zoo Animals Field Trip', childName: 'Emma', date: getMockDate(80), time: '9:00 AM', location: 'City Zoo', notes: 'See the giraffes and tigers' },
+  { eventName: 'Red Panda Feeding', childName: 'Alex', date: getMockDate(82), time: '2:00 PM', location: 'City Zoo', notes: 'Special behind-the-scenes tour' },
+  
+  // School-specific events
+  { eventName: 'School Bus Safety Training', childName: 'Leo', date: getMockDate(84), time: '8:30 AM', location: 'School Parking Lot', notes: 'Start of year safety' },
+  { eventName: 'Locker Assignment', childName: 'Emma', date: getMockDate(86), time: '12:00 PM', location: 'Middle School', notes: 'Get combination and practice' },
+  { eventName: 'School Hallway Orientation', childName: 'Alex', date: getMockDate(88), time: '10:00 AM', location: 'High School', notes: 'Find all the classrooms' },
+  { eventName: 'Classroom Meet & Greet', childName: 'Leo', date: getMockDate(90), time: '2:00 PM', location: 'Elementary School', notes: 'Meet the new teacher' },
+  { eventName: 'School Snacks Prep', childName: 'Emma', date: getMockDate(92), time: '7:00 AM', location: 'Kitchen', notes: 'Pack healthy snacks for week' },
+  { eventName: 'High School Orientation', childName: 'Alex', date: getMockDate(94), time: '9:00 AM', location: 'High School', notes: 'Teens at school program' },
 ];
 
 const mockKeepers: Keeper[] = [
@@ -140,7 +189,7 @@ const mockKeepers: Keeper[] = [
   { keeperName: 'Buy ballet shoes', childName: 'Emma', date: getMockDate(-5), description: 'Size 12 - pink - COMPLETED' },
   { keeperName: 'Pay soccer registration', childName: 'Alex', date: getMockDate(-2), description: 'Spring season - PAID' },
   
-  // Upcoming Keepers
+  // Upcoming Keepers - Enhanced with new image categories
   { keeperName: 'Return library books', childName: 'Leo', date: getMockDate(1), description: '3 books about dinosaurs.' },
   { keeperName: 'Sign permission slip', childName: 'Emma', date: getMockDate(4), description: 'For the school field trip.' },
   { keeperName: 'RSVP to birthday party', childName: 'Alex', date: getMockDate(6), description: 'For Sarah\'s party.' },
@@ -149,6 +198,43 @@ const mockKeepers: Keeper[] = [
   { keeperName: 'Submit homework assignment', childName: 'Alex', date: getMockDate(17), description: 'Science project due tomorrow' },
   { keeperName: 'Schedule dentist appointment', childName: 'Leo', date: getMockDate(21), description: 'Routine cleaning and check-up' },
   { keeperName: 'Pick up vaccine records', childName: 'Emma', date: getMockDate(25), description: 'For school enrollment' },
+  
+  // School & Educational Keepers
+  { keeperName: 'Pack school backpack', childName: 'Alex', date: getMockDate(27), description: 'Check list for tomorrow\'s classes' },
+  { keeperName: 'Organize school locker', childName: 'Emma', date: getMockDate(29), description: 'Clean out old papers and organize supplies' },
+  { keeperName: 'Prepare school snacks', childName: 'Leo', date: getMockDate(31), description: 'Healthy snacks for the week' },
+  { keeperName: 'Book fair money', childName: 'Alex', date: getMockDate(33), description: 'Give $20 for book purchases' },
+  { keeperName: 'Picture day outfit', childName: 'Emma', date: getMockDate(35), description: 'Lay out nice clothes the night before' },
+  
+  // Medical & Health Keepers
+  { keeperName: 'Schedule eye exam', childName: 'Leo', date: getMockDate(37), description: 'Annual vision check before school starts' },
+  { keeperName: 'Refill prescription', childName: 'Alex', date: getMockDate(39), description: 'Allergy medication running low' },
+  { keeperName: 'Physical exam forms', childName: 'Emma', date: getMockDate(41), description: 'Submit sports clearance paperwork' },
+  
+  // Personal Care & Shopping Keepers
+  { keeperName: 'Schedule haircut', childName: 'Leo', date: getMockDate(43), description: 'Before school pictures' },
+  { keeperName: 'Back-to-school clothes', childName: 'Alex', date: getMockDate(45), description: 'Shopping for new semester wardrobe' },
+  { keeperName: 'Donate old clothes', childName: 'Emma', date: getMockDate(47), description: 'Clean out closet and donate to charity' },
+  { keeperName: 'Fold and put away laundry', childName: 'Leo', date: getMockDate(49), description: 'Weekly laundry organization' },
+  
+  // Transportation & Travel Keepers
+  { keeperName: 'Arrange carpool', childName: 'Alex', date: getMockDate(51), description: 'Coordinate rides for soccer practice' },
+  { keeperName: 'Pack for family vacation', childName: 'Emma', date: getMockDate(53), description: 'Make packing list and prepare suitcase' },
+  { keeperName: 'Work from home setup', childName: 'Leo', date: getMockDate(55), description: 'Prepare quiet space for parent\'s WFH day' },
+  
+  // Entertainment & Social Keepers
+  { keeperName: 'Game night preparation', childName: 'Alex', date: getMockDate(57), description: 'Choose games and prepare snacks' },
+  { keeperName: 'Bake sale contribution', childName: 'Emma', date: getMockDate(59), description: 'Bake cookies for school fundraiser' },
+  { keeperName: 'Scout badge requirements', childName: 'Leo', date: getMockDate(61), description: 'Complete camping badge activities' },
+  
+  // Educational Outings Keepers
+  { keeperName: 'Aquarium trip permission', childName: 'Alex', date: getMockDate(63), description: 'Submit field trip forms and payment' },
+  { keeperName: 'Art museum tour prep', childName: 'Emma', date: getMockDate(65), description: 'Research exhibits we\'ll see' },
+  { keeperName: 'Nature hike gear', childName: 'Leo', date: getMockDate(67), description: 'Pack hiking boots and water bottle' },
+  
+  // Zoo & Animal Keepers
+  { keeperName: 'Zoo membership renewal', childName: 'Alex', date: getMockDate(69), description: 'Annual family membership expires soon' },
+  { keeperName: 'Zoo field trip forms', childName: 'Emma', date: getMockDate(71), description: 'Submit permission slip and emergency contacts' },
 ];
 
 
