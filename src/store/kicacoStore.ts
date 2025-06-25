@@ -111,7 +111,7 @@ const mockEvents: Event[] = [
   // A few past events to show history
   { eventName: 'Science Fair', childName: 'Alex', date: getMockDate(-7), time: '1:00 PM', location: 'School Gymnasium', notes: 'Alex won 2nd place!' },
   { eventName: 'Ballet Practice', childName: 'Emma', date: getMockDate(-5), time: '4:30 PM', location: 'Dance Studio' },
-  { eventName: 'Doctor Appointment', childName: 'Leo', date: getMockDate(-3), time: '10:00 AM', location: 'Pediatric Clinic', notes: 'Annual checkup - all good!' },
+  { eventName: 'Pediatric Check-up', childName: 'Leo', date: getMockDate(-3), time: '10:00 AM', location: 'Pediatric Clinic', notes: 'Annual checkup - all good!' },
   
   // Today's events
   { eventName: 'Soccer Practice', childName: 'Alex', date: getMockDate(0), time: '4:00 PM', location: 'Heatherwood Field', notes: 'Remember to bring shin guards!' },
@@ -119,10 +119,20 @@ const mockEvents: Event[] = [
   // Upcoming events (next week)
   { eventName: 'Dentist Appointment', childName: 'Emma', date: getMockDate(2), time: '10:30 AM', location: 'Dr. Smile\'s Office' },
   { eventName: 'Library Day', childName: 'Leo', date: getMockDate(3), time: '11:00 AM', location: 'City Library', notes: 'Return the dinosaur books.' },
-  { eventName: 'Birthday Party (Sarah)', childName: 'Alex', date: getMockDate(5), time: '2:00 PM', location: '123 Fun Street' },
+  { eventName: 'Birthday Party', childName: 'Alex', date: getMockDate(5), time: '2:00 PM', location: '123 Fun Street', notes: 'Sarah\'s birthday party' },
   { eventName: 'Karate Class', childName: 'Alex', date: getMockDate(7), time: '6:30 PM', location: 'Community Center', notes: 'Practice for the belt test.' },
-  { eventName: 'Swim Lesson', childName: 'Emma', date: getMockDate(9), time: '11:00 AM', location: 'Community Pool' },
-  { eventName: 'Playdate with Noah', childName: 'Leo', date: getMockDate(12), time: '3:00 PM', location: 'Central Park' },
+  { eventName: 'Swimming Lesson', childName: 'Emma', date: getMockDate(9), time: '11:00 AM', location: 'Community Pool' },
+  { eventName: 'Playdate', childName: 'Leo', date: getMockDate(12), time: '3:00 PM', location: 'Central Park', notes: 'Playing with Noah' },
+  
+  // Additional events to showcase new images
+  { eventName: 'Math Tutoring', childName: 'Alex', date: getMockDate(14), time: '4:00 PM', location: 'Learning Center', notes: 'Session with Mrs. Johnson' },
+  { eventName: 'Haircut Appointment', childName: 'Leo', date: getMockDate(16), time: '2:30 PM', location: 'Kids Cuts Salon' },
+  { eventName: 'Homework Club', childName: 'Emma', date: getMockDate(18), time: '3:30 PM', location: 'After School Program' },
+  { eventName: 'Basketball Game', childName: 'Alex', date: getMockDate(20), time: '6:00 PM', location: 'School Gym', notes: 'vs Eagles - Season starts next month!' },
+  { eventName: 'Music Concert', childName: 'Emma', date: getMockDate(22), time: '7:00 PM', location: 'School Auditorium', notes: 'Emma is performing!' },
+  { eventName: 'Tennis Lesson', childName: 'Leo', date: getMockDate(24), time: '10:00 AM', location: 'Tennis Club' },
+  { eventName: 'Art Class', childName: 'Emma', date: getMockDate(26), time: '1:00 PM', location: 'Community Center', notes: 'Painting landscapes today' },
+  { eventName: 'Scout Meeting', childName: 'Alex', date: getMockDate(28), time: '6:00 PM', location: 'Scout Hall', notes: 'Working on camping badge' },
 ];
 
 const mockKeepers: Keeper[] = [
@@ -135,6 +145,10 @@ const mockKeepers: Keeper[] = [
   { keeperName: 'Sign permission slip', childName: 'Emma', date: getMockDate(4), description: 'For the school field trip.' },
   { keeperName: 'RSVP to birthday party', childName: 'Alex', date: getMockDate(6), description: 'For Sarah\'s party.' },
   { keeperName: 'Schedule yearly check-up', childName: 'Leo', date: getMockDate(10) },
+  { keeperName: 'Buy school supplies', childName: 'Emma', date: getMockDate(15), description: 'Notebooks, pencils, and art supplies for new semester' },
+  { keeperName: 'Submit homework assignment', childName: 'Alex', date: getMockDate(17), description: 'Science project due tomorrow' },
+  { keeperName: 'Schedule dentist appointment', childName: 'Leo', date: getMockDate(21), description: 'Routine cleaning and check-up' },
+  { keeperName: 'Pick up vaccine records', childName: 'Emma', date: getMockDate(25), description: 'For school enrollment' },
 ];
 
 
@@ -265,7 +279,7 @@ export const useKicacoStore = create(
       setBlurbGone: (gone: boolean) => set({ blurbGone: gone }),
     }),
     {
-      name: 'kicaco-storage-v4',
+      name: 'kicaco-storage-v5',
     }
   )
 );

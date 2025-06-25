@@ -506,8 +506,8 @@ export default function WeeklyCalendar() {
       {/* Week Navigation */}
       <div 
         ref={weekNavRef} 
-        className="sticky z-[95] bg-gray-50"
-        style={{ top: 'calc(4rem + 67px)' }}
+        className="sticky z-[95] bg-gray-50 -mt-px"
+        style={{ top: 'calc(4rem + 52px)' }}
       >
         <div className="px-4">
           <div className="max-w-2xl mx-auto">
@@ -539,7 +539,7 @@ export default function WeeklyCalendar() {
                   </button>
                 )}
                 
-                <h2 className={`text-[15px] font-normal text-gray-700 truncate ${isThisWeek(weekStart) ? 'mx-3' : 'mx-1'}`}>
+                <h2 className={`text-[15px] font-normal text-gray-700 ${isThisWeek(weekStart) ? 'mx-3' : 'mx-1'} whitespace-nowrap overflow-visible`}>
                   {displayRange}
                   {isThisWeek(weekStart) && (
                     <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">

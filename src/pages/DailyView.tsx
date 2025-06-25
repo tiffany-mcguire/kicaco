@@ -6,7 +6,7 @@ import { GlobalFooter } from '../components/navigation';
 import { GlobalSubheader } from '../components/navigation';
 import { GlobalChatDrawer } from '../components/chat';
 import { useKicacoStore } from '../store/kicacoStore';
-import { sendMessageToAssistant } from '../utils/talkToKicaco';
+import { getApiClientInstance } from '../utils/apiClient';
 
 import { Calendar, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, parse, isToday, isBefore, startOfDay } from 'date-fns';
@@ -254,37 +254,40 @@ const DailyEventCard: React.FC<{
         onTouchCancel={handleTouchCancel}
       >
         <div className="flex h-full items-center justify-between px-4">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <StackedChildBadges 
               childName={event.childName} 
               size="md" 
               maxVisible={3}
+              className="flex-shrink-0"
             />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white">{displayName}</span>
-              {event.location && (
-                <span className="text-xs text-gray-200 mt-0.5">{event.location}</span>
+            <div className="flex items-center gap-1 min-w-0">
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold text-white">{displayName}</span>
+                {event.location && (
+                  <span className="text-xs text-gray-200 mt-0.5">{event.location}</span>
+                )}
+              </div>
+              {/* Carousel controls - hugging the event content */}
+              {events.length > 1 && (
+                <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 flex-shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-gray-800 text-[10px] font-medium">
+                    {displayedEventIndex + 1}/{events.length}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
               )}
             </div>
-            {/* Carousel controls - hugging the event content */}
-            {events.length > 1 && (
-              <div className="flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 ml-2">
-                <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev - 1 + events.length) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                  <ChevronLeft size={12} />
-                </button>
-                <span className="text-gray-800 text-[10px] font-medium">
-                  {displayedEventIndex + 1}/{events.length}
-                </span>
-                <button onClick={(e) => { e.stopPropagation(); setDisplayedEventIndex(prev => (prev + 1) % events.length); }} className="text-gray-800 hover:text-gray-900 p-0">
-                  <ChevronRight size={12} />
-                </button>
-              </div>
-            )}
           </div>
-          <div className="flex flex-col justify-center items-end">
-            <span className="text-sm font-medium text-white">{format(eventDate, 'EEEE, MMMM d')}</span>
+          <div className="flex flex-col justify-center items-end flex-shrink-0 ml-2">
+            <span className="text-sm font-medium text-white whitespace-nowrap">{format(eventDate, 'EEEE, MMMM d')}</span>
             {event.time && (
-              <span className="text-xs text-gray-200 mt-0.5">{formatTime(event.time)}</span>
+              <span className="text-xs text-gray-200 mt-0.5 whitespace-nowrap">{formatTime(event.time)}</span>
             )}
           </div>
         </div>
@@ -346,7 +349,11 @@ export default function DailyView() {
   
   // Initialize currentDate from navigation state if available
   const navigationDate = location.state?.date;
-  const initialDate = navigationDate ? navigationDate : new Date();
+  const initialDate = navigationDate 
+    ? (typeof navigationDate === 'string' 
+        ? parse(navigationDate, 'yyyy-MM-dd', new Date()) 
+        : navigationDate)
+    : new Date();
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
@@ -387,7 +394,7 @@ export default function DailyView() {
   
   // Get location state to check if we need to focus on a specific item
   const locationState = location.state as { 
-    date?: Date, 
+    date?: Date | string, 
     targetEvent?: any,
     targetKeeper?: any
   } | null;
@@ -405,10 +412,15 @@ export default function DailyView() {
       return;
     }
 
+    // Parse the target date if it's a string
+    const parsedTargetDate = typeof targetDate === 'string' 
+      ? parse(targetDate, 'yyyy-MM-dd', new Date()) 
+      : targetDate;
+
     // 2. If the view is not on the correct date yet, set it and wait for re-render.
     // This ensures we are working with the right day's events.
-    if (!isSameDay(currentDate, targetDate)) {
-      setCurrentDate(targetDate);
+    if (!isSameDay(currentDate, parsedTargetDate)) {
+      setCurrentDate(parsedTargetDate);
       return;
     }
 
@@ -424,7 +436,7 @@ export default function DailyView() {
         if (!event.date) return false;
         try {
           const eventDate = parse(event.date, 'yyyy-MM-dd', new Date());
-          return isSameDay(eventDate, targetDate);
+          return isSameDay(eventDate, parsedTargetDate);
         } catch (e) {
           console.error("Error parsing event date:", event.date, e);
           return false;
@@ -455,7 +467,7 @@ export default function DailyView() {
         if (!keeper.date) return false;
         try {
           const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
-          return isSameDay(keeperDate, targetDate);
+          return isSameDay(keeperDate, parsedTargetDate);
         } catch (e) {
           console.error("Error parsing keeper date:", keeper.date, e);
           return false;
@@ -1035,12 +1047,29 @@ export default function DailyView() {
     });
 
     try {
-      const assistantResponseText = await sendMessageToAssistant(threadId, messageToSend);
+      const apiClient = getApiClientInstance();
+      const messageResponse = await apiClient.sendMessage(threadId, messageToSend);
+      
+      // Handle any events/keepers that were created during message processing
+      if (messageResponse.createdEvents && messageResponse.createdEvents.length > 0) {
+        console.log('DailyView: Events created/updated during message:', messageResponse.createdEvents);
+        messageResponse.createdEvents.forEach(event => {
+          addEvent(event);
+        });
+      }
+      
+      if (messageResponse.createdKeepers && messageResponse.createdKeepers.length > 0) {
+        console.log('DailyView: Keepers created/updated during message:', messageResponse.createdKeepers);
+        messageResponse.createdKeepers.forEach(keeper => {
+          addKeeper(keeper);
+        });
+      }
+      
       removeMessageById(thinkingMessageId);
       addMessage({
         id: generateUUID(),
         sender: 'assistant',
-        content: assistantResponseText,
+        content: messageResponse.response,
       });
     } catch (error) {
       console.error("Error sending message from DailyView:", error);
@@ -1124,9 +1153,9 @@ export default function DailyView() {
       {/* Day Navigation - made sticky below subheader */}
       <div 
         ref={dayNavRef} 
-        className="sticky z-[95] bg-gray-50"
+        className="sticky z-[95] bg-gray-50 -mt-px"
         style={{ 
-          top: 'calc(4rem + 67px)' // 64px header + ~67px subheader
+          top: 'calc(4rem + 52px)', // 64px header + 52px subheader (16+12+24)
         }}
         data-card-alley
       >
@@ -1167,7 +1196,7 @@ export default function DailyView() {
                   </button>
                 )}
 
-                <h2 className={`text-[15px] font-normal text-gray-700 truncate ${isToday(currentDate) ? 'mx-3' : 'mx-1'}`}>
+                <h2 className={`text-[15px] font-normal text-gray-700 ${isToday(currentDate) ? 'mx-3' : 'mx-1'} whitespace-nowrap overflow-visible`}>
                   {format(currentDate, 'EEEE, MMMM d, yyyy')}
                   {isToday(currentDate) && (
                     <span className="ml-2 text-xs font-medium text-[#217e8f] bg-[#c0e2e7]/20 px-2 py-0.5 rounded-full">
