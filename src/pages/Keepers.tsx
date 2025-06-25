@@ -587,7 +587,7 @@ export default function Keepers() {
     }
   }, [activeDayDate]);
 
-  // Group keepers by month and then by date (filtering out past keepers)
+  // Group keepers by month and then by date (including all keepers for testing)
   const keepersByMonth = useMemo(() => {
     const today = startOfDay(new Date());
     
@@ -597,9 +597,10 @@ export default function Keepers() {
       try {
         const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
         
-        // Filter out past keepers
-        if (!isAfter(keeperDate, today) && !isSameDay(keeperDate, today)) {
-          return acc; // Skip past keepers
+        // Include ALL keepers - don't filter by date to show all test data
+        // Only skip clearly invalid dates
+        if (isNaN(keeperDate.getTime())) {
+          return acc; // Skip invalid dates
         }
         
         const monthKey = format(keeperDate, 'yyyy-MM');
