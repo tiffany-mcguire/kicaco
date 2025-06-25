@@ -1,36 +1,18 @@
-// Utility to clear localStorage and reset to mock data
-// This can be called from the browser console on mobile
-
+// Debug utilities for development
 export const clearKicacoStorage = () => {
-  try {
-    // Clear all Kicaco-related localStorage keys
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('kicaco')) {
-        keysToRemove.push(key);
-      }
-    }
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('kicaco-store');
+    console.log('Kicaco localStorage cleared');
     
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      console.log(`Removed: ${key}`);
+    // Also clear any other potential storage keys
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('kicaco')) {
+        localStorage.removeItem(key);
+        console.log(`Cleared localStorage key: ${key}`);
+      }
     });
     
-    console.log('Kicaco localStorage cleared successfully!');
-    console.log('Refresh the page to see the reset state with mock data.');
-    
-    return {
-      success: true,
-      message: 'Storage cleared. Refresh the page to reset to mock data.',
-      removedKeys: keysToRemove
-    };
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    alert('localStorage cleared! Refresh the page to reload fresh mock data.');
   }
 };
 
@@ -68,7 +50,7 @@ export const debugEventData = () => {
   }
 };
 
-// Make it available globally for console access
+// Make these available globally for easy debugging
 if (typeof window !== 'undefined') {
   (window as any).clearKicacoStorage = clearKicacoStorage;
   (window as any).debugEventData = debugEventData;

@@ -98,6 +98,9 @@ type KicacoState = {
   setDisableIntro: (disable: boolean) => void;
   blurbGone: boolean;
   setBlurbGone: (gone: boolean) => void;
+  
+  // Debug utilities
+  refreshMockData: () => void;
 };
 
 // --- MOCK DATA ---
@@ -363,6 +366,9 @@ export const useKicacoStore = create(
       setDisableIntro: (disable: boolean) => set({ disableIntro: disable }),
       blurbGone: false,
       setBlurbGone: (gone: boolean) => set({ blurbGone: gone }),
+      
+      // Debug utilities
+      refreshMockData: () => set({ events: mockEvents, keepers: mockKeepers }),
     }),
     {
       name: 'kicaco-storage-v5',

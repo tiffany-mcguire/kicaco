@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Kicaco Events</title>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+</head>
+<body>
+    <h1>Kicaco Events Debug</h1>
+    <button onclick="clearStorage()">Clear localStorage</button>
+    <button onclick="checkEvents()">Check Events</button>
+    <div id="output"></div>
+
+    <script>
+        function clearStorage() {
+            localStorage.clear();
+            document.getElementById('output').innerHTML = '<p>localStorage cleared! Refresh the app to reload mock data.</p>';
+        }
+
+        function checkEvents() {
+            const getMockDate = (dayOffset) => {
+                const { addDays, format } = dateFns;
+                return format(addDays(new Date(), dayOffset), 'yyyy-MM-dd');
+            };
+
+            // Test events that should exist
+            const testEvents = [
+                { name: 'Basketball Game', day: 30 },
+                { name: 'Eye Exam', day: 42 },
+                { name: 'Haircut Appointment', day: 50 },
+                { name: 'Music Concert', day: 56 },
+                { name: 'Aquarium Visit', day: 72 },
+                { name: 'School Bus Safety Training', day: 84 },
+                { name: 'High School Orientation', day: 94 },
+            ];
+
+            let output = '<h2>Expected Events:</h2>';
+            testEvents.forEach(event => {
+                const date = getMockDate(event.day);
+                const dateObj = new Date(date);
+                const month = dateFns.format(dateObj, 'MMMM yyyy');
+                output += `<p><strong>${event.name}</strong>: ${date} (${month})</p>`;
+            });
+
+            // Check localStorage
+            output += '<h2>localStorage Data:</h2>';
+            const storedData = localStorage.getItem('kicaco-store');
+            if (storedData) {
+                try {
+                    const parsed = JSON.parse(storedData);
+                    if (parsed.state && parsed.state.events) {
+                        output += `<p>Found ${parsed.state.events.length} events in localStorage</p>`;
+                        
+                        // Group by month
+                        const eventsByMonth = {};
+                        parsed.state.events.forEach(event => {
+                            if (event.date) {
+                                const dateObj = new Date(event.date);
+                                const monthKey = dateFns.format(dateObj, 'yyyy-MM');
+                                if (!eventsByMonth[monthKey]) {
+                                    eventsByMonth[monthKey] = [];
+                                }
+                                eventsByMonth[monthKey].push(event);
+                            }
+                        });
+
+                        Object.keys(eventsByMonth).sort().forEach(month => {
+                            const monthName = dateFns.format(new Date(month + '-01'), 'MMMM yyyy');
+                            output += `<h3>${monthName} (${eventsByMonth[month].length} events)</h3>`;
+                            eventsByMonth[month].forEach(event => {
+                                output += `<p style="margin-left: 20px;">• ${event.eventName} (${event.childName}): ${event.date}</p>`;
+                            });
+                        });
+                    }
+                } catch (e) {
+                    output += `<p>Error parsing localStorage: ${e.message}</p>`;
+                }
+            } else {
+                output += '<p>No localStorage data found</p>';
+            }
+
+            document.getElementById('output').innerHTML = output;
+        }
+
+        // Auto-check on load
+        window.onload = checkEvents;
+    </script>
+</body>
+</html> 
