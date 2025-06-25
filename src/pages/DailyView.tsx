@@ -12,7 +12,7 @@ import { Calendar, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucid
 import { format, addDays, subDays, isSameDay, parse, isToday, isBefore, startOfDay } from 'date-fns';
 import { EventCard } from '../components/calendar';
 import { KeeperCard } from '../components/calendar';
-import { StackedChildBadges, ChildFilterDropdown } from '../components/common';
+import { StackedChildBadges, ChildFilterDropdown, ConfirmDialog } from '../components/common';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
@@ -51,7 +51,8 @@ const DailyEventCard: React.FC<{
   displayedEventIndex: number;
   setDisplayedEventIndex: (fn: (prev: number) => number) => void;
   removeEvent: (index: number) => void;
-}> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex, removeEvent }) => {
+  setDeleteConfirmation: (confirmation: { isOpen: boolean; type: 'event' | 'keeper' | null; index: number | null; name: string }) => void;
+}> = ({ event, currentDate, navigate, allEvents, events, displayedEventIndex, setDisplayedEventIndex, removeEvent, setDeleteConfirmation }) => {
   
   const eventDate = event.date ? parse(event.date, 'yyyy-MM-dd', new Date()) : currentDate;
   const dayOfWeek = currentDate.getDay();
@@ -193,7 +194,12 @@ const DailyEventCard: React.FC<{
 
   const handleDelete = () => {
     if (globalEventIndex !== -1) {
-      removeEvent(globalEventIndex);
+      setDeleteConfirmation({
+        isOpen: true,
+        type: 'event',
+        index: globalEventIndex,
+        name: event.eventName
+      });
     }
   };
 
@@ -358,9 +364,21 @@ export default function DailyView() {
   const [displayedEventIndex, setDisplayedEventIndex] = useState(0);
   const [displayedKeeperIndex, setDisplayedKeeperIndex] = useState(0);
   const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
+  const [isDatePickerActive, setIsDatePickerActive] = useState(false);
 
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [clearFooterActiveButton, setClearFooterActiveButton] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ 
+    isOpen: boolean; 
+    type: 'event' | 'keeper' | null;
+    index: number | null; 
+    name: string;
+  }>({
+    isOpen: false,
+    type: null,
+    index: null,
+    name: ''
+  });
 
   // Filter functions
   const handleToggleChildFilter = useCallback((childName: string) => {
@@ -371,7 +389,10 @@ export default function DailyView() {
     );
   }, []);
 
-  const handleClearFilter = useCallback(() => setFilteredChildren([]), []);
+  const handleClearFilter = useCallback(() => {
+    setFilteredChildren([]);
+    setIsDatePickerActive(false);
+  }, []);
 
   // Filtered events and keepers
   const filteredEvents = useMemo(() => {
@@ -1236,6 +1257,12 @@ export default function DailyView() {
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button 
                   onClick={() => {
+                    // If already active, just reset and return
+                    if (isDatePickerActive) {
+                      setIsDatePickerActive(false);
+                      return;
+                    }
+                    
                     // Create a temporary date input element
                     const tempInput = document.createElement('input');
                     tempInput.type = 'date';
@@ -1254,9 +1281,33 @@ export default function DailyView() {
                         setDisplayedKeeperIndex(0);
                       }
                       document.body.removeChild(tempInput);
+                      setIsDatePickerActive(false);
                     });
                     
-                    // Trigger the date picker
+                    tempInput.addEventListener('blur', () => {
+                      setTimeout(() => {
+                        if (document.body.contains(tempInput)) {
+                          document.body.removeChild(tempInput);
+                        }
+                        setIsDatePickerActive(false);
+                      }, 100);
+                    });
+                    
+                    // Add click outside handler
+                    const handleClickOutside = (e: Event) => {
+                      const target = e.target as HTMLElement;
+                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="date"]')) {
+                        setIsDatePickerActive(false);
+                        document.removeEventListener('click', handleClickOutside);
+                      }
+                    };
+                    
+                    setTimeout(() => {
+                      document.addEventListener('click', handleClickOutside);
+                    }, 100);
+                    
+                    // Set active state and trigger the date picker
+                    setIsDatePickerActive(true);
                     if (tempInput.showPicker) {
                       tempInput.showPicker();
                     } else {
@@ -1264,10 +1315,11 @@ export default function DailyView() {
                       tempInput.click();
                     }
                   }}
-                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Pick date"
+                  data-calendar-button
                 >
-                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                  <Calendar className={`w-4 h-4 ${isDatePickerActive ? 'text-white' : 'text-[#217e8f]'}`} />
                 </button>
               </div>
             </div>
@@ -1329,6 +1381,7 @@ export default function DailyView() {
                   displayedEventIndex={displayedEventIndex}
                   setDisplayedEventIndex={setDisplayedEventIndex}
                   removeEvent={removeEvent}
+                  setDeleteConfirmation={setDeleteConfirmation}
                 />
               </div>
             ) : (
@@ -1434,7 +1487,12 @@ export default function DailyView() {
                         k.childName === keeper.childName
                       );
                       if (originalKeeperIndex !== -1) {
-                        removeKeeper(originalKeeperIndex);
+                        setDeleteConfirmation({
+                          isOpen: true,
+                          type: 'keeper',
+                          index: originalKeeperIndex,
+                          name: keeper.keeperName
+                        });
                       }
                     }}
                   />
@@ -1511,6 +1569,24 @@ export default function DailyView() {
           </div>
         </div>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, type: null, index: null, name: '' })}
+        onConfirm={() => {
+          if (deleteConfirmation.index !== null) {
+            if (deleteConfirmation.type === 'event') {
+              removeEvent(deleteConfirmation.index);
+            } else if (deleteConfirmation.type === 'keeper') {
+              removeKeeper(deleteConfirmation.index);
+            }
+            setDeleteConfirmation({ isOpen: false, type: null, index: null, name: '' });
+          }
+        }}
+        title={`Delete ${deleteConfirmation.type === 'event' ? 'Event' : 'Keeper'}`}
+        message={`Are you sure you want to delete "${deleteConfirmation.name}"? This action cannot be undone.`}
+      />
     </div>
   );
 } 

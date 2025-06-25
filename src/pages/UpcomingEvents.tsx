@@ -1,4 +1,4 @@
-import { StackedChildBadges } from '../components/common';
+import { StackedChildBadges, ConfirmDialog } from '../components/common';
 import { ChatBubble } from '../components/chat';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -450,9 +450,10 @@ const CarouselEventCard: React.FC<{
   removeEvent: (index: number) => void;
   onFlickDown?: (stackPosition: number) => void;
   onFlickUp?: (stackPosition: number, totalCards: number) => void;
+  setDeleteConfirmation: (confirmation: { isOpen: boolean; eventIndex: number | null; eventName: string }) => void;
 }> = React.memo(({ 
   dayEvents, date, stackPosition, totalInStack, isActive, activeIndex, onTabClick, 
-  navigate, allEvents, removeEvent, onFlickDown, onFlickUp 
+  navigate, allEvents, removeEvent, onFlickDown, onFlickUp, setDeleteConfirmation 
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
@@ -729,7 +730,11 @@ const CarouselEventCard: React.FC<{
               e.time === currentEvent.time
             );
             if (globalEventIndex !== -1) {
-              removeEvent(globalEventIndex);
+              setDeleteConfirmation({ 
+                isOpen: true, 
+                eventIndex: globalEventIndex, 
+                eventName: currentEvent.eventName 
+              });
             }
           } : undefined}
         />
@@ -831,6 +836,11 @@ export default function UpcomingEvents() {
   const previousMessagesLengthRef = useRef(messages.length);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [activeDayDate, setActiveDayDate] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; eventIndex: number | null; eventName: string }>({
+    isOpen: false,
+    eventIndex: null,
+    eventName: ''
+  });
 
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
@@ -1307,6 +1317,7 @@ export default function UpcomingEvents() {
                                         removeEvent={removeEvent}
                                         onFlickDown={handleFlickDown}
                                         onFlickUp={handleFlickUp}
+                                        setDeleteConfirmation={setDeleteConfirmation}
                                     />
                                     )}
                               </div>
@@ -1330,6 +1341,20 @@ export default function UpcomingEvents() {
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSend}
         disabled={!threadId}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, eventIndex: null, eventName: '' })}
+        onConfirm={() => {
+          if (deleteConfirmation.eventIndex !== null) {
+            removeEvent(deleteConfirmation.eventIndex);
+            setDeleteConfirmation({ isOpen: false, eventIndex: null, eventName: '' });
+          }
+        }}
+        title="Delete Event"
+        message={`Are you sure you want to delete "${deleteConfirmation.eventName}"? This action cannot be undone.`}
       />
     </div>
   );

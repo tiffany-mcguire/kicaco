@@ -39,11 +39,11 @@ const ChildFilterDropdown: React.FC<{
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)} 
-        className={`p-1 rounded-full transition-colors bg-[#c0e2e7]/20 text-[#217e8f] hover:bg-[#c0e2e7]/30 active:scale-95 ${isActive ? 'border border-gray-100' : ''}`}
+        className={`p-1 rounded-full transition-all duration-150 active:scale-95 ${isActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 text-[#217e8f] hover:bg-[#c0e2e7]/40'}`}
         aria-label="Filter by child"
         title="Filter"
       >
-        <FilterIcon className="w-4 h-4" strokeWidth={1.5} />
+        <FilterIcon className="w-4 h-4" />
       </button>
 
       {isOpen && (
@@ -121,6 +121,7 @@ export default function WeeklyCalendar() {
   const [weekNavBottom, setWeekNavBottom] = useState(160);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
+  const [isDatePickerActive, setIsDatePickerActive] = useState(false);
 
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
@@ -157,7 +158,10 @@ export default function WeeklyCalendar() {
     );
   }, []);
 
-  const handleClearFilter = useCallback(() => setFilteredChildren([]), []);
+  const handleClearFilter = useCallback(() => {
+    setFilteredChildren([]);
+    setIsDatePickerActive(false);
+  }, []);
 
   // Filtered events and keepers
   const filteredEvents = useMemo(() => {
@@ -572,6 +576,12 @@ export default function WeeklyCalendar() {
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button 
                   onClick={() => {
+                    // If already active, just reset and return
+                    if (isDatePickerActive) {
+                      setIsDatePickerActive(false);
+                      return;
+                    }
+                    
                     // Create a temporary date input element
                     const tempInput = document.createElement('input');
                     tempInput.type = 'date';
@@ -588,9 +598,33 @@ export default function WeeklyCalendar() {
                         setCurrentWeek(startOfWeek(selectedDate, { weekStartsOn: 0 }));
                       }
                       document.body.removeChild(tempInput);
+                      setIsDatePickerActive(false);
                     });
                     
-                    // Trigger the date picker
+                    tempInput.addEventListener('blur', () => {
+                      setTimeout(() => {
+                        if (document.body.contains(tempInput)) {
+                          document.body.removeChild(tempInput);
+                        }
+                        setIsDatePickerActive(false);
+                      }, 100);
+                    });
+                    
+                    // Add click outside handler
+                    const handleClickOutside = (e: Event) => {
+                      const target = e.target as HTMLElement;
+                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="date"]')) {
+                        setIsDatePickerActive(false);
+                        document.removeEventListener('click', handleClickOutside);
+                      }
+                    };
+                    
+                    setTimeout(() => {
+                      document.addEventListener('click', handleClickOutside);
+                    }, 100);
+                    
+                    // Set active state and trigger the date picker
+                    setIsDatePickerActive(true);
                     if (tempInput.showPicker) {
                       tempInput.showPicker();
                     } else {
@@ -598,10 +632,11 @@ export default function WeeklyCalendar() {
                       tempInput.click();
                     }
                   }}
-                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Jump to specific week"
+                  data-calendar-button
                 >
-                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                  <Calendar className={`w-4 h-4 ${isDatePickerActive ? 'text-white' : 'text-[#217e8f]'}`} />
                 </button>
               </div>
             </div>

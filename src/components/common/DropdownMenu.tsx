@@ -88,9 +88,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
             (closing ? 'opacity-0 scale-95 ease-in' : 'opacity-100 scale-100 ease-out')
           }
         >
-          {shouldShowCaret && (
-            <div className={`absolute top-[-8px] ${positionClassCaret} w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-[#217e8f] shadow-[0_4px_8px_rgba(0,0,0,0.1)]`} style={{ opacity: 0.95, zIndex: 151 }} />
-          )}
+
           {typeof children === 'function' ? children({ close: handleClose }) : children}
         </div>
       )}

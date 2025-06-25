@@ -480,7 +480,7 @@ const KeeperCard: React.FC<KeeperCardProps> = ({
                 e.stopPropagation();
                 onAddKeeper?.();
               }}
-              className="bg-blue-500/80 hover:bg-blue-600/80 text-white text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
+              className="bg-white/50 backdrop-blur-sm text-gray-800 hover:text-gray-900 text-[10px] font-medium px-2 py-1 rounded-full transition-colors hover:bg-white/60"
             >
               + Add Keeper
             </button>

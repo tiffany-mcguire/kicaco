@@ -12,7 +12,7 @@ import { Bell, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { KeeperCard } from '../components/calendar';
 import { parse, format, startOfDay, isAfter, isSameDay, isToday } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { StackedChildBadges } from '../components/common';
+import { StackedChildBadges, ConfirmDialog } from '../components/common';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
@@ -120,11 +120,12 @@ interface CarouselKeeperCardProps {
   onFlickDown?: (stackPosition: number) => void;
   onFlickUp?: (stackPosition: number) => void;
   globalStackPosition?: number;
+  setDeleteConfirmation: (confirmation: { isOpen: boolean; keeperIndex: number | null; keeperName: string }) => void;
 }
 
 const CarouselKeeperCard = React.memo(({ 
   dayKeepers, date, stackPosition, totalInStack, isActive, activeIndex, onTabClick, 
-  navigate, removeKeeper, keepers, onFlickDown, onFlickUp, globalStackPosition
+  navigate, removeKeeper, keepers, onFlickDown, onFlickUp, globalStackPosition, setDeleteConfirmation
 }: CarouselKeeperCardProps) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
@@ -473,7 +474,11 @@ const CarouselKeeperCard = React.memo(({
                   k.time === keeper.time
                 );
                 if (globalKeeperIndex !== -1) {
-                  removeKeeper(globalKeeperIndex);
+                  setDeleteConfirmation({ 
+                    isOpen: true, 
+                    keeperIndex: globalKeeperIndex, 
+                    keeperName: keeper.keeperName 
+                  });
                 }
               }}
               className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
@@ -538,6 +543,11 @@ export default function Keepers() {
 
   // State for keeper card interactions - using same pattern as UpcomingEvents
   const [activeDayDate, setActiveDayDate] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; keeperIndex: number | null; keeperName: string }>({
+    isOpen: false,
+    keeperIndex: null,
+    keeperName: ''
+  });
 
   // Track if this is from flick dismissal to prevent auto-scroll on manual opens
   const wasFlickDismissalRef = useRef(false);
@@ -1146,6 +1156,7 @@ export default function Keepers() {
                             removeKeeper={removeKeeper}
                             keepers={keepers}
                             globalStackPosition={globalStackPosition}
+                            setDeleteConfirmation={setDeleteConfirmation}
                           />
                         );
                       }
@@ -1195,6 +1206,20 @@ export default function Keepers() {
         value={input}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSendMessage}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, keeperIndex: null, keeperName: '' })}
+        onConfirm={() => {
+          if (deleteConfirmation.keeperIndex !== null) {
+            removeKeeper(deleteConfirmation.keeperIndex);
+            setDeleteConfirmation({ isOpen: false, keeperIndex: null, keeperName: '' });
+          }
+        }}
+        title="Delete Keeper"
+        message={`Are you sure you want to delete "${deleteConfirmation.keeperName}"? This action cannot be undone.`}
       />
     </div>
   );

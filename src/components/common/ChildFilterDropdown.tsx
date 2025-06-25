@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Filter as FilterIcon } from 'lucide-react';
 
 // Reusable Child Filter Dropdown Component
@@ -18,11 +19,14 @@ export const ChildFilterDropdown: React.FC<ChildFilterDropdownProps> = ({
   isActive,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -30,23 +34,42 @@ export const ChildFilterDropdown: React.FC<ChildFilterDropdownProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: buttonRect.bottom + window.scrollY + 8, // 8px margin
+        left: buttonRect.left + window.scrollX
+      });
+    }
+  }, [isOpen]);
+
   const baseClasses = "p-1 rounded-full transition-all duration-150 active:scale-95";
   const inactiveClasses = "bg-[#c0e2e7]/20 text-[#217e8f] hover:bg-[#c0e2e7]/40";
   const activeClasses = "bg-[#217e8f] text-white hover:bg-[#1a6e7e]";
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       <button 
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)} 
         className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
         aria-label="Filter by child"
         title="Filter"
       >
-        <FilterIcon className="w-4 h-4" strokeWidth={1.5} />
+        <FilterIcon className="w-4 h-4" />
       </button>
 
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-100">
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="fixed w-48 bg-white rounded-md shadow-lg border border-gray-100"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            zIndex: 9999
+          }}
+        >
           <ul className="py-1">
             {children.map(child => (
               <li key={child.name}>
@@ -78,8 +101,9 @@ export const ChildFilterDropdown: React.FC<ChildFilterDropdownProps> = ({
               </>
             )}
           </ul>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }; 

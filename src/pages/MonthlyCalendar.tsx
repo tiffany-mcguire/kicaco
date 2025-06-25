@@ -91,6 +91,7 @@ export default function MonthlyCalendar() {
   const [highlightedDate, setHighlightedDate] = useState<Date | null>(null);
   const [fadeOutDate, setFadeOutDate] = useState<Date | null>(null);
   const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
+  const [isDatePickerActive, setIsDatePickerActive] = useState(false);
   const { messages, threadId, addMessage, removeMessageById, events, keepers, children, drawerHeight: storedDrawerHeight, setDrawerHeight: setStoredDrawerHeight } = useKicacoStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
@@ -124,7 +125,10 @@ export default function MonthlyCalendar() {
     );
   };
 
-  const handleClearFilter = () => setFilteredChildren([]);
+  const handleClearFilter = () => {
+    setFilteredChildren([]);
+    setIsDatePickerActive(false);
+  };
 
   // Filtered events and keepers
   const filteredEvents = useMemo(() => {
@@ -445,6 +449,12 @@ export default function MonthlyCalendar() {
               <div className="absolute right-3">
                 <button 
                   onClick={() => {
+                    // If already active, just reset and return
+                    if (isDatePickerActive) {
+                      setIsDatePickerActive(false);
+                      return;
+                    }
+                    
                     // Create a temporary month input element
                     const tempInput = document.createElement('input');
                     tempInput.type = 'month';
@@ -460,9 +470,33 @@ export default function MonthlyCalendar() {
                         goToSpecificMonth(new Date(tempInput.value + '-01'));
                       }
                       document.body.removeChild(tempInput);
+                      setIsDatePickerActive(false);
                     });
                     
-                    // Trigger the month picker
+                    tempInput.addEventListener('blur', () => {
+                      setTimeout(() => {
+                        if (document.body.contains(tempInput)) {
+                          document.body.removeChild(tempInput);
+                        }
+                        setIsDatePickerActive(false);
+                      }, 100);
+                    });
+                    
+                    // Add click outside handler
+                    const handleClickOutside = (e: Event) => {
+                      const target = e.target as HTMLElement;
+                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="month"]')) {
+                        setIsDatePickerActive(false);
+                        document.removeEventListener('click', handleClickOutside);
+                      }
+                    };
+                    
+                    setTimeout(() => {
+                      document.addEventListener('click', handleClickOutside);
+                    }, 100);
+                    
+                    // Set active state and trigger the month picker
+                    setIsDatePickerActive(true);
                     if (tempInput.showPicker) {
                       tempInput.showPicker();
                     } else {
@@ -470,10 +504,11 @@ export default function MonthlyCalendar() {
                       tempInput.click();
                     }
                   }}
-                  className="p-1 rounded-full bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/30 active:scale-95 transition-all duration-150"
+                  className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Pick month"
+                  data-calendar-button
                 >
-                  <Calendar className="w-4 h-4 text-[#217e8f]" strokeWidth={1.5} />
+                  <Calendar className={`w-4 h-4 ${isDatePickerActive ? 'text-white' : 'text-[#217e8f]'}`} />
                 </button>
               </div>
             </div>
@@ -524,7 +559,10 @@ export default function MonthlyCalendar() {
                 return (
                   <div 
                     key={day.toString()}
-                    onClick={() => setSelectedDate(day)}
+                    onClick={() => {
+                      setSelectedDate(day);
+                      setIsDatePickerActive(false);
+                    }}
                     className={`relative p-1.5 h-20 flex flex-col items-center justify-start border-r border-b cursor-pointer hover:bg-opacity-70 transition-colors
                       ${(index + 1) % 7 === 0 ? 'border-r-0' : 'border-gray-200'}
                       ${index > 34 ? 'border-b-0' : 'border-gray-200'}
