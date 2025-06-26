@@ -122,7 +122,7 @@ const mockEvents: Event[] = [
   // Upcoming events (next week) - Enhanced with new image categories
   { eventName: 'Dentist Appointment', childName: 'Emma', date: getMockDate(2), time: '10:30 AM', location: 'Dr. Smile\'s Office' },
   { eventName: 'Library Day', childName: 'Leo', date: getMockDate(3), time: '11:00 AM', location: 'City Library', notes: 'Return the dinosaur books.' },
-  { eventName: 'Birthday Party', childName: 'Alex', date: getMockDate(5), time: '2:00 PM', location: '123 Fun Street', notes: 'Sarah\'s birthday party' },
+  { eventName: 'Birthday Party', childName: 'Alex', date: getMockDate(5), time: '2:00 PM', location: '123 Fun Street', notes: 'Sarah\'s birthday party - Alex is invited' },
   { eventName: 'Karate Class', childName: 'Alex', date: getMockDate(7), time: '6:30 PM', location: 'Community Center', notes: 'Practice for the belt test.' },
   { eventName: 'Swimming Lesson', childName: 'Emma', date: getMockDate(9), time: '11:00 AM', location: 'Community Pool' },
   { eventName: 'Playground Playdate', childName: 'Leo', date: getMockDate(12), time: '3:00 PM', location: 'Central Park', notes: 'Playing with Noah' },
