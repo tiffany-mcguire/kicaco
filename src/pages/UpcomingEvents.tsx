@@ -722,7 +722,7 @@ const CarouselEventCard: React.FC<{
             } 
           });
         } : undefined}
-          onDelete={isActive ? () => {
+          onDelete={() => {
             const globalEventIndex = allEvents.findIndex(e => 
               e.eventName === currentEvent.eventName && 
               e.date === currentEvent.date && 
@@ -736,7 +736,7 @@ const CarouselEventCard: React.FC<{
                 eventName: currentEvent.eventName 
               });
             }
-          } : undefined}
+          }}
         />
         
         {/* TAB AREA - TOUCH ENABLED */}
@@ -841,6 +841,8 @@ export default function UpcomingEvents() {
     eventIndex: null,
     eventName: ''
   });
+
+
 
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
@@ -1299,7 +1301,11 @@ export default function UpcomingEvents() {
                                             e.time === event.time
                                           );
                                           if (globalEventIndex !== -1) {
-                                            removeEvent(globalEventIndex);
+                                            setDeleteConfirmation({ 
+                                              isOpen: true, 
+                                              eventIndex: globalEventIndex, 
+                                              eventName: event.eventName 
+                                            });
                                           }
                                         }}
                                       />

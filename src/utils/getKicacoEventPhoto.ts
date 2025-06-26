@@ -128,7 +128,7 @@ const KEYWORD_TO_IMAGE_MAP: Record<string, string> = {
   'clothes': 'folded clothes.jpg',
   
   // Entertainment & Social
-  'birthday': 'birthdaycupcake.jpg',
+  'birthday': 'birthday cupcake.jpg',
   'birthday party': 'birthday cupcake.jpg',
   'party': 'birthday cupcake.jpg',
   'concert': 'concert.jpg',

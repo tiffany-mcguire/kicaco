@@ -462,32 +462,30 @@ const CarouselKeeperCard = React.memo(({
           />
         )}
         
-        {isActive && (
-          <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const globalKeeperIndex = keepers.findIndex((k: Keeper) => 
-                  k.keeperName === keeper.keeperName && 
-                  k.date === keeper.date && 
-                  k.childName === keeper.childName &&
-                  k.time === keeper.time
-                );
-                if (globalKeeperIndex !== -1) {
-                  setDeleteConfirmation({ 
-                    isOpen: true, 
-                    keeperIndex: globalKeeperIndex, 
-                    keeperName: keeper.keeperName 
-                  });
-                }
-              }}
-              className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
-            >
-              <Trash2 size={12} />
-              <span>Delete</span>
-            </button>
-          </div>
-        )}
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const globalKeeperIndex = keepers.findIndex((k: Keeper) => 
+                k.keeperName === keeper.keeperName && 
+                k.date === keeper.date && 
+                k.childName === keeper.childName &&
+                k.time === keeper.time
+              );
+              if (globalKeeperIndex !== -1) {
+                setDeleteConfirmation({ 
+                  isOpen: true, 
+                  keeperIndex: globalKeeperIndex, 
+                  keeperName: keeper.keeperName 
+                });
+              }
+            }}
+            className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2.5 py-1 rounded-full transition-colors"
+          >
+            <Trash2 size={12} />
+            <span>Delete</span>
+          </button>
+        </div>
 
         {/* Drag indicator - positioned below tab to avoid bleeding through blur */}
         {tabVisual.isDragging && (
@@ -548,6 +546,8 @@ export default function Keepers() {
     keeperIndex: null,
     keeperName: ''
   });
+
+
 
   // Track if this is from flick dismissal to prevent auto-scroll on manual opens
   const wasFlickDismissalRef = useRef(false);
@@ -1102,7 +1102,11 @@ export default function Keepers() {
                         
                         const handleDelete = () => {
                           if (originalKeeperIndex !== -1) {
-                            removeKeeper(originalKeeperIndex);
+                            setDeleteConfirmation({ 
+                              isOpen: true, 
+                              keeperIndex: originalKeeperIndex, 
+                              keeperName: keeper.keeperName 
+                            });
                           }
                         };
                         
@@ -1133,7 +1137,7 @@ export default function Keepers() {
                                   }
                                 });
                               }}
-                              onDelete={isActive ? handleDelete : undefined}
+                              onDelete={handleDelete}
                               dataPosition={globalStackPosition}
                             />
                           );

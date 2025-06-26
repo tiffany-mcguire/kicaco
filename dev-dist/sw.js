@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-ed3775ef'], (function (workbox) { 'use strict';
+define(['./workbox-447af7d5'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,7 +82,7 @@ define(['./workbox-ed3775ef'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.vdiejpu42lo"
+    "revision": "0.8oddo7oa6co"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -91,6 +91,12 @@ define(['./workbox-ed3775ef'], (function (workbox) { 'use strict';
   workbox.registerRoute(/^https:\/\/api\.openai\.com\//, new workbox.NetworkFirst({
     "cacheName": "openai-api-cache",
     "networkTimeoutSeconds": 10,
+    plugins: [new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/event-images\/.*/, new workbox.CacheFirst({
+    "cacheName": "event-images-cache",
     plugins: [new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]

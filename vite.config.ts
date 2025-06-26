@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['vite.svg', 'manifest.json'],
+      includeAssets: ['vite.svg', 'manifest.json', 'event-images/**/*'],
       manifest: {
         name: 'Kicaco - Family Assistant',
         short_name: 'Kicaco',
@@ -47,6 +47,16 @@ export default defineConfig({
             options: {
               cacheName: 'openai-api-cache',
               networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /\/event-images\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'event-images-cache',
               cacheableResponse: {
                 statuses: [0, 200]
               }

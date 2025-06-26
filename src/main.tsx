@@ -21,18 +21,19 @@ import DailyView from './pages/DailyView';
 import ShareProcessor from './pages/ShareProcessor';
 import './index.css';
 
-// Register service worker for PWA functionality
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
+// Import Vite PWA service worker registration
+import { registerSW } from 'virtual:pwa-register';
+
+// Register service worker for PWA functionality using Vite PWA
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // You can prompt user to refresh here
+    console.log('New content available, please refresh.');
+  },
+  onOfflineReady() {
+    console.log('App ready to work offline.');
+  },
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

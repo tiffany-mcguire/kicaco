@@ -1,4 +1,4 @@
-import { StackedChildBadges } from '../components/common';
+import { StackedChildBadges, ConfirmDialog } from '../components/common';
 import React, { useState, useRef, useLayoutEffect, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GlobalHeader } from '../components/navigation';
@@ -122,6 +122,19 @@ export default function WeeklyCalendar() {
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [filteredChildren, setFilteredChildren] = useState<string[]>([]);
   const [isDatePickerActive, setIsDatePickerActive] = useState(false);
+  
+  // Delete confirmation state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ 
+    isOpen: boolean; 
+    type: 'event' | 'keeper' | null; 
+    index: number | null; 
+    name: string 
+  }>({
+    isOpen: false,
+    type: null,
+    index: null,
+    name: ''
+  });
 
   // Debouncing to prevent rapid-fire stack navigation
   const lastFlickTimeRef = useRef<number>(0);
@@ -709,6 +722,7 @@ export default function WeeklyCalendar() {
                   keepers={keepers}
                   onFlickDown={handleFlickDown}
                   onFlickUp={handleFlickUp}
+                  setDeleteConfirmation={setDeleteConfirmation}
                 />
               );
             })}
@@ -737,6 +751,24 @@ export default function WeeklyCalendar() {
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
         onSend={handleSendMessage}
       />
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, type: null, index: null, name: '' })}
+        onConfirm={() => {
+          if (deleteConfirmation.index !== null) {
+            if (deleteConfirmation.type === 'event') {
+              removeEvent(deleteConfirmation.index);
+            } else if (deleteConfirmation.type === 'keeper') {
+              removeKeeper(deleteConfirmation.index);
+            }
+            setDeleteConfirmation({ isOpen: false, type: null, index: null, name: '' });
+          }
+        }}
+        title={`Delete ${deleteConfirmation.type === 'event' ? 'Event' : 'Keeper'}`}
+        message={`Are you sure you want to delete "${deleteConfirmation.name}"? This action cannot be undone.`}
+      />
     </div>
   );
 }
@@ -746,7 +778,7 @@ const DayCard = React.memo(({
   day, dayEvents, dayKeepers, isActive, accentColor, accentColorSoft, 
   finalAccentSoft, finalBoxShadow, cardOffset, stackPosition, totalInStack,
   onToggle, formatTime12, navigate, removeEvent, removeKeeper, events, keepers,
-  onFlickDown, onFlickUp
+  onFlickDown, onFlickUp, setDeleteConfirmation
 }: any) => {
   // Tab touch state - only for tab area
   const tabTouchRef = useRef<{
@@ -1044,6 +1076,7 @@ const DayCard = React.memo(({
             navigate={navigate}
             removeEvent={removeEvent}
             events={events}
+            setDeleteConfirmation={setDeleteConfirmation}
           />
           <MiniKeeperCard 
             dayKeepers={dayKeepers} 
@@ -1053,6 +1086,7 @@ const DayCard = React.memo(({
             navigate={navigate}
             removeKeeper={removeKeeper}
             keepers={keepers}
+            setDeleteConfirmation={setDeleteConfirmation}
           />
         </div>
 
@@ -1068,7 +1102,7 @@ const DayCard = React.memo(({
 });
 
 // Simplified MiniEventCarousel
-const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, formatTime12, navigate, removeEvent, events }: any) => {
+const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, formatTime12, navigate, removeEvent, events, setDeleteConfirmation }: any) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
   // Touch handling for swipe gestures
@@ -1326,7 +1360,14 @@ const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, format
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (globalEventIndex !== -1) removeEvent(globalEventIndex);
+            if (globalEventIndex !== -1) {
+              setDeleteConfirmation({
+                isOpen: true,
+                type: 'event',
+                index: globalEventIndex,
+                name: evt.eventName
+              });
+            }
           }}
           className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-150"
         >
@@ -1351,7 +1392,7 @@ const MiniEventCarousel = React.memo(({ dayEvents, accentColor, fullDate, format
 });
 
 // Simplified MiniKeeperCard
-const MiniKeeperCard = React.memo(({ dayKeepers, dayOfWeek, fullDate, formatTime12, navigate, removeKeeper, keepers }: any) => {
+const MiniKeeperCard = React.memo(({ dayKeepers, dayOfWeek, fullDate, formatTime12, navigate, removeKeeper, keepers, setDeleteConfirmation }: any) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   
   // Touch handling for swipe gestures
@@ -1600,7 +1641,14 @@ const MiniKeeperCard = React.memo(({ dayKeepers, dayOfWeek, fullDate, formatTime
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (globalKeeperIndex !== -1) removeKeeper(globalKeeperIndex);
+            if (globalKeeperIndex !== -1) {
+              setDeleteConfirmation({
+                isOpen: true,
+                type: 'keeper',
+                index: globalKeeperIndex,
+                name: keeper.keeperName
+              });
+            }
           }}
           className="flex items-center gap-1 bg-black/30 text-gray-300 hover:text-[#e7a5b4] text-xs font-medium px-2 py-0.5 rounded-full transition-colors duration-150"
         >
