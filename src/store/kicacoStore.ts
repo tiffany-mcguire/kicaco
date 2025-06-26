@@ -189,55 +189,55 @@ const mockEvents: Event[] = [
 
 const mockKeepers: Keeper[] = [
   // Past Keepers
-  { keeperName: 'Buy ballet shoes', childName: 'Emma', date: getMockDate(-5), description: 'Size 12 - pink - COMPLETED' },
-  { keeperName: 'Pay soccer registration', childName: 'Alex', date: getMockDate(-2), description: 'Spring season - PAID' },
+  { keeperName: 'Buy Ballet Shoes', childName: 'Emma', date: getMockDate(-5), description: 'Size 12 - pink - COMPLETED' },
+  { keeperName: 'Pay Soccer Registration', childName: 'Alex', date: getMockDate(-2), description: 'Spring season - PAID' },
   
   // Upcoming Keepers - Enhanced with new image categories
-  { keeperName: 'Return library books', childName: 'Leo', date: getMockDate(1), description: '3 books about dinosaurs.' },
-  { keeperName: 'Sign permission slip', childName: 'Emma', date: getMockDate(4), description: 'For the school field trip.' },
-  { keeperName: 'RSVP to birthday party', childName: 'Alex', date: getMockDate(6), description: 'For Sarah\'s party.' },
-  { keeperName: 'Schedule yearly check-up', childName: 'Leo', date: getMockDate(10) },
-  { keeperName: 'Buy school supplies', childName: 'Emma', date: getMockDate(15), description: 'Notebooks, pencils, and art supplies for new semester' },
-  { keeperName: 'Submit assignment', childName: 'Alex', date: getMockDate(17), description: 'Science homework project due tomorrow' },
-  { keeperName: 'Schedule dentist appt', childName: 'Leo', date: getMockDate(21), description: 'Routine cleaning and check-up' },
-  { keeperName: 'Pick up vaccine records', childName: 'Emma', date: getMockDate(25), description: 'For school enrollment' },
+  { keeperName: 'Return Library Books', childName: 'Leo', date: getMockDate(1), description: '3 books about dinosaurs.' },
+  { keeperName: 'Sign Permission Slip', childName: 'Emma', date: getMockDate(4), description: 'For the school field trip.' },
+  { keeperName: 'RSVP to Birthday Party', childName: 'Alex', date: getMockDate(6), description: 'For Sarah\'s party.' },
+  { keeperName: 'Schedule Yearly Check-up', childName: 'Leo', date: getMockDate(10) },
+  { keeperName: 'Buy School Supplies', childName: 'Emma', date: getMockDate(15), description: 'Notebooks, pencils, and art supplies for new semester' },
+  { keeperName: 'Submit Assignment', childName: 'Alex', date: getMockDate(17), description: 'Science homework project due tomorrow' },
+  { keeperName: 'Schedule Dentist Appt', childName: 'Leo', date: getMockDate(21), description: 'Routine cleaning and check-up' },
+  { keeperName: 'Pick Up Vaccine Records', childName: 'Emma', date: getMockDate(25), description: 'For school enrollment' },
   
   // School & Educational Keepers
-  { keeperName: 'Pack school backpack', childName: 'Alex', date: getMockDate(27), description: 'Check list for tomorrow\'s classes' },
-  { keeperName: 'Organize school locker', childName: 'Emma', date: getMockDate(29), description: 'Clean out old papers and organize supplies' },
-  { keeperName: 'Prepare school snacks', childName: 'Leo', date: getMockDate(31), description: 'Healthy snacks for the week' },
-  { keeperName: 'Book fair money', childName: 'Alex', date: getMockDate(33), description: 'Give $20 for book purchases' },
-  { keeperName: 'Picture day outfit', childName: 'Emma', date: getMockDate(35), description: 'Lay out nice clothes the night before' },
+  { keeperName: 'Pack School Backpack', childName: 'Alex', date: getMockDate(27), description: 'Check list for tomorrow\'s classes' },
+  { keeperName: 'Organize School Locker', childName: 'Emma', date: getMockDate(29), description: 'Clean out old papers and organize supplies' },
+  { keeperName: 'Prepare School Snacks', childName: 'Leo', date: getMockDate(31), description: 'Healthy snacks for the week' },
+  { keeperName: 'Book Fair Money', childName: 'Alex', date: getMockDate(33), description: 'Give $20 for book purchases' },
+  { keeperName: 'Picture Day Outfit', childName: 'Emma', date: getMockDate(35), description: 'Lay out nice clothes the night before' },
   
   // Medical & Health Keepers
-  { keeperName: 'Schedule eye exam', childName: 'Leo', date: getMockDate(37), description: 'Annual vision check before school starts' },
-  { keeperName: 'Refill prescription', childName: 'Alex', date: getMockDate(39), description: 'Allergy medication running low' },
-  { keeperName: 'Physical exam forms', childName: 'Emma', date: getMockDate(41), description: 'Submit sports clearance paperwork' },
+  { keeperName: 'Schedule Eye Exam', childName: 'Leo', date: getMockDate(37), description: 'Annual vision check before school starts' },
+  { keeperName: 'Refill Prescription', childName: 'Alex', date: getMockDate(39), description: 'Allergy medication running low' },
+  { keeperName: 'Physical Exam Forms', childName: 'Emma', date: getMockDate(41), description: 'Submit sports clearance paperwork' },
   
   // Personal Care & Shopping Keepers
-  { keeperName: 'Schedule haircut', childName: 'Leo', date: getMockDate(43), description: 'Before school pictures' },
-  { keeperName: 'School clothes shopping', childName: 'Alex', date: getMockDate(45), description: 'Back-to-school wardrobe for new semester' },
-  { keeperName: 'Donate old clothes', childName: 'Emma', date: getMockDate(47), description: 'Clean out closet and donate to charity' },
-  { keeperName: 'Fold laundry', childName: 'Leo', date: getMockDate(49), description: 'Weekly laundry organization - don\'t forget to put away!' },
+  { keeperName: 'Schedule Haircut', childName: 'Leo', date: getMockDate(43), description: 'Before school pictures' },
+  { keeperName: 'School Clothes Shopping', childName: 'Alex', date: getMockDate(45), description: 'Back-to-school wardrobe for new semester' },
+  { keeperName: 'Donate Old Clothes', childName: 'Emma', date: getMockDate(47), description: 'Clean out closet and donate to charity' },
+  { keeperName: 'Fold Laundry', childName: 'Leo', date: getMockDate(49), description: 'Weekly laundry organization - don\'t forget to put away!' },
   
   // Transportation & Travel Keepers
-  { keeperName: 'Arrange carpool', childName: 'Alex', date: getMockDate(51), description: 'Coordinate rides for soccer practice' },
-  { keeperName: 'Pack for family vacation', childName: 'Emma', date: getMockDate(53), description: 'Make packing list and prepare suitcase' },
-  { keeperName: 'Work from home setup', childName: 'Leo', date: getMockDate(55), description: 'Prepare quiet space for parent\'s WFH day' },
+  { keeperName: 'Arrange Carpool', childName: 'Alex', date: getMockDate(51), description: 'Coordinate rides for soccer practice' },
+  { keeperName: 'Pack for Family Vacation', childName: 'Emma', date: getMockDate(53), description: 'Make packing list and prepare suitcase' },
+  { keeperName: 'Work from Home Setup', childName: 'Leo', date: getMockDate(55), description: 'Prepare quiet space for parent\'s WFH day' },
   
   // Entertainment & Social Keepers
-  { keeperName: 'Game night prep', childName: 'Alex', date: getMockDate(57), description: 'Choose games and prepare snacks' },
-  { keeperName: 'Bake sale contribution', childName: 'Emma', date: getMockDate(59), description: 'Bake cookies for school fundraiser' },
-  { keeperName: 'Scout badge requirements', childName: 'Leo', date: getMockDate(61), description: 'Complete camping badge activities' },
+  { keeperName: 'Game Night Prep', childName: 'Alex', date: getMockDate(57), description: 'Choose games and prepare snacks' },
+  { keeperName: 'Bake Sale Contribution', childName: 'Emma', date: getMockDate(59), description: 'Bake cookies for school fundraiser' },
+  { keeperName: 'Scout Badge Requirements', childName: 'Leo', date: getMockDate(61), description: 'Complete camping badge activities' },
   
   // Educational Outings Keepers
-  { keeperName: 'Permission slip', childName: 'Alex', date: getMockDate(63), description: 'Aquarium field trip - Submit forms and payment' },
-  { keeperName: 'Art museum tour prep', childName: 'Emma', date: getMockDate(65), description: 'Research exhibits we\'ll see' },
-  { keeperName: 'Nature hike gear', childName: 'Leo', date: getMockDate(67), description: 'Pack hiking boots and water bottle' },
+  { keeperName: 'Permission Slip', childName: 'Alex', date: getMockDate(63), description: 'Aquarium field trip - Submit forms and payment' },
+  { keeperName: 'Art Museum Tour Prep', childName: 'Emma', date: getMockDate(65), description: 'Research exhibits we\'ll see' },
+  { keeperName: 'Nature Hike Gear', childName: 'Leo', date: getMockDate(67), description: 'Pack hiking boots and water bottle' },
   
   // Zoo & Animal Keepers
-  { keeperName: 'Zoo membership renewal', childName: 'Alex', date: getMockDate(69), description: 'Annual family membership expires soon' },
-  { keeperName: 'Permission slip', childName: 'Emma', date: getMockDate(71), description: 'Zoo field trip - Submit forms and emergency contacts' },
+  { keeperName: 'Zoo Membership Renewal', childName: 'Alex', date: getMockDate(69), description: 'Annual family membership expires soon' },
+  { keeperName: 'Permission Slip', childName: 'Emma', date: getMockDate(71), description: 'Zoo field trip - Submit forms and emergency contacts' },
 ];
 
 
