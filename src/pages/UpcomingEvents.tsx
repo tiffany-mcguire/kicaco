@@ -966,7 +966,6 @@ export default function UpcomingEvents() {
       const date = event.date;
       if (!date) return acc;
       
-      // Include ALL events - don't filter by date to debug 2026 events
       try {
         const eventDate = parse(date, 'yyyy-MM-dd', new Date());
         // Only skip clearly invalid dates
@@ -974,8 +973,10 @@ export default function UpcomingEvents() {
           return acc; // Skip invalid dates
         }
         
-        // For debugging: Include all events regardless of date
-        acc[date] = acc[date] ? [...acc[date], event] : [event];
+        // Only include upcoming events (today or future)
+        if (eventDate >= today) {
+          acc[date] = acc[date] ? [...acc[date], event] : [event];
+        }
         return acc;
       } catch (e) {
         return acc; // Skip invalid dates

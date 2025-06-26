@@ -597,17 +597,19 @@ export default function Keepers() {
       try {
         const keeperDate = parse(keeper.date, 'yyyy-MM-dd', new Date());
         
-        // Include ALL keepers - don't filter by date to show all test data
         // Only skip clearly invalid dates
         if (isNaN(keeperDate.getTime())) {
           return acc; // Skip invalid dates
         }
         
-        const monthKey = format(keeperDate, 'yyyy-MM');
-        if (!acc[monthKey]) {
-          acc[monthKey] = [];
+        // Only include upcoming keepers (today or future)
+        if (keeperDate >= today) {
+          const monthKey = format(keeperDate, 'yyyy-MM');
+          if (!acc[monthKey]) {
+            acc[monthKey] = [];
+          }
+          acc[monthKey].push(keeper);
         }
-        acc[monthKey].push(keeper);
       } catch (e) {
         console.error('Error parsing keeper date:', keeper.date, e);
       }

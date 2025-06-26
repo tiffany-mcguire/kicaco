@@ -106,6 +106,8 @@ const KEYWORD_TO_IMAGE_MAP: Record<string, string> = {
   'picture day': 'picture day.jpg',
   'photos': 'picture day.jpg',
   'school photos': 'picture day.jpg',
+  'science fair': 'science fair project.jpg',
+  'science project': 'science fair project.jpg',
   'book fair': 'book fair.jpg',
   'fair': 'book fair.jpg',
   'field trip': 'class field trip.jpg',
