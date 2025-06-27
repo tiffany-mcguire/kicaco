@@ -14,6 +14,7 @@ import { format as dateFormat, addMonths, subMonths, startOfMonth, endOfMonth, s
 
 import { generateUUID } from '../utils/uuid';
 import { ChildFilterDropdown } from '../components/common';
+import { createDatePickerHandler } from '../utils/datePickerUtils';
 
 const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) => {
   const navigate = useNavigate();
@@ -448,62 +449,13 @@ export default function MonthlyCalendar() {
               {/* Right - Calendar Icon (positioned absolutely) */}
               <div className="absolute right-3">
                 <button 
-                  onClick={() => {
-                    // If already active, just reset and return
-                    if (isDatePickerActive) {
-                      setIsDatePickerActive(false);
-                      return;
-                    }
-                    
-                    // Create a temporary month input element
-                    const tempInput = document.createElement('input');
-                    tempInput.type = 'month';
-                    tempInput.value = dateFormat(currentMonth, 'yyyy-MM');
-                    tempInput.style.position = 'absolute';
-                    tempInput.style.left = '-9999px';
-                    tempInput.style.opacity = '0';
-                    
-                    document.body.appendChild(tempInput);
-                    
-                    tempInput.addEventListener('change', () => {
-                      if (tempInput.value) {
-                        goToSpecificMonth(new Date(tempInput.value + '-01'));
-                      }
-                      document.body.removeChild(tempInput);
-                      setIsDatePickerActive(false);
-                    });
-                    
-                    tempInput.addEventListener('blur', () => {
-                      setTimeout(() => {
-                        if (document.body.contains(tempInput)) {
-                          document.body.removeChild(tempInput);
-                        }
-                        setIsDatePickerActive(false);
-                      }, 100);
-                    });
-                    
-                    // Add click outside handler
-                    const handleClickOutside = (e: Event) => {
-                      const target = e.target as HTMLElement;
-                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="month"]')) {
-                        setIsDatePickerActive(false);
-                        document.removeEventListener('click', handleClickOutside);
-                      }
-                    };
-                    
-                    setTimeout(() => {
-                      document.addEventListener('click', handleClickOutside);
-                    }, 100);
-                    
-                    // Set active state and trigger the month picker
-                    setIsDatePickerActive(true);
-                    if (tempInput.showPicker) {
-                      tempInput.showPicker();
-                    } else {
-                      tempInput.focus();
-                      tempInput.click();
-                    }
-                  }}
+                  onClick={createDatePickerHandler(
+                    'month',
+                    () => dateFormat(currentMonth, 'yyyy-MM'),
+                    (value) => goToSpecificMonth(new Date(value + '-01')),
+                    isDatePickerActive,
+                    setIsDatePickerActive
+                  )}
                   className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Pick month"
                   data-calendar-button

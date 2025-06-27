@@ -17,6 +17,7 @@ import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 
 import { generateUUID } from '../utils/uuid';
 import { ImageUpload } from '../components/common';
+import { createDatePickerHandler } from '../utils/datePickerUtils';
 
 // Day Colors for accent line
 const dayColors: { [key: number]: string } = {
@@ -1256,65 +1257,18 @@ export default function DailyView() {
               {/* Right - Calendar Icon (positioned absolutely) */}
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button 
-                  onClick={() => {
-                    // If already active, just reset and return
-                    if (isDatePickerActive) {
-                      setIsDatePickerActive(false);
-                      return;
-                    }
-                    
-                    // Create a temporary date input element
-                    const tempInput = document.createElement('input');
-                    tempInput.type = 'date';
-                    tempInput.value = format(currentDate, 'yyyy-MM-dd');
-                    tempInput.style.position = 'absolute';
-                    tempInput.style.left = '-9999px';
-                    tempInput.style.opacity = '0';
-                    
-                    document.body.appendChild(tempInput);
-                    
-                    tempInput.addEventListener('change', () => {
-                      if (tempInput.value) {
-                        const newDate = new Date(tempInput.value + 'T12:00:00'); // Set to noon to avoid timezone issues
-                        setCurrentDate(newDate);
-                        setDisplayedEventIndex(0);
-                        setDisplayedKeeperIndex(0);
-                      }
-                      document.body.removeChild(tempInput);
-                      setIsDatePickerActive(false);
-                    });
-                    
-                    tempInput.addEventListener('blur', () => {
-                      setTimeout(() => {
-                        if (document.body.contains(tempInput)) {
-                          document.body.removeChild(tempInput);
-                        }
-                        setIsDatePickerActive(false);
-                      }, 100);
-                    });
-                    
-                    // Add click outside handler
-                    const handleClickOutside = (e: Event) => {
-                      const target = e.target as HTMLElement;
-                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="date"]')) {
-                        setIsDatePickerActive(false);
-                        document.removeEventListener('click', handleClickOutside);
-                      }
-                    };
-                    
-                    setTimeout(() => {
-                      document.addEventListener('click', handleClickOutside);
-                    }, 100);
-                    
-                    // Set active state and trigger the date picker
-                    setIsDatePickerActive(true);
-                    if (tempInput.showPicker) {
-                      tempInput.showPicker();
-                    } else {
-                      tempInput.focus();
-                      tempInput.click();
-                    }
-                  }}
+                  onClick={createDatePickerHandler(
+                    'date',
+                    () => format(currentDate, 'yyyy-MM-dd'),
+                    (value) => {
+                      const newDate = new Date(value + 'T12:00:00'); // Set to noon to avoid timezone issues
+                      setCurrentDate(newDate);
+                      setDisplayedEventIndex(0);
+                      setDisplayedKeeperIndex(0);
+                    },
+                    isDatePickerActive,
+                    setIsDatePickerActive
+                  )}
                   className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Pick date"
                   data-calendar-button

@@ -12,6 +12,7 @@ import { Calendar, ChevronLeft, ChevronRight, Trash2, Filter as FilterIcon } fro
 import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay, isToday, parse, isThisWeek, getYear, getMonth, isBefore, startOfDay } from 'date-fns';
 import { getKicacoEventPhoto } from '../utils/getKicacoEventPhoto';
 import { generateUUID } from '../utils/uuid';
+import { createDatePickerHandler } from '../utils/datePickerUtils';
 // import { ChildFilterDropdown } from '../components/common';
 
 // Filter Dropdown Component
@@ -588,63 +589,16 @@ export default function WeeklyCalendar() {
               {/* Right - Calendar Icon (positioned absolutely) */}
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button 
-                  onClick={() => {
-                    // If already active, just reset and return
-                    if (isDatePickerActive) {
-                      setIsDatePickerActive(false);
-                      return;
-                    }
-                    
-                    // Create a temporary date input element
-                    const tempInput = document.createElement('input');
-                    tempInput.type = 'date';
-                    tempInput.value = format(weekStart, 'yyyy-MM-dd');
-                    tempInput.style.position = 'absolute';
-                    tempInput.style.left = '-9999px';
-                    tempInput.style.opacity = '0';
-                    
-                    document.body.appendChild(tempInput);
-                    
-                    tempInput.addEventListener('change', () => {
-                      if (tempInput.value) {
-                        const selectedDate = new Date(tempInput.value);
-                        setCurrentWeek(startOfWeek(selectedDate, { weekStartsOn: 0 }));
-                      }
-                      document.body.removeChild(tempInput);
-                      setIsDatePickerActive(false);
-                    });
-                    
-                    tempInput.addEventListener('blur', () => {
-                      setTimeout(() => {
-                        if (document.body.contains(tempInput)) {
-                          document.body.removeChild(tempInput);
-                        }
-                        setIsDatePickerActive(false);
-                      }, 100);
-                    });
-                    
-                    // Add click outside handler
-                    const handleClickOutside = (e: Event) => {
-                      const target = e.target as HTMLElement;
-                      if (!target.closest('[data-calendar-button]') && !target.closest('input[type="date"]')) {
-                        setIsDatePickerActive(false);
-                        document.removeEventListener('click', handleClickOutside);
-                      }
-                    };
-                    
-                    setTimeout(() => {
-                      document.addEventListener('click', handleClickOutside);
-                    }, 100);
-                    
-                    // Set active state and trigger the date picker
-                    setIsDatePickerActive(true);
-                    if (tempInput.showPicker) {
-                      tempInput.showPicker();
-                    } else {
-                      tempInput.focus();
-                      tempInput.click();
-                    }
-                  }}
+                  onClick={createDatePickerHandler(
+                    'date',
+                    () => format(weekStart, 'yyyy-MM-dd'),
+                    (value) => {
+                      const selectedDate = new Date(value);
+                      setCurrentWeek(startOfWeek(selectedDate, { weekStartsOn: 0 }));
+                    },
+                    isDatePickerActive,
+                    setIsDatePickerActive
+                  )}
                   className={`p-1 rounded-full active:scale-95 transition-all duration-150 ${isDatePickerActive ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' : 'bg-[#c0e2e7]/20 hover:bg-[#c0e2e7]/40'}`}
                   title="Jump to specific week"
                   data-calendar-button
