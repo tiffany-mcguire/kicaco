@@ -115,7 +115,19 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
           <CalendarMenu currentPath={location.pathname} />
         </div>
         <div className="flex-1 flex items-center justify-center min-w-0">
-          {!isSearching && children}
+          {!isSearching && (
+            <div className="flex items-end">
+              {children}
+              {/* Kicaco Logo with translucent background */}
+              <div className="bg-white/30 backdrop-blur-sm rounded-xl px-3 py-1.5 shadow-sm mb-1">
+                <img 
+                  src="/brand/kicaco-icon-name.png" 
+                  alt="Kicaco" 
+                  className="h-8 w-auto"
+                />
+              </div>
+            </div>
+          )}
           <SearchBar
             isVisible={isSearching}
             searchQuery={searchQuery}
