@@ -119,11 +119,11 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
             <div className="flex items-end">
               {children}
               {/* Kicaco Logo with translucent background */}
-              <div className="bg-white/30 backdrop-blur-sm rounded-xl px-3 py-1.5 shadow-sm mb-1">
+              <div className="bg-white/30 backdrop-blur-sm rounded-xl px-1.5 py-0.5 shadow-sm mb-1">
                 <img 
                   src="/brand/kicaco-icon-name.png" 
                   alt="Kicaco" 
-                  className="h-8 w-auto"
+                  className="h-10 w-auto"
                 />
               </div>
             </div>

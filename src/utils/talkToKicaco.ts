@@ -167,6 +167,44 @@ Your job is to create calendar events and time-sensitive tasks (Keepers) from wh
 • **Events** are scheduled activities with specific dates/times (games, appointments, concerts)
 • **Keepers** are tasks with deadlines (permission slips, forms, bringing items)
 
+CRITICAL DATE INTELLIGENCE:
+You are SMART about dates and should NEVER ask users for today's date or obvious relative dates. You know:
+- Today's date and day of the week
+- "This Saturday" = the upcoming Saturday from today (NEVER last Saturday)
+- "Next Saturday" = the Saturday after this Saturday
+- "Every Saturday for X weeks" = starting from the next upcoming Saturday
+- "Tomorrow" = the day after today
+- "Next week" = 7 days from today
+- When someone says "every [day] for the next X weeks" - start from the NEXT occurrence of that day
+- NEVER ask "what date is this Saturday" - you should know this!
+
+CRITICAL: When calculating "this Saturday" or "next Saturday":
+- If today is Monday-Friday: "this Saturday" = the Saturday of this week
+- If today is Saturday: "this Saturday" = next Saturday (7 days from today)
+- If today is Sunday: "this Saturday" = the Saturday 6 days from today
+- ALWAYS ensure the calculated date is in the FUTURE, never in the past
+
+EXAMPLES of what you should automatically understand:
+- "Soccer practice every Saturday for 8 weeks" → Start from next Saturday, create 8 Saturday events
+- "Piano lesson this Tuesday" → The upcoming Tuesday
+- "Dentist appointment next Friday" → Friday of next week
+- "Swimming every Monday for a month" → Start from next Monday, create 4-5 Monday events
+
+Only ask for date clarification if the request is genuinely ambiguous (like "soccer practice next month" without specifying which day).
+
+DATE CALCULATION RULES:
+When calculating dates for recurring events:
+1. "This Saturday" = the next Saturday that occurs (if today is Saturday, use next Saturday)
+2. "Every Saturday for X weeks" = start from the NEXT Saturday after today
+3. Always use YYYY-MM-DD format for dates in function calls
+4. All dates must be in the future (${new Date().getFullYear()} or later)
+5. Never create events in past months or years
+
+CRITICAL: When someone says "every Saturday for the next 8 weeks" you should:
+1. Calculate the next Saturday from today's date
+2. Create 8 events, each one week apart
+3. All events should be in the future
+
 CRITICAL EVENT NAMING RULES:
 • Keep event names SHORT and CLEAN (2-3 words max)
 • Put additional details in the NOTES field, not the event name
@@ -294,6 +332,7 @@ export function clearThread(): void {
 // Make clearThread available globally for debugging
 if (typeof window !== 'undefined') {
   (window as any).clearKicacoThread = clearThread;
+  console.log('🔧 Debug: Call clearKicacoThread() in console to reset the conversation');
 }
 
 async function pollRunStatus(threadId: string, runId: string, maxWaitTime: number): Promise<string> {
@@ -357,7 +396,108 @@ async function pollRunStatus(threadId: string, runId: string, maxWaitTime: numbe
       }
 
       if (runStatus.status === 'requires_action') {
-        throw new Error('Run requires action');
+        console.log('🔧 Run requires action - handling function calls...');
+        
+        // Handle function calls
+        if (runStatus.required_action?.type === 'submit_tool_outputs') {
+          const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
+          const toolOutputs = [];
+          
+          for (const toolCall of toolCalls) {
+            console.log('🛠️ Processing tool call:', toolCall.function.name);
+            console.log('📋 Function arguments:', toolCall.function.arguments);
+            
+                          try {
+                // Parse the function arguments
+                const args = JSON.parse(toolCall.function.arguments);
+                
+                console.log('🔍 Function call details:', {
+                  functionName: toolCall.function.name,
+                  arguments: args,
+                  currentDate: new Date().toISOString().split('T')[0]
+                });
+                
+                // Validate dates are not in the past
+                if (args.date) {
+                  const eventDate = new Date(args.date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  
+                  if (eventDate < today) {
+                    console.warn('⚠️ Warning: Event date is in the past:', args.date);
+                    
+                    // Always adjust past dates to future, regardless of recurring status
+                    const dayOfWeek = eventDate.getDay();
+                    const nextDate = new Date(today);
+                    const daysUntilNext = (dayOfWeek - today.getDay() + 7) % 7 || 7;
+                    nextDate.setDate(today.getDate() + daysUntilNext);
+                    const adjustedDate = nextDate.toISOString().split('T')[0];
+                    
+                    console.log('🔧 Date adjustment details:', {
+                      originalDate: args.date,
+                      eventDayOfWeek: dayOfWeek,
+                      todayDayOfWeek: today.getDay(),
+                      daysToAdd: daysUntilNext,
+                      adjustedDate: adjustedDate
+                    });
+                    
+                    args.date = adjustedDate;
+                  }
+                }
+                
+                // Handle different function types
+                let result = 'Function executed successfully';
+                
+                if (toolCall.function.name === 'updateEvent') {
+                  // Import store dynamically to avoid circular dependencies
+                  const { useKicacoStore } = await import('../store/kicacoStore');
+                  const addEvent = useKicacoStore.getState().addEvent;
+                  
+                  // Add event to store
+                  addEvent(args);
+                  result = `Event "${args.eventName}" created successfully`;
+                  
+                  console.log('✅ Event added to store:', args);
+                } else if (toolCall.function.name === 'updateKeeper') {
+                  // Import store dynamically to avoid circular dependencies
+                  const { useKicacoStore } = await import('../store/kicacoStore');
+                  const addKeeper = useKicacoStore.getState().addKeeper;
+                  
+                  // Add keeper to store
+                  addKeeper(args);
+                  result = `Keeper "${args.keeperName}" created successfully`;
+                  
+                  console.log('✅ Keeper added to store:', args);
+                }
+              
+              toolOutputs.push({
+                tool_call_id: toolCall.id,
+                output: result
+              });
+              
+              console.log('✅ Function call handled:', result);
+            } catch (error) {
+              console.error('❌ Error handling function call:', error);
+              toolOutputs.push({
+                tool_call_id: toolCall.id,
+                output: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+              });
+            }
+          }
+          
+          // Submit the tool outputs
+          await openai.beta.threads.runs.submitToolOutputs(runId, {
+            thread_id: threadId,
+            tool_outputs: toolOutputs
+          });
+          
+          // Continue polling for completion
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          waited = Date.now() - startTime;
+          continue;
+        } else {
+          throw new Error('Unknown action type required');
+        }
       }
 
       // Wait before next poll

@@ -1,4 +1,4 @@
-import { addDays, addWeeks, addMonths, format, parse, isBefore, isAfter } from 'date-fns';
+import { addDays, addWeeks, addMonths, format, parse, isBefore, isAfter, startOfDay, isToday, isFuture } from 'date-fns';
 import { generateUUID } from './uuid';
 
 type RecurringEvent = {
@@ -43,6 +43,23 @@ const WEEKDAY_MAP: { [key: string]: number } = {
   'saturday': 6
 };
 
+// Helper function to find the next occurrence of a specific weekday
+function getNextWeekday(from: Date, targetWeekday: number): Date {
+  const fromWeekday = from.getDay();
+  let daysToAdd = targetWeekday - fromWeekday;
+  
+  // If the target day is today, and we want future events, add 7 days
+  if (daysToAdd === 0) {
+    daysToAdd = 7;
+  }
+  // If the target day has already passed this week, go to next week
+  else if (daysToAdd < 0) {
+    daysToAdd += 7;
+  }
+  
+  return addDays(from, daysToAdd);
+}
+
 export function generateRecurringEvents(baseEvent: RecurringEvent): RecurringEvent[] {
   if (!baseEvent.isRecurring || !baseEvent.recurringPattern || !baseEvent.recurringEndDate) {
     return [baseEvent];
@@ -52,72 +69,28 @@ export function generateRecurringEvents(baseEvent: RecurringEvent): RecurringEve
   const startDate = parse(baseEvent.date, 'yyyy-MM-dd', new Date());
   const endDate = parse(baseEvent.recurringEndDate, 'yyyy-MM-dd', new Date());
   const parentId = baseEvent.recurringParentId || generateUUID();
+  const today = startOfDay(new Date());
 
-  // Add the original event with parent ID
-  events.push({
-    ...baseEvent,
-    recurringParentId: parentId
-  });
+  // For "next X weeks" type requests, we want to start from the next occurrence
+  // Don't add the original event if it's in the past
+  const shouldIncludeOriginal = !isBefore(startDate, today);
+  
+  if (shouldIncludeOriginal) {
+    events.push({
+      ...baseEvent,
+      recurringParentId: parentId
+    });
+  }
 
   let currentDate = startDate;
 
   if (baseEvent.recurringPattern === 'daily') {
-    // Generate daily events
-    while (isBefore(currentDate, endDate)) {
-      currentDate = addDays(currentDate, 1);
-      if (!isAfter(currentDate, endDate)) {
-        events.push({
-          ...baseEvent,
-          date: format(currentDate, 'yyyy-MM-dd'),
-          recurringParentId: parentId,
-          isRecurring: false // Individual instances are not recurring
-        });
-      }
+    // For daily events, start from tomorrow if start date is today or in the past
+    if (!isFuture(startDate)) {
+      currentDate = addDays(today, 1);
     }
-  } else if (baseEvent.recurringPattern === 'weekly') {
-    if (baseEvent.recurringDays && baseEvent.recurringDays.length > 0) {
-      // Generate events for specific days of the week
-      let weekStart = startDate;
-      
-      while (isBefore(weekStart, endDate)) {
-        for (const dayName of baseEvent.recurringDays) {
-          const dayIndex = WEEKDAY_MAP[dayName.toLowerCase()];
-          if (dayIndex !== undefined) {
-            // Calculate the date for this day of the current week
-            const daysToAdd = (dayIndex - weekStart.getDay() + 7) % 7;
-            const eventDate = addDays(weekStart, daysToAdd);
-            
-            // Only add if it's after the start date and before/on end date
-            if (!isBefore(eventDate, startDate) && !isAfter(eventDate, endDate)) {
-              events.push({
-                ...baseEvent,
-                date: format(eventDate, 'yyyy-MM-dd'),
-                recurringParentId: parentId,
-                isRecurring: false
-              });
-            }
-          }
-        }
-        weekStart = addWeeks(weekStart, 1);
-      }
-    } else {
-      // Generate weekly events on the same day of week as start date
-      while (isBefore(currentDate, endDate)) {
-        currentDate = addWeeks(currentDate, 1);
-        if (!isAfter(currentDate, endDate)) {
-          events.push({
-            ...baseEvent,
-            date: format(currentDate, 'yyyy-MM-dd'),
-            recurringParentId: parentId,
-            isRecurring: false
-          });
-        }
-      }
-    }
-  } else if (baseEvent.recurringPattern === 'monthly') {
-    // Generate monthly events
+    
     while (isBefore(currentDate, endDate)) {
-      currentDate = addMonths(currentDate, 1);
       if (!isAfter(currentDate, endDate)) {
         events.push({
           ...baseEvent,
@@ -126,6 +99,66 @@ export function generateRecurringEvents(baseEvent: RecurringEvent): RecurringEve
           isRecurring: false
         });
       }
+      currentDate = addDays(currentDate, 1);
+    }
+  } else if (baseEvent.recurringPattern === 'weekly') {
+    if (baseEvent.recurringDays && baseEvent.recurringDays.length > 0) {
+      // Generate events for specific days of the week
+      for (const dayName of baseEvent.recurringDays) {
+        const dayIndex = WEEKDAY_MAP[dayName.toLowerCase()];
+        if (dayIndex !== undefined) {
+          // Find the next occurrence of this weekday
+          let eventDate = getNextWeekday(today, dayIndex);
+          
+          // Generate weekly occurrences
+          while (!isAfter(eventDate, endDate)) {
+            // Only add if it's different from the original event (avoid duplicates)
+            if (!shouldIncludeOriginal || format(eventDate, 'yyyy-MM-dd') !== baseEvent.date) {
+              events.push({
+                ...baseEvent,
+                date: format(eventDate, 'yyyy-MM-dd'),
+                recurringParentId: parentId,
+                isRecurring: false
+              });
+            }
+            eventDate = addWeeks(eventDate, 1);
+          }
+        }
+      }
+    } else {
+      // Generate weekly events on the same day of week as start date
+      const targetWeekday = startDate.getDay();
+      let eventDate = getNextWeekday(today, targetWeekday);
+      
+      while (!isAfter(eventDate, endDate)) {
+        // Only add if it's different from the original event (avoid duplicates)
+        if (!shouldIncludeOriginal || format(eventDate, 'yyyy-MM-dd') !== baseEvent.date) {
+          events.push({
+            ...baseEvent,
+            date: format(eventDate, 'yyyy-MM-dd'),
+            recurringParentId: parentId,
+            isRecurring: false
+          });
+        }
+        eventDate = addWeeks(eventDate, 1);
+      }
+    }
+  } else if (baseEvent.recurringPattern === 'monthly') {
+    // For monthly events, start from next month if start date is today or in the past
+    if (!isFuture(startDate)) {
+      currentDate = addMonths(today, 1);
+    }
+    
+    while (isBefore(currentDate, endDate)) {
+      if (!isAfter(currentDate, endDate)) {
+        events.push({
+          ...baseEvent,
+          date: format(currentDate, 'yyyy-MM-dd'),
+          recurringParentId: parentId,
+          isRecurring: false
+        });
+      }
+      currentDate = addMonths(currentDate, 1);
     }
   }
 
@@ -141,18 +174,27 @@ export function generateRecurringKeepers(baseKeeper: RecurringKeeper): Recurring
   const startDate = parse(baseKeeper.date, 'yyyy-MM-dd', new Date());
   const endDate = parse(baseKeeper.recurringEndDate, 'yyyy-MM-dd', new Date());
   const parentId = baseKeeper.recurringParentId || generateUUID();
+  const today = startOfDay(new Date());
 
-  // Add the original keeper with parent ID
-  keepers.push({
-    ...baseKeeper,
-    recurringParentId: parentId
-  });
+  // For "next X weeks" type requests, we want to start from the next occurrence
+  // Don't add the original keeper if it's in the past
+  const shouldIncludeOriginal = !isBefore(startDate, today);
+  
+  if (shouldIncludeOriginal) {
+    keepers.push({
+      ...baseKeeper,
+      recurringParentId: parentId
+    });
+  }
 
   let currentDate = startDate;
 
   if (baseKeeper.recurringPattern === 'daily') {
+    if (!isFuture(startDate)) {
+      currentDate = addDays(today, 1);
+    }
+    
     while (isBefore(currentDate, endDate)) {
-      currentDate = addDays(currentDate, 1);
       if (!isAfter(currentDate, endDate)) {
         keepers.push({
           ...baseKeeper,
@@ -161,19 +203,17 @@ export function generateRecurringKeepers(baseKeeper: RecurringKeeper): Recurring
           isRecurring: false
         });
       }
+      currentDate = addDays(currentDate, 1);
     }
   } else if (baseKeeper.recurringPattern === 'weekly') {
     if (baseKeeper.recurringDays && baseKeeper.recurringDays.length > 0) {
-      let weekStart = startDate;
-      
-      while (isBefore(weekStart, endDate)) {
-        for (const dayName of baseKeeper.recurringDays) {
-          const dayIndex = WEEKDAY_MAP[dayName.toLowerCase()];
-          if (dayIndex !== undefined) {
-            const daysToAdd = (dayIndex - weekStart.getDay() + 7) % 7;
-            const keeperDate = addDays(weekStart, daysToAdd);
-            
-            if (!isBefore(keeperDate, startDate) && !isAfter(keeperDate, endDate)) {
+      for (const dayName of baseKeeper.recurringDays) {
+        const dayIndex = WEEKDAY_MAP[dayName.toLowerCase()];
+        if (dayIndex !== undefined) {
+          let keeperDate = getNextWeekday(today, dayIndex);
+          
+          while (!isAfter(keeperDate, endDate)) {
+            if (!shouldIncludeOriginal || format(keeperDate, 'yyyy-MM-dd') !== baseKeeper.date) {
               keepers.push({
                 ...baseKeeper,
                 date: format(keeperDate, 'yyyy-MM-dd'),
@@ -181,26 +221,32 @@ export function generateRecurringKeepers(baseKeeper: RecurringKeeper): Recurring
                 isRecurring: false
               });
             }
+            keeperDate = addWeeks(keeperDate, 1);
           }
         }
-        weekStart = addWeeks(weekStart, 1);
       }
     } else {
-      while (isBefore(currentDate, endDate)) {
-        currentDate = addWeeks(currentDate, 1);
-        if (!isAfter(currentDate, endDate)) {
+      const targetWeekday = startDate.getDay();
+      let keeperDate = getNextWeekday(today, targetWeekday);
+      
+      while (!isAfter(keeperDate, endDate)) {
+        if (!shouldIncludeOriginal || format(keeperDate, 'yyyy-MM-dd') !== baseKeeper.date) {
           keepers.push({
             ...baseKeeper,
-            date: format(currentDate, 'yyyy-MM-dd'),
+            date: format(keeperDate, 'yyyy-MM-dd'),
             recurringParentId: parentId,
             isRecurring: false
           });
         }
+        keeperDate = addWeeks(keeperDate, 1);
       }
     }
   } else if (baseKeeper.recurringPattern === 'monthly') {
+    if (!isFuture(startDate)) {
+      currentDate = addMonths(today, 1);
+    }
+    
     while (isBefore(currentDate, endDate)) {
-      currentDate = addMonths(currentDate, 1);
       if (!isAfter(currentDate, endDate)) {
         keepers.push({
           ...baseKeeper,
@@ -209,6 +255,7 @@ export function generateRecurringKeepers(baseKeeper: RecurringKeeper): Recurring
           isRecurring: false
         });
       }
+      currentDate = addMonths(currentDate, 1);
     }
   }
 
