@@ -71,6 +71,13 @@ export default function CalendarMenu({ currentPath }: CalendarMenuProps) {
         >
           Add Keeper
         </Link>
+        <Link
+          to="/kicaco-flow"
+          className={menuItemClass}
+          role="menuitem"
+        >
+          Kicaco Flow
+        </Link>
       </div>
     </DropdownMenu>
   );

@@ -19,6 +19,8 @@ import AddEvent from './pages/AddEvent';
 import AddKeeper from './pages/AddKeeper';
 import DailyView from './pages/DailyView';
 import ShareProcessor from './pages/ShareProcessor';
+import SmartButtonPlayground from './pages/SmartButtonPlayground';
+import KicacoFlow from './pages/KicacoFlow';
 import './index.css';
 
 // Import Vite PWA service worker registration
@@ -55,6 +57,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="edit-child" element={<EditChild />} />
           <Route path="add-event" element={<AddEvent />} />
           <Route path="add-keeper" element={<AddKeeper />} />
+          <Route path="smart-button-playground" element={<SmartButtonPlayground />} />
+          <Route path="kicaco-flow" element={<KicacoFlow />} />
         </Route>
       </Routes>
     </BrowserRouter>
