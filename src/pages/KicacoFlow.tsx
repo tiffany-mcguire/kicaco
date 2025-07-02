@@ -35,6 +35,8 @@ interface FlowContext {
     repeatingSameLocation?: boolean;
     dayBasedLocations?: Record<string, string>; // Maps day-of-week to location
     currentDayForLocation?: number; // Current day being set for day-based location
+    isComingFromOtherMonth?: boolean; // Flag to track if we're coming from "Other month" choice
+    monthToExclude?: string; // Specific month to exclude when showing other month options
   };
 }
 
@@ -366,16 +368,45 @@ export default function KicacoFlow() {
     const today = new Date();
     const months = [];
     
-    // Get the month we just completed (if any)
-    const justCompletedMonth = flowContext.eventPreview.selectedMonth;
+    // Get the month to exclude based on context
+    const monthToExclude = flowContext.eventPreview.isComingFromOtherMonth ? 
+      flowContext.eventPreview.monthToExclude : null;
     
-    for (let i = 0; i < 4; i++) { // Look at 4 months to ensure we have 3 options after filtering
+    // Debug logging
+    console.log('getMonthButtons debug:', {
+      isComingFromOtherMonth: flowContext.eventPreview.isComingFromOtherMonth,
+      monthToExclude: monthToExclude,
+      selectedMonth: flowContext.eventPreview.selectedMonth
+    });
+    
+    // Determine starting point
+    let startingIndex = 0;
+    if (flowContext.eventPreview.isComingFromOtherMonth && monthToExclude) {
+      // Start from the month after the excluded month
+      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const [excludedMonthStr, excludedYearStr] = monthToExclude.split('-');
+      const excludedMonthIndex = monthNames.indexOf(excludedMonthStr);
+      const excludedYear = parseInt(excludedYearStr);
+      
+      // Calculate the excluded month as a Date to compare with current date
+      const excludedDate = new Date(excludedYear, excludedMonthIndex, 1);
+      const currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      // Find how many months ahead the excluded month is from current month
+      const monthsDiff = (excludedDate.getFullYear() - currentDate.getFullYear()) * 12 + 
+                        (excludedDate.getMonth() - currentDate.getMonth());
+      
+      // Start from the month after the excluded month
+      startingIndex = monthsDiff + 1;
+    }
+    
+    for (let i = startingIndex; i < startingIndex + 6; i++) { // Look at 6 months from starting point
       const month = new Date(today.getFullYear(), today.getMonth() + i, 1);
       const monthName = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       const monthId = month.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toLowerCase().replace(' ', '-');
       
-      // Skip the month we just completed
-      if (monthId === justCompletedMonth) continue;
+      // Skip the month we want to exclude (safety check)
+      if (monthId === monthToExclude) continue;
       
       months.push({
         id: monthId,
@@ -405,6 +436,33 @@ export default function KicacoFlow() {
   };
 
   // Get remaining months in current year (for when "Other month" is selected)
+  const getOtherMonthsExcludingCurrent = (): SmartButton[] => {
+    const selectedMonth = flowContext.eventPreview.selectedMonth;
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    // Get current month to exclude
+    const currentMonthIndex = selectedMonth ? monthNames.indexOf(selectedMonth.split('-')[0]) : -1;
+    
+    const otherMonths: SmartButton[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      // Skip the currently selected month
+      if (i === currentMonthIndex) continue;
+      
+      const monthButton: SmartButton = {
+        id: `${monthNames[i]}-${currentYear}`,
+        label: fullMonthNames[i],
+        description: undefined
+      };
+      otherMonths.push(monthButton);
+    }
+    
+    return otherMonths;
+  };
+
   const getRemainingMonthsInYear = (): SmartButton[] => {
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -440,6 +498,37 @@ export default function KicacoFlow() {
     const existingDates = flowContext.eventPreview.selectedDates || [];
     const pattern = detectDayOfWeekPattern(existingDates);
     
+    // Get the current month to determine the question context
+    const selectedMonth = flowContext.eventPreview.selectedMonth;
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    if (selectedMonth) {
+      const currentMonthIndex = monthNames.indexOf(selectedMonth.split('-')[0]);
+      const currentMonthName = fullMonthNames[currentMonthIndex];
+      
+      return [
+        {
+          id: 'yes-same-month',
+          label: 'Yes',
+          description: pattern 
+              ? "We'll suggest matching days based on your pattern"
+              : "Pick any additional dates you need"
+        },
+        {
+          id: 'no-done',
+          label: 'No, done',
+          description: 'Continue with the selected dates'
+        },
+        {
+          id: 'no-other-month',
+          label: 'Other month',
+          description: 'Pick a different month instead'
+        }
+      ];
+    }
+    
+    // Fallback for older flow
     return [
       {
         id: 'yes-another-month',
@@ -704,6 +793,8 @@ export default function KicacoFlow() {
         // Month selected, now choose specific date(s)
         newContext.step = 'monthPart';
         newContext.eventPreview.selectedMonth = buttonId;
+        newContext.eventPreview.isComingFromOtherMonth = false; // Clear the flag
+        newContext.eventPreview.monthToExclude = undefined; // Clear the exclusion
         setShowOtherMonths(false); // Reset the other months display
         
         // If we're coming from 'repeatAnotherMonth' and have a pattern, preselect matching dates
@@ -737,11 +828,38 @@ export default function KicacoFlow() {
         }
       }
     } else if (flowContext.step === 'repeatAnotherMonth') {
-      if (buttonId === 'yes-another-month') {
-        // Go back to month selection to add more dates
+      if (buttonId === 'yes-same-month') {
+        // Go directly back to the same month for more date selection
+        newContext.step = 'monthPart';
+      } else if (buttonId === 'no-other-month') {
+        // Show the smart month picker (same as original flow)
+        newContext.step = 'customDatePicker';
+        newContext.eventPreview.isComingFromOtherMonth = true;
+        
+        // Calculate the next month (the one they just said no to) to exclude
+        const currentSelectedMonth = flowContext.eventPreview.selectedMonth || '';
+        if (currentSelectedMonth) {
+          const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const [monthStr, yearStr] = currentSelectedMonth.split('-');
+          const currentMonthIndex = monthNames.indexOf(monthStr);
+          const currentYear = parseInt(yearStr);
+          
+          // Get next month (the one they're saying no to)
+          let nextMonthIndex = currentMonthIndex + 1;
+          let nextYear = currentYear;
+          if (nextMonthIndex >= 12) {
+            nextMonthIndex = 0;
+            nextYear++;
+          }
+          
+          const nextMonthId = `${monthNames[nextMonthIndex]}-${nextYear}`;
+          newContext.eventPreview.monthToExclude = nextMonthId;
+        }
+      } else if (buttonId === 'yes-another-month') {
+        // Fallback for old flow - Go back to month selection to add more dates
         newContext.step = 'customDatePicker';
       } else {
-        // Continue to time setup - only show repeatingSameTime if multiple dates
+        // 'no-done' or 'no-another-month' - Continue to time setup
         const selectedDates = flowContext.eventPreview.selectedDates || [];
         newContext.step = selectedDates.length > 1 ? 'repeatingSameTime' : 'whenTimePeriod';
       }
@@ -990,7 +1108,27 @@ export default function KicacoFlow() {
         
         return `${monthName} ${year}`;
       case 'repeatAnotherMonth':
-        return "Is this event recurring in another month?";
+        // Get the next month name for more specific text
+        const currentSelectedMonth = flowContext.eventPreview.selectedMonth || '';
+        if (currentSelectedMonth) {
+          const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          const [monthStr, yearStr] = currentSelectedMonth.split('-');
+          const currentMonthIndex = monthNames.indexOf(monthStr);
+          const currentYear = parseInt(yearStr);
+          
+          // Get next month
+          let nextMonthIndex = currentMonthIndex + 1;
+          let nextYear = currentYear;
+          if (nextMonthIndex >= 12) {
+            nextMonthIndex = 0;
+            nextYear++;
+          }
+          
+          const nextMonthName = fullMonthNames[nextMonthIndex];
+          return `Event recurring in ${nextMonthName}?`;
+        }
+        return "Event recurring in another month?";
       case 'repeatingSameTime':
         return "Multi-Event Times";
       case 'dayBasedTimeSelection':
@@ -1512,18 +1650,35 @@ export default function KicacoFlow() {
             {flowContext.step === 'customDatePicker' && (
               <button
                 onClick={() => {
-                  // Go back to date selection, preserving previous selections
-                  setFlowContext({
-                    ...flowContext,
-                    step: 'whenDate'
-                  });
+                  // Check if we're coming from repeatAnotherMonth, if so go back there
+                  const selectedDates = flowContext.eventPreview.selectedDates || [];
+                  if (selectedDates.length > 0) {
+                    // We're coming from repeat flow, go back to repeatAnotherMonth
+                    setFlowContext({
+                      ...flowContext,
+                      step: 'repeatAnotherMonth'
+                    });
+                  } else {
+                    // Original flow, go back to date selection
+                    setFlowContext({
+                      ...flowContext,
+                      step: 'whenDate'
+                    });
+                  }
                 }}
                 className="text-[#217e8f] text-xs hover:underline"
               >
-                ← {(() => {
-                  const sport = flowContext.eventPreview.subtype || 'soccer';
-                  const eventType = flowContext.eventPreview.eventType || 'game';
-                  return `${sport.charAt(0).toUpperCase() + sport.slice(1)} ${eventType} quick dates`;
+                {(() => {
+                  const selectedDates = flowContext.eventPreview.selectedDates || [];
+                  if (selectedDates.length > 0) {
+                    // We're in repeat flow, show "No more dates to add"
+                    return '← No more dates to add';
+                  } else {
+                    // Original flow
+                    const sport = flowContext.eventPreview.subtype || 'soccer';
+                    const eventType = flowContext.eventPreview.eventType || 'game';
+                    return `← ${sport.charAt(0).toUpperCase() + sport.slice(1)} ${eventType} quick dates`;
+                  }
                 })()}
               </button>
             )}
@@ -1592,8 +1747,51 @@ export default function KicacoFlow() {
               </button>
             )}
             
+            {/* Go back button for repeat another month */}
+            {flowContext.step === 'repeatAnotherMonth' && (
+              <button
+                onClick={() => {
+                  // Go back to the date selection (monthPart step)
+                  setFlowContext({
+                    ...flowContext,
+                    step: 'monthPart'
+                  });
+                }}
+                className="text-[#217e8f] text-xs hover:underline"
+              >
+                {(() => {
+                  const currentSelectedMonth = flowContext.eventPreview.selectedMonth || '';
+                  if (currentSelectedMonth) {
+                    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                    const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                    const [monthStr] = currentSelectedMonth.split('-');
+                    const currentMonthIndex = monthNames.indexOf(monthStr);
+                    const currentMonthName = fullMonthNames[currentMonthIndex];
+                    return `← Go back to ${currentMonthName}`;
+                  }
+                  return '← Date selection';
+                })()}
+              </button>
+            )}
+
+            {/* Specific go back button for Multi-Event Times */}
+            {flowContext.step === 'repeatingSameTime' && (
+              <button
+                onClick={() => {
+                  // Go back to date selection step
+                  setFlowContext({
+                    ...flowContext,
+                    step: flowContext.eventPreview.selectedMonth ? 'monthPart' : 'whenDate',
+                  });
+                }}
+                className="text-[#217e8f] text-xs hover:underline"
+              >
+                ← Add more dates
+              </button>
+            )}
+
             {/* General go back to create keeper button for other steps */}
-            {!['initial', 'sportsType', 'eventType', 'whichChild', 'whenDate', 'customDatePicker', 'monthPart', 'whenTimePeriod', 'whereLocation', 'eventNotes'].includes(flowContext.step) && (
+            {!['initial', 'sportsType', 'eventType', 'whichChild', 'whenDate', 'customDatePicker', 'monthPart', 'whenTimePeriod', 'whereLocation', 'eventNotes', 'repeatAnotherMonth', 'repeatingSameTime'].includes(flowContext.step) && (
               <button
                 onClick={() => setFlowContext({ step: 'initial', selections: {}, eventPreview: {} })}
                 className="text-[#217e8f] text-xs hover:underline"
@@ -1602,33 +1800,7 @@ export default function KicacoFlow() {
               </button>
             )}
 
-            {flowContext.step === 'customDatePicker' && flowContext.eventPreview.selectedMonth && (
-              <button
-                onClick={() => {
-                  // Go back to edit the previous month
-                  const newContext = {
-                    ...flowContext,
-                    step: 'monthPart',
-                    eventPreview: {
-                      ...flowContext.eventPreview,
-                      hasPatternPreselection: false
-                    }
-                  };
-                  setFlowContext(newContext);
-                }}
-                className="text-xs font-medium text-[#217e8f] hover:text-[#1a6e7e] transition-colors"
-              >
-                {(() => {
-                  const monthId = flowContext.eventPreview.selectedMonth || '';
-                  const [monthStr] = monthId.split('-');
-                  const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                  const monthIndex = monthNames.indexOf(monthStr);
-                  const monthName = monthIndex >= 0 ? fullMonthNames[monthIndex] : 'Previous';
-                  return `← Go back to ${monthName}`;
-                })()}
-              </button>
-            )}
+
             {flowContext.step === 'monthPart' && (
               <button
                 onClick={() => {
