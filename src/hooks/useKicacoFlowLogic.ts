@@ -102,8 +102,7 @@ export const getTimePeriodButtons = (): SmartButton[] => [
 export const getLocationButtons = (): SmartButton[] => [
   { id: 'westfield-park', label: 'Westfield Park', description: 'Main soccer field, 123 Park Ave' },
   { id: 'school-field', label: 'School Field', description: 'Lincoln Elementary field' },
-  { id: 'sports-complex', label: 'Sports Complex', description: 'City Sports Complex, Field 2' },
-  { id: 'custom-location', label: 'Other Location', description: 'Enter a different location' }
+  { id: 'sports-complex', label: 'Sports Complex', description: 'City Sports Complex, Field 2' }
 ];
 
 export const getMonthButtons = (flowContext: FlowContext): SmartButton[] => {
@@ -129,8 +128,8 @@ export const getMonthButtons = (flowContext: FlowContext): SmartButton[] => {
       months.push({ id: monthId, label: monthName.split(' ')[0] });
       if (months.length >= 3) break;
     }
-    months.push({ id: 'other-month', label: 'Other month' });
-    months.push({ id: 'other-year', label: 'Other year' });
+    months.push({ id: 'other-month', label: 'Other Month' });
+    months.push({ id: 'other-year', label: 'Other Year' });
     return months;
   };
 
@@ -173,8 +172,8 @@ export const getRepeatAnotherMonthButtons = (flowContext: FlowContext): SmartBut
     if (selectedMonth) {
       return [
         { id: 'yes-same-month', label: 'Yes', description: pattern ? "We'll suggest matching days" : "Pick additional dates" },
-        { id: 'no-done', label: 'No, done', description: 'Continue with selected dates' },
-        { id: 'no-other-month', label: 'Other month', description: 'Pick a different month' }
+        { id: 'no-done', label: 'No, Done', description: 'Continue with selected dates' },
+        { id: 'no-other-month', label: 'Other Month', description: 'Pick a different month' }
       ];
     }
     return [
@@ -184,14 +183,14 @@ export const getRepeatAnotherMonthButtons = (flowContext: FlowContext): SmartBut
   };
 
 export const getRepeatingSameLocationButtons = (): SmartButton[] => [
-    { id: 'same-location-yes', label: 'Same location', description: 'All occurrences at same location' },
-    { id: 'same-location-by-day', label: 'Day-based', description: 'Set locations by day of week' },
+    { id: 'same-location-yes', label: 'Same', description: 'All occurrences at same location' },
+    { id: 'same-location-by-day', label: 'Day-Based', description: 'Set locations by day of week' },
     { id: 'same-location-no', label: 'Custom', description: 'Set individual locations' }
   ];
 
 export const getRepeatingSameTimeButtons = (): SmartButton[] => [
-    { id: 'same-time-yes', label: 'Same time', description: 'All occurrences at same time' },
-    { id: 'same-time-by-day', label: 'Day-based', description: 'Set times by day of week' },
+    { id: 'same-time-yes', label: 'Same', description: 'All occurrences at same time' },
+    { id: 'same-time-by-day', label: 'Day-Based', description: 'Set times by day of week' },
     { id: 'same-time-no', label: 'Custom', description: 'Set individual times' }
   ];
 
@@ -414,21 +413,19 @@ export const handleButtonSelect = ({
       repeatingSameTime: () => {
         newContext.eventPreview.repeatingSameTime = buttonId === 'same-time-yes';
         if (buttonId === 'same-time-by-day') {
-          newContext.step = 'dayBasedTimeSelection';
+          newContext.step = 'dayBasedTimeGrid';
           newContext.eventPreview.dayBasedTimes = {};
-          const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
-          if (uniqueDays.length > 0) {
-            newContext.eventPreview.currentDayForTime = parseInt(uniqueDays[0].id.split('-')[1]);
-          }
+          newContext.eventPreview.currentTimePattern = 'dayBased';
         } else if (buttonId === 'same-time-no') {
             newContext.step = 'customTimeSelection';
+            newContext.eventPreview.currentTimePattern = 'custom';
         } else {
           newContext.step = 'whenTimePeriod';
+          newContext.eventPreview.currentTimePattern = 'same';
         }
       },
-      dayBasedTimeSelection: () => {
-        newContext.eventPreview.currentDayForTime = parseInt(buttonId.split('-')[1]);
-        newContext.step = 'daySpecificTime';
+      dayBasedTimeGrid: () => {
+        // This step is handled in the UI directly, no button logic needed
       },
       daySpecificTime: () => {
         const currentDay = flowContext.eventPreview.currentDayForTime!;
@@ -450,12 +447,18 @@ export const handleButtonSelect = ({
         if (buttonId === 'same-location-by-day') {
           newContext.step = 'dayBasedLocationSelection';
           newContext.eventPreview.dayBasedLocations = {};
+          newContext.eventPreview.currentLocationPattern = 'dayBased';
           const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
           if (uniqueDays.length > 0) {
             newContext.eventPreview.currentDayForLocation = parseInt(uniqueDays[0].id.split('-')[1]);
           }
+        } else if (buttonId === 'same-location-no') {
+          newContext.step = 'customLocationSelection';
+          newContext.eventPreview.dateBasedLocations = {};
+          newContext.eventPreview.currentLocationPattern = 'custom';
         } else {
           newContext.step = 'whereLocation';
+          newContext.eventPreview.currentLocationPattern = 'same';
         }
       },
       dayBasedLocationSelection: () => {
@@ -500,7 +503,7 @@ export const handleButtonSelect = ({
             const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
             
             let eventTime = newContext.eventPreview.dayBasedTimes?.[date] || newContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
-            let eventLocation = newContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+            let eventLocation = newContext.eventPreview.dateBasedLocations?.[date] || newContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
 
             return { ...baseEvent, date, time: eventTime, location: eventLocation };
           }) : [baseEvent];
@@ -533,26 +536,25 @@ export const getCurrentButtons = (flowContext: FlowContext) => {
         }
         return allButtons;
       },
+      dayBasedTimeGrid: () => [], // No buttons needed, handled by grid
       daySpecificLocation: getLocationButtons,
       whereLocation: getLocationButtons,
       eventNotes: () => [{ id: 'create-event', label: 'Create Event', description: 'Save this event to your calendar' }],
-      repeatingSameLocation: getRepeatingSameLocationButtons
+      repeatingSameLocation: getRepeatingSameLocationButtons,
+      customLocationSelection: () => [] // No buttons needed, handled by custom UI
     };
     return buttonMap[flowContext.step]?.() || [];
 };
 
 export const getCurrentQuestion = (flowContext: FlowContext) => {
     const questionMap: { [key: string]: string | (() => string) } = {
-      initial: "What would you like to add?",
-      eventCategory: "Event category",
+      initial: "Add Event or Keeper",
+      eventCategory: "Event Category",
       sportsType: "",
-      eventType: () => `What type of ${flowContext.eventPreview.subtype || 'sports'} event?`,
-      whichChild: "Whose event is this?",
-      whenDate: () => {
-        const { subtype = 'soccer', eventType = 'game' } = flowContext.eventPreview;
-        return `${subtype.charAt(0).toUpperCase() + subtype.slice(1)} ${eventType} dates`;
-      },
-      customDatePicker: "Which month?",
+      eventType: () => `${(flowContext.eventPreview.subtype || 'Soccer').charAt(0).toUpperCase() + (flowContext.eventPreview.subtype || 'soccer').slice(1)} Event Type`,
+      whichChild: "Child Selection",
+      whenDate: "Quick Dates",
+      customDatePicker: "Month & Year",
       monthPart: () => {
         const { selectedMonth = '' } = flowContext.eventPreview;
         const [monthStr, yearStr] = selectedMonth.split('-');
@@ -563,7 +565,7 @@ export const getCurrentQuestion = (flowContext: FlowContext) => {
       },
       repeatAnotherMonth: () => {
         const { selectedMonth = '' } = flowContext.eventPreview;
-        if (!selectedMonth) return "Event recurring in another month?";
+        if (!selectedMonth) return "Add Dates";
         const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const [monthStr, yearStr] = selectedMonth.split('-');
@@ -573,28 +575,21 @@ export const getCurrentQuestion = (flowContext: FlowContext) => {
           nextMonthIndex = 0;
           nextYear++;
         }
-        return `Event recurring in ${fullMonthNames[nextMonthIndex]}?`;
+        return `Add ${fullMonthNames[nextMonthIndex]} Dates`;
       },
       repeatingSameTime: "Multi-Event Times",
-      customTimeSelection: "Set a time for each event",
-      dayBasedTimeSelection: () => {
-        const { dayBasedTimes = {}, selectedDates = [] } = flowContext.eventPreview;
-        const uniqueDays = getUniqueDaysOfWeek(selectedDates);
-        const remainingDays = uniqueDays.filter(d => !dayBasedTimes[parseInt(d.id.split('-')[1])]);
-        return remainingDays.length === uniqueDays.length ? 'Set times for each day' : 'Select time for next day:';
-      },
+      customTimeSelection: "Custom Times",
+      dayBasedTimeGrid: "Day-Based Times",
       daySpecificTime: () => `What time for ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][flowContext.eventPreview.currentDayForTime!]}?`,
-      whenTimePeriod: () => `${(flowContext.eventPreview.subtype || 'soccer').charAt(0).toUpperCase() + (flowContext.eventPreview.subtype || 'soccer').slice(1)} ${(flowContext.eventPreview.eventType || 'game')} time`,
-      repeatingSameLocation: "Multi-Event Locations",
-      dayBasedLocationSelection: () => {
-         const { dayBasedLocations = {}, selectedDates = [] } = flowContext.eventPreview;
-         const uniqueDays = getUniqueDaysOfWeek(selectedDates);
-         const remainingDays = uniqueDays.filter(d => !dayBasedLocations[parseInt(d.id.split('-')[1])]);
-         return remainingDays.length === uniqueDays.length ? 'Set locations for each day' : 'Select location for next day:';
+      whenTimePeriod: () => {
+        return 'Event Time';
       },
+      repeatingSameLocation: "Multi-Event Locations",
+      customLocationSelection: "Custom Locations",
+      dayBasedLocationSelection: "Day-Based Locations",
       daySpecificLocation: () => `What location for ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][flowContext.eventPreview.currentDayForLocation!]}?`,
       whereLocation: "Event Location",
-      eventNotes: "Notes (optional)",
+      eventNotes: "Notes (Optional)",
       complete: "Ready to create your event!"
     };
     const question = questionMap[flowContext.step] ?? "Next step...";

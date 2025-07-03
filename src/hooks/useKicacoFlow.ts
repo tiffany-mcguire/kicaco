@@ -24,11 +24,14 @@ export interface FlowContext {
     hasPatternPreselection?: boolean;
     dayBasedTimes?: Record<string, string>; // Maps day-of-week to time
     currentDayForTime?: number; // Current day being set for day-based timing
+    currentTimePattern?: 'same' | 'dayBased' | 'custom'; // Track which time pattern was most recently selected
     repeatingSameLocation?: boolean;
     dayBasedLocations?: Record<string, string>; // Maps day-of-week to location
     currentDayForLocation?: number; // Current day being set for day-based location
+    currentLocationPattern?: 'same' | 'dayBased' | 'custom'; // Track which location pattern was most recently selected
     isComingFromOtherMonth?: boolean; // Flag to track if we're coming from "Other month" choice
     monthToExclude?: string; // Specific month to exclude when showing other month options
+    dateBasedLocations?: Record<string, string>; // Maps specific dates to locations for custom location selection
   };
 }
 
@@ -63,6 +66,10 @@ export function useKicacoFlow() {
     ampm: '',
     activeDropdown: '' // 'hour', 'minute', 'ampm', or ''
   });
+
+  // Location picker state
+  const [editingLocationForDate, setEditingLocationForDate] = useState<string | null>(null);
+  const [customLocationInput, setCustomLocationInput] = useState('');
 
   // --------------------------------------------------------------------------------
   // API returned to the component
@@ -100,6 +107,10 @@ export function useKicacoFlow() {
     setCreatedEvents,
     currentEventIndex,
     setCurrentEventIndex,
+    editingLocationForDate,
+    setEditingLocationForDate,
+    customLocationInput,
+    setCustomLocationInput,
 
     // Derived values from logic
     currentButtons,
