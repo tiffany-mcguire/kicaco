@@ -44,14 +44,21 @@ export const CustomLocationSelection: React.FC<Props> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {(() => {
           const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
-          const numColumns = 4; // Keep 4 columns for consistency with vertical layout
-          const quartersSize = Math.ceil(dates.length / numColumns);
-          const quarters = [];
-          for (let i = 0; i < numColumns; i++) {
-            quarters.push(dates.slice(i * quartersSize, (i + 1) * quartersSize));
+          const numColumns = 3; // Use 3 columns for mobile-first design
+          
+          // Better distribution algorithm
+          const quarters: string[][] = Array.from({ length: numColumns }, () => []);
+          const itemsPerColumn = Math.floor(dates.length / numColumns);
+          const extraItems = dates.length % numColumns;
+          
+          let dateIndex = 0;
+          for (let col = 0; col < numColumns; col++) {
+            const itemsInThisColumn = itemsPerColumn + (col < extraItems ? 1 : 0);
+            quarters[col] = dates.slice(dateIndex, dateIndex + itemsInThisColumn);
+            dateIndex += itemsInThisColumn;
           }
           
           return quarters.map((quarter, qIndex) => (
