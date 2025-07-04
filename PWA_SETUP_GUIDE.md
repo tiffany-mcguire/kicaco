@@ -2,30 +2,57 @@
 
 ## 📋 Prerequisites
 - Node.js installed
-- HTTPS connection (required for PWA features)
+- HTTPS certificates (see Certificate Setup below)
 - Mobile device or Chrome DevTools for testing
 
+## 🔐 Certificate Setup (Required for HTTPS)
+
+The PWA requires HTTPS to work properly. You'll need to set up certificates in the `certs/` directory:
+
+### Option A: Using mkcert (Recommended)
+```bash
+# Install mkcert (macOS)
+brew install mkcert
+
+# Create certificates
+mkcert -install
+mkcert localhost 127.0.0.1 ::1 [YOUR_LOCAL_IP]
+
+# Move certificates to certs directory
+mkdir -p certs
+mv localhost+4.pem certs/
+mv localhost+4-key.pem certs/
+```
+
+### Option B: Self-signed certificates
+```bash
+# Create certs directory
+mkdir -p certs
+
+# Generate self-signed certificate
+openssl req -x509 -newkey rsa:4096 -keyout certs/localhost+4-key.pem -out certs/localhost+4.pem -days 365 -nodes -subj "/CN=localhost"
+```
+
 ## 🛠 Step 1: Install Dependencies
-Dependencies are already configured. If you need to reinstall:
 ```bash
 npm install
 ```
 
 ## 🔧 Step 2: Development with HTTPS
 
-### Option A: Local HTTPS Development
+### Start Development Server
 ```bash
 npm run dev:https
 ```
 This starts Vite with HTTPS on `https://localhost:5173`
 
-### Option B: Network Access (for mobile testing)
+### For Mobile Testing
 ```bash
 npm run dev:https
 ```
 Then access via your local IP: `https://[YOUR_IP]:5173`
 
-### Option C: Production Build + Preview
+### Production Build + Preview
 ```bash
 npm run build
 npm run preview:https
@@ -37,11 +64,13 @@ npm run preview:https
 1. Open `https://localhost:5173` in Chrome
 2. Look for install icon in address bar
 3. Click to install as PWA
+4. Verify app opens in standalone window
 
 ### On Mobile:
 1. Open URL in mobile browser (Safari/Chrome)
 2. Look for "Add to Home Screen" option
 3. Install and open from home screen
+4. Verify standalone app experience
 
 ## 🔗 Step 4: Test Share Target
 
@@ -57,7 +86,7 @@ npm run preview:https
 2. Find a text with event info like: "Soccer practice tomorrow at 4pm"
 3. Long press the message
 4. Tap Share → Kicaco
-5. Should open Kicaco share processor
+5. Should open Kicaco share processor at `/share` route
 
 #### From Safari:
 1. Open any webpage
@@ -82,6 +111,7 @@ npm run preview:https
 
 ### PWA Not Installing:
 - ✅ Ensure you're using HTTPS
+- ✅ Check that certificates are properly configured
 - ✅ Check browser console for manifest errors
 - ✅ Verify service worker registration
 
@@ -89,6 +119,12 @@ npm run preview:https
 - ✅ Must be installed as PWA first
 - ✅ Only works on HTTPS
 - ✅ May take a few seconds to register after install
+- ✅ Try reinstalling the PWA
+
+### Certificate Issues:
+- ✅ Ensure certificates exist in `certs/` directory
+- ✅ Certificate files must be named exactly: `localhost+4.pem` and `localhost+4-key.pem`
+- ✅ Try regenerating certificates with mkcert
 
 ### Chrome DevTools Testing:
 1. F12 → Application tab
@@ -98,46 +134,64 @@ npm run preview:https
 
 ## 📊 Verification Checklist
 
+- [ ] HTTPS certificates are configured
 - [ ] PWA installs successfully
 - [ ] App works offline (basic caching)
 - [ ] Share target appears in other apps
 - [ ] Shared content processes correctly
 - [ ] Smart paste button works
 - [ ] App icon appears on home screen
+- [ ] Standalone app experience works
 
 ## 🚨 Common Issues
 
 ### 1. "Share target not found"
 **Solution:** Reinstall PWA after clearing browser data
 
-### 2. "HTTPS required"
-**Solution:** Use `npm run dev:https` or deploy to HTTPS server
+### 2. "HTTPS required" or certificate errors
+**Solution:** 
+- Ensure certificates exist in `certs/` directory
+- Use `npm run dev:https` (not `npm run dev`)
+- Regenerate certificates if needed
 
 ### 3. "Service worker not registering"
-**Solution:** Check browser console, may need to clear cache
+**Solution:** 
+- Check browser console for errors
+- Clear browser cache and storage
+- Verify PWA plugin configuration
 
 ### 4. "Icons not loading"
-**Solution:** Add proper PNG icons to `/public/` directory
+**Solution:** 
+- Currently using vite.svg as placeholder
+- Replace with proper app icons (192x192, 512x512) in `/public/`
 
-## 🎯 Next Steps
+## 🎯 Current PWA Configuration
 
-Once PWA is working:
-1. Replace vite.svg with proper app icons (192x192, 512x512)
-2. Test on actual mobile devices
-3. Configure push notifications (future enhancement)
-4. Add more sophisticated caching strategies
+### Manifest Settings:
+- **Name**: Kicaco - Family Assistant
+- **Theme Color**: #217e8f (Kicaco brand color)
+- **Display**: Standalone
+- **Share Target**: Enabled for text, URLs, and images
+- **Caching**: OpenAI API and event images cached
+
+### Available Scripts:
+- `npm run dev` - Development without HTTPS
+- `npm run dev:https` - Development with HTTPS (required for PWA)
+- `npm run build` - Production build
+- `npm run preview:https` - Preview production build with HTTPS
 
 ## 📞 Testing Commands Quick Reference
 
 ```bash
-# Start HTTPS development server
+# Start HTTPS development server (required for PWA)
 npm run dev:https
 
 # Build and preview with HTTPS
-npm run build && npm run preview:https
+npm run build
+npm run preview:https
 
-# Check if service worker is registered
-# (Open browser console and check for SW logs)
+# Check service worker registration
+# (Open browser console and look for SW logs)
 ```
 
 ## 🔧 Environment Variables
@@ -147,4 +201,13 @@ Make sure these are set for full functionality:
 VITE_OPENAI_API_KEY=your_key_here
 VITE_ASSISTANT_ID=your_assistant_id
 VITE_USE_BACKEND_PROXY=true  # for production
-``` 
+```
+
+## 🚀 Next Steps
+
+Once PWA is working:
+1. Replace vite.svg with proper app icons (192x192, 512x512)
+2. Test on actual mobile devices
+3. Configure push notifications (future enhancement)
+4. Add more sophisticated caching strategies
+5. Test offline functionality thoroughly 
