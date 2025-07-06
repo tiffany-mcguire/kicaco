@@ -55,13 +55,13 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
+    <div className="day-based-time-grid bg-white rounded-lg shadow-sm p-3 mb-8">
       <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
       `}</style>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="day-based-time-grid__grid grid grid-cols-4 gap-2">
         {(() => {
           const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
           
@@ -92,7 +92,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
           });
           
           return columns.map((column, colIndex) => (
-            <div key={`col${colIndex}`} className="space-y-2">
+            <div key={`col${colIndex}`} className="day-based-time-grid__column space-y-2">
               {column.map((dayInfo) => {
                 const dayIndex = parseInt(dayInfo.id.split('-')[1]);
                 const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -114,59 +114,59 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                 return (
                   <div 
                     key={dayIndex} 
-                    className="flex flex-col p-1.5 rounded-lg" 
+                    className="day-based-time-grid__day-card flex flex-col p-1.5 rounded-lg" 
                     style={{ 
                       backgroundColor: bgColor,
                       minHeight: '200px'
                     }}
                   >
                     {/* Day name header */}
-                    <div className="font-semibold text-gray-800 text-xs mb-2 text-center">
+                    <div className="day-based-time-grid__day-header font-semibold text-gray-800 text-xs mb-2 text-center">
                       {dayNames[dayIndex]}
                     </div>
                     
                     {/* Time picker area - natural height */}
-                    <div className="w-full mb-2">
+                    <div className="day-based-time-grid__time-picker w-full mb-2">
                       {isEditing ? (
-                        <div className="w-full">
+                        <div className="day-based-time-grid__time-editor w-full">
                           {showFullPickerFor === `day-${dayIndex}` ? (
                             customTime.hour === '' ? (
-                              <div className="grid grid-cols-3 gap-1 p-1 bg-white/50 rounded-lg">
+                              <div className="day-based-time-grid__hour-grid grid grid-cols-3 gap-1 p-1 bg-white/50 rounded-lg">
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                                   <button 
                                     key={h} 
                                     onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                                    className="text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
+                                    className="day-based-time-grid__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
                                   >
                                     {h}
                                   </button>
                                 ))}
                               </div>
                             ) : (
-                              <div className="flex items-center justify-center gap-1">
-                                <div className="flex flex-col gap-1">
+                              <div className="day-based-time-grid__minute-ampm-picker flex items-center justify-center gap-1">
+                                <div className="day-based-time-grid__minute-section flex flex-col gap-1">
                                   {['00', '15', '30', '45'].map(m => (
                                     <button 
                                       key={m} 
                                       onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                      className={`text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                                      className={`day-based-time-grid__minute-btn text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
                                     >
                                       {`:${m}`}
                                     </button>
                                   ))}
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                <div className="day-based-time-grid__ampm-section flex flex-col gap-1">
                                   <button 
                                     onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} AM`)} 
                                     disabled={!customTime.minute} 
-                                    className="text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--am text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     AM
                                   </button>
                                   <button 
                                     onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} PM`)} 
                                     disabled={!customTime.minute} 
-                                    className="text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--pm text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     PM
                                   </button>
@@ -175,7 +175,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                             )
                           ) : (
                             <div 
-                              className="space-y-1 overflow-y-auto hide-scrollbar max-h-24"
+                              className="day-based-time-grid__time-options space-y-1 overflow-y-auto hide-scrollbar max-h-24"
                               style={{
                                 scrollbarWidth: 'none',
                                 msOverflowStyle: 'none'
@@ -186,7 +186,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   key={opt} 
                                   data-time={opt} 
                                   onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                                  className="w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
+                                  className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
                                 >
                                   {opt}
                                 </button>
@@ -196,7 +196,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   setShowFullPickerFor(`day-${dayIndex}`); 
                                   setCustomTime({ hour: '', minute: '', ampm: '' }); 
                                 }} 
-                                className="w-full text-xs text-[#217e8f] pt-1 hover:underline"
+                                className="day-based-time-grid__custom-btn w-full text-xs text-[#217e8f] pt-1 hover:underline"
                               >
                                 Custom
                               </button>
@@ -214,7 +214,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                               setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
                             }
                           }}
-                          className="text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full"
+                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full"
                         >
                           {time}
                         </button>
@@ -224,7 +224,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                             setEditingTimeForDay(dayIndex); 
                             setShowFullPickerFor(null); 
                           }} 
-                          className="text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
+                          className="day-based-time-grid__set-time-btn text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
                         >
                           Set Time
                         </button>
@@ -232,9 +232,9 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                     </div>
                   
                   {/* Date slots area - positioned immediately below time picker */}
-                  <div className="w-full">
+                  <div className="day-based-time-grid__date-slots w-full">
                     <div 
-                      className="space-y-1 hide-scrollbar"
+                      className="day-based-time-grid__date-list space-y-1 hide-scrollbar"
                       style={{
                         maxHeight: hasMoreThanFourDates ? '112px' : 'auto', // 4 slots × 28px each
                         overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
@@ -252,7 +252,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                         return (
                           <div 
                             key={dateStr} 
-                            className="text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium bg-white/30"
+                            className="day-based-time-grid__date-item text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium bg-white/30"
                             style={{ height: '24px', minHeight: '24px' }}
                           >
                             {dayOfWeekName} {monthName} {dayNum}
@@ -263,7 +263,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                     
                     {/* Helper text for overflow */}
                     {hasMoreThanFourDates && (
-                      <div className="text-[9px] text-gray-500 text-center italic mt-1">
+                      <div className="day-based-time-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1">
                         Scroll for more
                       </div>
                     )}
@@ -275,11 +275,11 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
         ));
       })()}
     </div>
-      <div className="mt-4 flex justify-end">
+      <div className="day-based-time-grid__actions mt-4 flex justify-end">
         <button
           onClick={handleContinue}
           disabled={!isAllTimesSet()}
-          className="bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="day-based-time-grid__continue-btn bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {isAllTimesSet() ? 'Times Set' : 'Set Times'}
         </button>

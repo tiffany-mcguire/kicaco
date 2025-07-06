@@ -86,7 +86,7 @@ export const SmallDateButton: React.FC<Props> = ({ button, onClick, isSelected =
         setFocused(false);
         setPressed(false);
       }}
-      className="transition focus:outline-none focus:ring-1 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+      className="small-date-button__btn transition focus:outline-none focus:ring-1 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
     >
       {button.label}
     </button>

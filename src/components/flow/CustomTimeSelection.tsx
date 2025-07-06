@@ -45,8 +45,8 @@ export const CustomTimeSelection: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
-      <div className="grid grid-cols-3 gap-2">
+    <div className="custom-time-selection bg-white rounded-lg shadow-sm p-3 mb-8">
+      <div className="custom-time-selection__grid grid grid-cols-3 gap-2">
         {(() => {
           const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
           const numColumns = 3; // Use 3 columns for mobile-first design
@@ -64,7 +64,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
           }
           
           return quarters.map((quarter, qIndex) => (
-            <div key={qIndex} className="space-y-2">
+            <div key={qIndex} className="custom-time-selection__column space-y-2">
               {quarter.map((dateStr) => {
                 // Timezone-safe date parsing
                 const [year, month, day] = dateStr.split('-').map(Number);
@@ -83,49 +83,49 @@ export const CustomTimeSelection: React.FC<Props> = ({
                 const quickTimeOptions = generateTimeOptions();
 
                 return (
-                  <div key={dateStr} className="flex flex-col items-center justify-between p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor }}>
-                    <div className="font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
-                    <div className="time-all-dates mt-1 w-full flex-grow flex items-center justify-center">
+                  <div key={dateStr} className="custom-time-selection__date-card flex flex-col items-center justify-between p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor }}>
+                    <div className="custom-time-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
+                    <div className="custom-time-selection__time-picker time-all-dates mt-1 w-full flex-grow flex items-center justify-center">
                       {isEditing ? (
-                        <div className="w-full time-all-dates">
+                        <div className="custom-time-selection__time-editor w-full time-all-dates">
                           {showFullPickerFor === dateStr ? (
                             customTime.hour === '' ? (
-                              <div className="grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">
+                              <div className="custom-time-selection__hour-grid grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
                                   <button 
                                     key={h} 
                                     onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                                    className="text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
+                                    className="custom-time-selection__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
                                   >
                                     {h}
                                   </button>
                                 ))}
                               </div>
                             ) : (
-                              <div className="flex items-center justify-center gap-2">
-                                <div className="flex flex-col gap-1">
+                              <div className="custom-time-selection__minute-ampm-picker flex items-center justify-center gap-2">
+                                <div className="custom-time-selection__minute-section flex flex-col gap-1">
                                   {['00', '15', '30', '45'].map(m => (
                                     <button 
                                       key={m} 
                                       onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                      className={`text-xs p-1 w-10 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                                      className={`custom-time-selection__minute-btn text-xs p-1 w-10 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
                                     >
                                       {`:${m}`}
                                     </button>
                                   ))}
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                <div className="custom-time-selection__ampm-section flex flex-col gap-1">
                                   <button 
                                     onClick={() => handleSetTimeForDate(dateStr, `${customTime.hour}:${customTime.minute} AM`)} 
                                     disabled={!customTime.minute} 
-                                    className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="custom-time-selection__ampm-btn custom-time-selection__ampm-btn--am text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     AM
                                   </button>
                                   <button 
                                     onClick={() => handleSetTimeForDate(dateStr, `${customTime.hour}:${customTime.minute} PM`)} 
                                     disabled={!customTime.minute} 
-                                    className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="custom-time-selection__ampm-btn custom-time-selection__ampm-btn--pm text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     PM
                                   </button>
@@ -133,13 +133,13 @@ export const CustomTimeSelection: React.FC<Props> = ({
                               </div>
                             )
                           ) : (
-                            <div ref={scrollableTimeRef} className="space-y-1 max-h-32 overflow-y-auto">
+                            <div ref={scrollableTimeRef} className="custom-time-selection__time-options space-y-1 max-h-32 overflow-y-auto">
                               {quickTimeOptions.map(opt => (
                                 <button 
                                   key={opt} 
                                   data-time={opt} 
                                   onClick={() => handleSetTimeForDate(dateStr, opt)} 
-                                  className="w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
+                                  className="custom-time-selection__time-option w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
                                 >
                                   {opt}
                                 </button>
@@ -149,7 +149,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
                                   setShowFullPickerFor(dateStr); 
                                   setCustomTime({ hour: '', minute: '', ampm: '' }); 
                                 }} 
-                                className="w-full text-xs text-blue-600 pt-1 hover:underline"
+                                className="custom-time-selection__custom-btn w-full text-xs text-blue-600 pt-1 hover:underline"
                               >
                                 Custom
                               </button>
@@ -184,7 +184,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
                             }
                             return time;
                           }}
-                          className="text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/5 w-full"
+                          className="custom-time-selection__selected-time text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/5 w-full"
                         >
                           {time}
                         </button>
@@ -194,7 +194,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
                             setEditingTimeForDate(dateStr); 
                             setShowFullPickerFor(null); 
                           }} 
-                          className="text-xs bg-black/5 text-gray-700 px-2 py-1 rounded-md hover:bg-black/10 w-full"
+                          className="custom-time-selection__set-time-btn text-xs bg-black/5 text-gray-700 px-2 py-1 rounded-md hover:bg-black/10 w-full"
                         >
                           Set Time
                         </button>
@@ -207,11 +207,11 @@ export const CustomTimeSelection: React.FC<Props> = ({
           ));
         })()}
       </div>
-      <div className="mt-4 flex justify-end">
+      <div className="custom-time-selection__actions mt-4 flex justify-end">
         <button
           onClick={handleContinue}
           disabled={!areAllTimesSet}
-          className="bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="custom-time-selection__continue-btn bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {areAllTimesSet ? 'Times Set' : 'Set Times'}
         </button>

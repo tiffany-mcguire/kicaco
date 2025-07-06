@@ -56,7 +56,7 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
   };
 
   return (
-    <div>
+    <div className="child-selection-button">
       <button
         style={getButtonStyle()}
         onClick={onClick}
@@ -72,12 +72,12 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
           setFocused(false);
           setPressed(false);
         }}
-        className="transition focus:outline-none focus:ring-1 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+        className="child-selection-button__btn transition focus:outline-none focus:ring-1 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       >
         {button.label}
       </button>
       {button.description && (
-        <div className="text-sm text-gray-500 mt-1">{button.description}</div>
+        <div className="child-selection-button__description text-sm text-gray-500 mt-1">{button.description}</div>
       )}
     </div>
   );

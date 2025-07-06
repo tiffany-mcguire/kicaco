@@ -18,18 +18,18 @@ export const SportsTypeSelection: React.FC<Props> = ({
   handleButtonSelect 
 }) => {
   return (
-    <>
-      <div className="flex items-end justify-between mb-2">
-        <h3 className="text-sm font-medium text-gray-600 ml-1">Your Family's Sports</h3>
+    <div className="sports-type-selection">
+      <div className="sports-type-selection__family-header flex items-end justify-between mb-2">
+        <h3 className="sports-type-selection__family-title text-sm font-medium text-gray-600 ml-1">Your Family's Sports</h3>
         <button 
           onClick={() => setFlowContext({ ...flowContext, step: 'eventCategory' })} 
-          className="text-[#217e8f] text-xs hover:underline"
+          className="sports-type-selection__back-btn text-[#217e8f] text-xs hover:underline"
         >
           ← Event Category
         </button>
       </div>
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="space-y-3">
+      <div className="sports-type-selection__family-section bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div className="sports-type-selection__family-list space-y-3">
           {getPersonalizedSports().map((button: SmartButton) => 
             <SmartActionButton 
               key={button.id} 
@@ -40,11 +40,11 @@ export const SportsTypeSelection: React.FC<Props> = ({
         </div>
       </div>
       
-      <div className="mb-2">
-        <h3 className="text-sm font-medium text-gray-600 ml-1">All Sports</h3>
+      <div className="sports-type-selection__all-header mb-2">
+        <h3 className="sports-type-selection__all-title text-sm font-medium text-gray-600 ml-1">All Sports</h3>
       </div>
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
-        <div className="space-y-3">
+      <div className="sports-type-selection__all-section bg-white rounded-lg shadow-sm p-4 mb-8">
+        <div className="sports-type-selection__all-list space-y-3">
           {getAllSportsAlphabetical().map((button: SmartButton) => 
             <SmartActionButton 
               key={button.id} 
@@ -54,6 +54,6 @@ export const SportsTypeSelection: React.FC<Props> = ({
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }; 

@@ -60,9 +60,9 @@ export const LocationSelection: React.FC<Props> = ({
   const renderDateGrid = () => {
     if (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 1) {
       return (
-        <div className="mt-4">
-          <div className="text-[10px] text-gray-500 text-center mb-2">Selected dates ({flowContext.eventPreview.selectedDates.length} total)</div>
-          <div className="grid grid-cols-4 gap-2">
+        <div className="location-selection__date-grid mt-4">
+          <div className="location-selection__date-grid-hint text-[10px] text-gray-500 text-center mb-2">Selected dates ({flowContext.eventPreview.selectedDates.length} total)</div>
+          <div className="location-selection__date-grid-container grid grid-cols-4 gap-2">
             {(() => {
               const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
               const quartersSize = Math.ceil(dates.length / 4);
@@ -72,7 +72,7 @@ export const LocationSelection: React.FC<Props> = ({
               }
               
               return quarters.map((quarter, qIndex) => (
-                <div key={qIndex} className="space-y-1">
+                <div key={qIndex} className="location-selection__date-quarter space-y-1">
                   {quarter.map(dateStr => {
                     const [year, month, day] = dateStr.split('-').map(Number);
                     const date = new Date(year, month - 1, day);
@@ -87,7 +87,7 @@ export const LocationSelection: React.FC<Props> = ({
                     return (
                       <div 
                         key={dateStr} 
-                        className="text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium"
+                        className="location-selection__date-item text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium"
                         style={{ backgroundColor: bgColor }}
                       >
                         {dayOfWeekName} {monthName} {dayNum}
@@ -105,33 +105,33 @@ export const LocationSelection: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
-      <div className="flex justify-center">
+    <div className="location-selection bg-white rounded-lg shadow-sm p-3 mb-8">
+      <div className="location-selection__picker-container flex justify-center">
         <div 
-          className="flex flex-col items-center justify-between p-1.5 rounded-lg text-center min-w-[240px]" 
+          className="location-selection__picker flex flex-col items-center justify-between p-1.5 rounded-lg text-center min-w-[240px]" 
           style={{ backgroundColor: getBackgroundColor() }}
         >
-          <div className="font-semibold text-gray-800 text-xs mb-1">
+          <div className="location-selection__header font-semibold text-gray-800 text-xs mb-1">
             {getHeaderText()}
           </div>
-          <div className="w-full">
-            <div className="space-y-1 max-h-32 overflow-y-auto">
+          <div className="location-selection__content w-full">
+            <div className="location-selection__options space-y-1 max-h-32 overflow-y-auto">
               {getLocationButtons().map(loc => (
                 <button 
                   key={loc.id} 
                   onClick={() => handleButtonSelect(loc.id)} 
-                  className="w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
+                  className="location-selection__option w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
                 >
                   {loc.label}
                 </button>
               ))}
-              <div className="mt-2 space-y-1">
+              <div className="location-selection__custom-section mt-2 space-y-1">
                 <input
                   type="text"
                   value={customLocationInput}
                   onChange={(e) => setCustomLocationInput(e.target.value)}
                   placeholder="Other Location..."
-                  className="w-full text-xs px-1 py-0.5 rounded-md bg-white/60 text-gray-800 placeholder-gray-500 border-0 outline-none focus:ring-2 focus:ring-[#217e8f]/50 focus:bg-white"
+                  className="location-selection__custom-input w-full text-xs px-1 py-0.5 rounded-md bg-white/60 text-gray-800 placeholder-gray-500 border-0 outline-none focus:ring-2 focus:ring-[#217e8f]/50 focus:bg-white"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleLocationSubmit();
@@ -141,7 +141,7 @@ export const LocationSelection: React.FC<Props> = ({
                 <button
                   onClick={handleLocationSubmit}
                   disabled={!customLocationInput.trim()}
-                  className="w-full text-xs px-1 py-0.5 bg-[#217e8f] text-white rounded-md disabled:bg-gray-300"
+                  className="location-selection__custom-submit w-full text-xs px-1 py-0.5 bg-[#217e8f] text-white rounded-md disabled:bg-gray-300"
                 >
                   Set Location
                 </button>

@@ -25,12 +25,12 @@ export const DateSelection: React.FC<Props> = ({
 }) => {
   if (flowContext.step === 'customDatePicker') {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-8 relative">
-        <div className="text-sm font-medium text-gray-600 mb-4">
-          {new Date().getFullYear()} <span className="text-xs font-normal text-gray-400">(Current year)</span>
+      <div className="date-selection date-selection--custom-picker bg-white rounded-lg shadow-sm p-4 mb-8 relative">
+        <div className="date-selection__year-header text-sm font-medium text-gray-600 mb-4">
+          {new Date().getFullYear()} <span className="date-selection__year-note text-xs font-normal text-gray-400">(Current year)</span>
         </div>
-        <div className={`${showOtherMonths ? 'grid grid-cols-2 gap-6' : ''}`}>
-          <div className="space-y-3 flex flex-col items-center">
+        <div className={`date-selection__months-grid ${showOtherMonths ? 'grid grid-cols-2 gap-6' : ''}`}>
+          <div className="date-selection__primary-months space-y-3 flex flex-col items-center">
             {currentButtons.map((button: SmartButton) => 
               <SmartActionButton 
                 key={button.id} 
@@ -40,7 +40,7 @@ export const DateSelection: React.FC<Props> = ({
             )}
           </div>
           {showOtherMonths && (
-            <div className="space-y-3 flex flex-col items-center">
+            <div className="date-selection__additional-months space-y-3 flex flex-col items-center">
               {getRemainingMonthsInYear().map((button: SmartButton) => 
                 <SmartActionButton 
                   key={button.id} 
@@ -57,21 +57,21 @@ export const DateSelection: React.FC<Props> = ({
 
   if (flowContext.step === 'monthPart') {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-8 relative">
+      <div className="date-selection date-selection--month-part bg-white rounded-lg shadow-sm p-4 mb-8 relative">
         {flowContext.eventPreview.hasPatternPreselection ? (
-          <div className="absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
+          <div className="date-selection__hint date-selection__hint--pattern absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
             Matching days preselected - tap to deselect
           </div>
         ) : (
-          <div className="absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
+          <div className="date-selection__hint date-selection__hint--default absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
             Select one date or many for this event
           </div>
         )}
         
         {getMonthDates(flowContext.eventPreview.selectedMonth || '').map((week: (SmartButton | null)[], weekIndex: number) => (
-          <div key={weekIndex} className={weekIndex > 0 ? "mt-3" : ""}>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Week {weekIndex + 1}</h4>
-            <div className="grid grid-cols-7 gap-1">
+          <div key={weekIndex} className={`date-selection__week ${weekIndex > 0 ? "mt-3" : ""}`}>
+            <h4 className="date-selection__week-title text-sm font-medium text-gray-700 mb-2">Week {weekIndex + 1}</h4>
+            <div className="date-selection__week-grid grid grid-cols-7 gap-1">
               {week.map((button, dayIndex) => (
                 button ? (
                   <SmallDateButton 
@@ -97,7 +97,7 @@ export const DateSelection: React.FC<Props> = ({
                     dayColors={dayColors} 
                   />
                 ) : (
-                  <div key={dayIndex} className="h-8"></div>
+                  <div key={dayIndex} className="date-selection__empty-day h-8"></div>
                 )
               ))}
             </div>

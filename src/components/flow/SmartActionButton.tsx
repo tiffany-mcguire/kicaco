@@ -57,7 +57,7 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
   };
 
   return (
-    <div>
+    <div className="smart-action-button">
       <button
         style={getButtonStyle()}
         onClick={onClick}
@@ -73,12 +73,12 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
           setFocused(false);
           setPressed(false);
         }}
-        className="transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
+        className="smart-action-button__btn transition focus:outline-none focus:ring-2 focus:ring-[#c0e2e7] focus:ring-offset-1 active:scale-95"
       >
         {button.label}
       </button>
       {button.description && (
-        <div className="text-sm text-gray-500 mt-1">{button.description}</div>
+        <div className="smart-action-button__description text-sm text-gray-500 mt-1">{button.description}</div>
       )}
     </div>
   );

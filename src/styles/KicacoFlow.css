@@ -1,0 +1,177 @@
+/* KicacoFlow Component Styles */
+
+/* Main container */
+.kicaco-flow {
+  @apply flex flex-col bg-gray-50 overflow-hidden;
+}
+
+.kicaco-flow--full-height {
+  @apply h-screen;
+}
+
+/* Main content area */
+.kicaco-flow__main {
+  @apply flex-1 overflow-y-auto px-4 py-6 pb-24 bg-gray-50;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  height: 0;
+}
+
+.kicaco-flow__content-container {
+  @apply max-w-md mx-auto;
+}
+
+/* Step containers */
+.kicaco-flow__step-container {
+  @apply bg-white rounded-lg shadow-sm p-4 mb-8;
+}
+
+.kicaco-flow__button-list {
+  @apply space-y-3;
+}
+
+/* Child selection specific styles */
+.kicaco-flow__child-selection-hint {
+  @apply text-center mb-4;
+}
+
+.kicaco-flow__child-selection-hint-text {
+  @apply text-[10px] text-gray-400;
+}
+
+.kicaco-flow__child-selection-wrapper {
+  @apply flex items-start justify-between mb-3;
+}
+
+.kicaco-flow__child-selection-list {
+  @apply space-y-3 flex-1;
+}
+
+.kicaco-flow__child-selection-continue {
+  @apply px-3 py-1.5 rounded-lg text-xs ml-4 transition-colors;
+}
+
+.kicaco-flow__child-selection-continue--active {
+  @apply bg-[#217e8f] text-white;
+}
+
+.kicaco-flow__child-selection-continue--disabled {
+  @apply bg-gray-300 text-gray-500;
+}
+
+/* Chat placeholder */
+.kicaco-flow__chat-placeholder {
+  @apply h-full bg-white;
+}
+
+.kicaco-flow__chat-placeholder-text {
+  @apply p-4 text-center text-gray-500 text-sm;
+}
+
+/* Confirmation modal */
+.kicaco-flow__confirmation-overlay {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+}
+
+.kicaco-flow__confirmation-modal {
+  @apply relative w-full max-w-md ring-2 ring-[#217e8f] rounded-xl;
+}
+
+.kicaco-flow__confirmation-header {
+  @apply bg-[#217e8f] text-white px-4 py-2 rounded-t-xl relative border-b;
+  border-bottom-color: #c0e2e7;
+  box-shadow: inset 0 8px 15px -3px #0000001A, inset 0 -8px 15px -3px #0000001A;
+}
+
+.kicaco-flow__confirmation-header-content {
+  @apply flex items-center justify-between;
+}
+
+.kicaco-flow__confirmation-title {
+  @apply text-sm font-medium;
+}
+
+.kicaco-flow__confirmation-close {
+  @apply text-white hover:text-gray-200 transition-colors flex items-center;
+}
+
+.kicaco-flow__confirmation-content {
+  @apply relative h-[240px] w-full;
+}
+
+.kicaco-flow__confirmation-content-bg {
+  @apply absolute inset-0 bg-white;
+  border-radius: 0 0 12px 12px;
+}
+
+.kicaco-flow__confirmation-event-container {
+  @apply absolute top-3 left-2 right-2 bottom-2 rounded-xl overflow-hidden;
+}
+
+.kicaco-flow__confirmation-event-overlay {
+  @apply absolute top-0 left-0 right-0 z-10 h-[56px] backdrop-blur-sm;
+}
+
+.kicaco-flow__confirmation-event-header {
+  @apply flex h-full items-center justify-between px-4;
+}
+
+.kicaco-flow__confirmation-event-info {
+  @apply flex items-center gap-1.5 min-w-0 flex-1;
+}
+
+.kicaco-flow__confirmation-child-badges {
+  @apply flex-shrink-0;
+}
+
+.kicaco-flow__confirmation-event-details {
+  @apply flex items-center gap-1 min-w-0;
+}
+
+.kicaco-flow__confirmation-event-name-container {
+  @apply flex flex-col min-w-0;
+}
+
+.kicaco-flow__confirmation-event-name {
+  @apply text-sm font-semibold text-white;
+}
+
+.kicaco-flow__confirmation-event-location {
+  @apply text-xs text-gray-200 mt-0.5;
+}
+
+.kicaco-flow__confirmation-navigation {
+  @apply flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 flex-shrink-0;
+}
+
+.kicaco-flow__confirmation-nav-btn {
+  @apply text-gray-800 hover:text-gray-900 p-0 transition-colors;
+}
+
+.kicaco-flow__confirmation-nav-btn--prev {
+  /* Additional styles for previous button if needed */
+}
+
+.kicaco-flow__confirmation-nav-btn--next {
+  /* Additional styles for next button if needed */
+}
+
+.kicaco-flow__confirmation-nav-counter {
+  @apply text-gray-800 text-[10px] font-medium;
+}
+
+.kicaco-flow__confirmation-event-meta {
+  @apply flex flex-col justify-center items-end flex-shrink-0 ml-2;
+}
+
+.kicaco-flow__confirmation-event-date {
+  @apply text-sm font-medium text-white whitespace-nowrap;
+}
+
+.kicaco-flow__confirmation-event-time {
+  @apply text-xs text-gray-200 mt-0.5 whitespace-nowrap;
+}
+
+.kicaco-flow__confirmation-event-divider {
+  @apply absolute bottom-0 left-0 right-0 h-[1.5px];
+} 
