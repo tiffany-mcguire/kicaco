@@ -4,6 +4,7 @@ import { FlowContext } from './useKicacoFlow';
 export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.Dispatch<React.SetStateAction<FlowContext>>) {
   const [editingTimeForDate, setEditingTimeForDate] = useState<string | null>(null);
   const [editingTimeForDay, setEditingTimeForDay] = useState<number | null>(null);
+  const [editingLocationForDay, setEditingLocationForDay] = useState<number | null>(null);
   const [showFullPickerFor, setShowFullPickerFor] = useState<string | null>(null);
   const [customTime, setCustomTime] = useState({ hour: '', minute: '', ampm: '' });
   const scrollableTimeRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,21 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
     setCustomTime({ hour: '', minute: '', ampm: '' });
   };
 
+  const handleSetLocationForDay = (dayIndex: number, location: string) => {
+    setFlowContext({
+      ...flowContext,
+      eventPreview: {
+        ...flowContext.eventPreview,
+        dayBasedLocations: {
+          ...flowContext.eventPreview.dayBasedLocations,
+          [dayIndex]: location,
+        }
+      }
+    });
+    setEditingLocationForDay(null);
+    setShowFullPickerFor(null);
+  };
+
   const handleSetLocationForDate = (date: string, location: string, setCustomLocationInput?: any) => {
     setFlowContext({
       ...flowContext,
@@ -92,6 +108,8 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
     setEditingTimeForDate,
     editingTimeForDay,
     setEditingTimeForDay,
+    editingLocationForDay,
+    setEditingLocationForDay,
     showFullPickerFor,
     setShowFullPickerFor,
     customTime,
@@ -100,6 +118,7 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
     singleTimeScrollRef,
     handleSetTimeForDate,
     handleSetTimeForDay,
+    handleSetLocationForDay,
     handleSetLocationForDate,
     areAllTimesSet,
     areAllLocationsSet,

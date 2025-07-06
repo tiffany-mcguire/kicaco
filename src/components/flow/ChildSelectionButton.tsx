@@ -77,7 +77,7 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
         {button.label}
       </button>
       {button.description && (
-        <div className="child-selection-button__description text-sm text-gray-500 mt-1">{button.description}</div>
+        <div className="child-selection-button__description text-xs text-gray-500 mt-1">{button.description}</div>
       )}
     </div>
   );

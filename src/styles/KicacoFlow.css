@@ -91,6 +91,12 @@
   @apply text-sm font-medium;
 }
 
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-title {
+    @apply text-xs;
+  }
+}
+
 .kicaco-flow__confirmation-close {
   @apply text-white hover:text-gray-200 transition-colors flex items-center;
 }
@@ -113,11 +119,11 @@
 }
 
 .kicaco-flow__confirmation-event-header {
-  @apply flex h-full items-center justify-between px-4;
+  @apply flex h-full items-center justify-between px-3;
 }
 
 .kicaco-flow__confirmation-event-info {
-  @apply flex items-center gap-1.5 min-w-0 flex-1;
+  @apply flex items-center gap-1 min-w-0 flex-1;
 }
 
 .kicaco-flow__confirmation-child-badges {
@@ -133,11 +139,23 @@
 }
 
 .kicaco-flow__confirmation-event-name {
-  @apply text-sm font-semibold text-white;
+  @apply text-sm font-semibold text-white truncate;
+}
+
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-event-name {
+    @apply text-xs;
+  }
 }
 
 .kicaco-flow__confirmation-event-location {
   @apply text-xs text-gray-200 mt-0.5;
+}
+
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-event-location {
+    @apply text-[10px];
+  }
 }
 
 .kicaco-flow__confirmation-navigation {
@@ -160,16 +178,34 @@
   @apply text-gray-800 text-[10px] font-medium;
 }
 
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-nav-counter {
+    @apply text-[8px];
+  }
+}
+
 .kicaco-flow__confirmation-event-meta {
-  @apply flex flex-col justify-center items-end flex-shrink-0 ml-2;
+  @apply flex flex-col justify-center items-end flex-shrink-0 ml-1;
 }
 
 .kicaco-flow__confirmation-event-date {
   @apply text-sm font-medium text-white whitespace-nowrap;
 }
 
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-event-date {
+    @apply text-xs;
+  }
+}
+
 .kicaco-flow__confirmation-event-time {
   @apply text-xs text-gray-200 mt-0.5 whitespace-nowrap;
+}
+
+@media (max-width: 375px) {
+  .kicaco-flow__confirmation-event-time {
+    @apply text-[10px];
+  }
 }
 
 .kicaco-flow__confirmation-event-divider {

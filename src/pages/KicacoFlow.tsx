@@ -85,6 +85,8 @@ export default function KicacoFlow() {
     setEditingTimeForDate,
     editingTimeForDay,
     setEditingTimeForDay,
+    editingLocationForDay,
+    setEditingLocationForDay,
     showFullPickerFor,
     setShowFullPickerFor,
     customTime,
@@ -93,6 +95,7 @@ export default function KicacoFlow() {
     singleTimeScrollRef,
     handleSetTimeForDate,
     handleSetTimeForDay,
+    handleSetLocationForDay,
     handleSetLocationForDate,
     areAllTimesSet,
     areAllLocationsSet,
@@ -163,10 +166,11 @@ export default function KicacoFlow() {
             <DayBasedLocationGrid
               flowContext={flowContext}
               setFlowContext={setFlowContext}
-              editingLocationForDate={editingLocationForDate}
-              setEditingLocationForDate={setEditingLocationForDate}
-              customLocationInput={customLocationInput}
-              setCustomLocationInput={setCustomLocationInput}
+              editingLocationForDay={editingLocationForDay}
+              setEditingLocationForDay={setEditingLocationForDay}
+              showFullPickerFor={showFullPickerFor}
+              setShowFullPickerFor={setShowFullPickerFor}
+              handleSetLocationForDay={handleSetLocationForDay}
             />
           ) : flowContext.step === 'dayBasedTimeGrid' ? (
             <DayBasedTimeGrid

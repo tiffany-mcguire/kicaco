@@ -78,7 +78,7 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
         {button.label}
       </button>
       {button.description && (
-        <div className="smart-action-button__description text-sm text-gray-500 mt-1">{button.description}</div>
+        <div className="smart-action-button__description text-xs text-gray-500 mt-1">{button.description}</div>
       )}
     </div>
   );

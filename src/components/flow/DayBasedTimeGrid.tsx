@@ -54,6 +54,21 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
     }
   };
 
+  // Helper function to get dates for a specific day of the week
+  const getDatesForDay = (dayIndex: number) => {
+    return (flowContext.eventPreview.selectedDates || []).filter(dateStr => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const jsDay = date.getDay();
+      return (jsDay === 0 ? 6 : jsDay - 1) === dayIndex;
+    }).sort();
+  };
+
+  // Helper function to check if a day has selected dates
+  const dayHasSelectedDates = (dayIndex: number) => {
+    return getDatesForDay(dayIndex).length > 0;
+  };
+
   return (
     <div className="day-based-time-grid bg-white rounded-lg shadow-sm p-3 mb-8">
       <style>{`
@@ -63,71 +78,56 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
       `}</style>
       <div className="day-based-time-grid__grid grid grid-cols-4 gap-2">
         {(() => {
-          const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
+          const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
           
-          // Sort days by day of week (Monday = 0, Sunday = 6)
-          const sortedDays = uniqueDays.sort((a, b) => {
-            const dayA = parseInt(a.id.split('-')[1]);
-            const dayB = parseInt(b.id.split('-')[1]);
-            return dayA - dayB;
-          });
+          // Create 4 columns: Mon-Thu in first positions, Fri-Sun in next positions
+          const columns: Array<Array<number>> = Array.from({ length: 4 }, () => []);
           
-          // Create 4 columns with custom ordering: Mon-Thu in first positions, Fri-Sun in next positions
-          const columns: Array<Array<{ id: string; label: string; description?: string }>> = Array.from({ length: 4 }, () => []);
+          // Place Monday-Thursday in columns 0-3
+          for (let dayIndex = 0; dayIndex <= 3; dayIndex++) {
+            columns[dayIndex].push(dayIndex);
+          }
           
-          // First, place Monday-Thursday in columns 0-3
-          sortedDays.forEach(day => {
-            const dayIndex = parseInt(day.id.split('-')[1]);
-            if (dayIndex >= 0 && dayIndex <= 3) {
-              columns[dayIndex].push(day);
-            }
-          });
-          
-          // Then, place Friday-Sunday in columns 0-2 (below Mon-Thu)
-          sortedDays.forEach(day => {
-            const dayIndex = parseInt(day.id.split('-')[1]);
-            if (dayIndex >= 4 && dayIndex <= 6) {
-              columns[dayIndex - 4].push(day);
-            }
-          });
+          // Place Friday-Sunday in columns 0-2 (below Mon-Thu)
+          for (let dayIndex = 4; dayIndex <= 6; dayIndex++) {
+            columns[dayIndex - 4].push(dayIndex);
+          }
           
           return columns.map((column, colIndex) => (
             <div key={`col${colIndex}`} className="day-based-time-grid__column space-y-2">
-              {column.map((dayInfo) => {
-                const dayIndex = parseInt(dayInfo.id.split('-')[1]);
-                const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+              {column.map((dayIndex) => {
                 const bgColor = roygbivColors[dayIndex];
                 const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
                 const isEditing = editingTimeForDay === dayIndex;
-                
-                // Get all dates for this day
-                const datesForThisDay = (flowContext.eventPreview.selectedDates || []).filter(dateStr => {
-                  const [year, month, day] = dateStr.split('-').map(Number);
-                  const date = new Date(year, month - 1, day);
-                  const jsDay = date.getDay();
-                  return (jsDay === 0 ? 6 : jsDay - 1) === dayIndex;
-                }).sort();
-
+                const hasSelectedDates = dayHasSelectedDates(dayIndex);
+                const datesForThisDay = getDatesForDay(dayIndex);
                 const quickTimeOptions = generateTimeOptions();
                 const hasMoreThanFourDates = datesForThisDay.length > 4;
 
                 return (
                   <div 
                     key={dayIndex} 
-                    className="day-based-time-grid__day-card flex flex-col p-1.5 rounded-lg" 
+                    className={`day-based-time-grid__day-card flex flex-col p-1.5 rounded-lg ${
+                      hasSelectedDates ? 'border-2' : 'opacity-40'
+                    } max-[375px]:mx-[-2px]`}
                     style={{ 
                       backgroundColor: bgColor,
+                      borderColor: hasSelectedDates ? `color-mix(in srgb, ${bgColor} 90%, black)` : 'transparent',
                       minHeight: '200px'
                     }}
                   >
                     {/* Day name header */}
-                    <div className="day-based-time-grid__day-header font-semibold text-gray-800 text-xs mb-2 text-center">
+                    <div className="day-based-time-grid__day-header font-semibold text-gray-800 text-xs mb-2 text-center max-[375px]:text-[11px]">
                       {dayNames[dayIndex]}
                     </div>
                     
                     {/* Time picker area - natural height */}
                     <div className="day-based-time-grid__time-picker w-full mb-2">
-                      {isEditing ? (
+                      {!hasSelectedDates ? (
+                        <div className="day-based-time-grid__no-dates text-xs text-gray-600 text-center py-2 bg-white/30 rounded-md">
+                          No dates selected
+                        </div>
+                      ) : isEditing ? (
                         <div className="day-based-time-grid__time-editor w-full">
                           {showFullPickerFor === `day-${dayIndex}` ? (
                             customTime.hour === '' ? (
@@ -186,7 +186,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   key={opt} 
                                   data-time={opt} 
                                   onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                                  className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
+                                  className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
                                 >
                                   {opt}
                                 </button>
@@ -214,7 +214,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                               setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
                             }
                           }}
-                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full"
+                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full max-[375px]:text-[11px] max-[375px]:px-1"
                         >
                           {time}
                         </button>
@@ -231,50 +231,54 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                       )}
                     </div>
                   
-                  {/* Date slots area - positioned immediately below time picker */}
-                  <div className="day-based-time-grid__date-slots w-full">
-                    <div 
-                      className="day-based-time-grid__date-list space-y-1 hide-scrollbar"
-                      style={{
-                        maxHeight: hasMoreThanFourDates ? '112px' : 'auto', // 4 slots × 28px each
-                        overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none'
-                      } as React.CSSProperties}
-                    >
-                      {datesForThisDay.map((dateStr) => {
-                        const [year, month, day] = dateStr.split('-').map(Number);
-                        const date = new Date(year, month - 1, day);
-                        const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-                        const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
-                        const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-                        
-                        return (
+                    {/* Date slots area - positioned immediately below time picker */}
+                    <div className="day-based-time-grid__date-slots w-full">
+                      {hasSelectedDates ? (
+                        <>
                           <div 
-                            key={dateStr} 
-                            className="day-based-time-grid__date-item text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium bg-white/30"
-                            style={{ height: '24px', minHeight: '24px' }}
+                            className="day-based-time-grid__date-list space-y-1 hide-scrollbar"
+                            style={{
+                              maxHeight: hasMoreThanFourDates ? '112px' : 'auto', // 4 slots × 28px each
+                              overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
+                              scrollbarWidth: 'none',
+                              msOverflowStyle: 'none'
+                            } as React.CSSProperties}
                           >
-                            {dayOfWeekName} {monthName} {dayNum}
+                            {datesForThisDay.map((dateStr) => {
+                              const [year, month, day] = dateStr.split('-').map(Number);
+                              const date = new Date(year, month - 1, day);
+                              const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                              const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+                              const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+                              
+                              return (
+                                <div 
+                                  key={dateStr} 
+                                  className="day-based-time-grid__date-item text-[10px] px-1 py-1 rounded text-center text-gray-700 font-medium bg-white/30 max-[375px]:text-[9px] max-[375px]:px-0.5 whitespace-nowrap flex items-center justify-center"
+                                  style={{ height: '24px', minHeight: '24px' }}
+                                >
+                                  {dayOfWeekName} {monthName} {dayNum}
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                          
+                          {/* Helper text for overflow */}
+                          {hasMoreThanFourDates && (
+                            <div className="day-based-time-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1">
+                              Scroll for more
+                            </div>
+                          )}
+                        </>
+                      ) : null}
                     </div>
-                    
-                    {/* Helper text for overflow */}
-                    {hasMoreThanFourDates && (
-                      <div className="day-based-time-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1">
-                        Scroll for more
-                      </div>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        ));
-      })()}
-    </div>
+                );
+              })}
+            </div>
+          ));
+        })()}
+      </div>
       <div className="day-based-time-grid__actions mt-4 flex justify-end">
         <button
           onClick={handleContinue}
