@@ -56,149 +56,225 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 items-stretch">
-        {getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []).map((dayInfo) => {
-          const dayIndex = parseInt(dayInfo.id.split('-')[1]);
-          const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-          const bgColor = roygbivColors[dayIndex];
-          const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
-          const isEditing = editingTimeForDay === dayIndex;
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      <div className="grid grid-cols-4 gap-2">
+        {(() => {
+          const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
           
-          // Get all dates for this day
-          const datesForThisDay = (flowContext.eventPreview.selectedDates || []).filter(dateStr => {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            const jsDay = date.getDay();
-            return (jsDay === 0 ? 6 : jsDay - 1) === dayIndex;
-          }).sort();
+          // Sort days by day of week (Monday = 0, Sunday = 6)
+          const sortedDays = uniqueDays.sort((a, b) => {
+            const dayA = parseInt(a.id.split('-')[1]);
+            const dayB = parseInt(b.id.split('-')[1]);
+            return dayA - dayB;
+          });
+          
+          // Create 4 columns with custom ordering: Mon-Thu in first positions, Fri-Sun in next positions
+          const columns: Array<Array<{ id: string; label: string; description?: string }>> = Array.from({ length: 4 }, () => []);
+          
+          // First, place Monday-Thursday in columns 0-3
+          sortedDays.forEach(day => {
+            const dayIndex = parseInt(day.id.split('-')[1]);
+            if (dayIndex >= 0 && dayIndex <= 3) {
+              columns[dayIndex].push(day);
+            }
+          });
+          
+          // Then, place Friday-Sunday in columns 0-2 (below Mon-Thu)
+          sortedDays.forEach(day => {
+            const dayIndex = parseInt(day.id.split('-')[1]);
+            if (dayIndex >= 4 && dayIndex <= 6) {
+              columns[dayIndex - 4].push(day);
+            }
+          });
+          
+          return columns.map((column, colIndex) => (
+            <div key={`col${colIndex}`} className="space-y-2">
+              {column.map((dayInfo) => {
+                const dayIndex = parseInt(dayInfo.id.split('-')[1]);
+                const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const bgColor = roygbivColors[dayIndex];
+                const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
+                const isEditing = editingTimeForDay === dayIndex;
+                
+                // Get all dates for this day
+                const datesForThisDay = (flowContext.eventPreview.selectedDates || []).filter(dateStr => {
+                  const [year, month, day] = dateStr.split('-').map(Number);
+                  const date = new Date(year, month - 1, day);
+                  const jsDay = date.getDay();
+                  return (jsDay === 0 ? 6 : jsDay - 1) === dayIndex;
+                }).sort();
 
-          const quickTimeOptions = generateTimeOptions();
+                const quickTimeOptions = generateTimeOptions();
+                const hasMoreThanFourDates = datesForThisDay.length > 4;
 
-          return (
-            <div key={dayIndex} className="flex flex-col items-center p-1.5 rounded-lg text-center h-full" style={{ backgroundColor: bgColor }}>
-              <div className="font-semibold text-gray-800 text-xs mb-1">
-                {dayNames[dayIndex]}
-              </div>
-              <div className="w-full mb-2">
-                {isEditing ? (
-                  <div className="w-full">
-                    {showFullPickerFor === `day-${dayIndex}` ? (
-                      customTime.hour === '' ? (
-                        <div className="grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                            <button 
-                              key={h} 
-                              onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                              className="text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
+                return (
+                  <div 
+                    key={dayIndex} 
+                    className="flex flex-col p-1.5 rounded-lg" 
+                    style={{ 
+                      backgroundColor: bgColor,
+                      minHeight: '200px'
+                    }}
+                  >
+                    {/* Day name header */}
+                    <div className="font-semibold text-gray-800 text-xs mb-2 text-center">
+                      {dayNames[dayIndex]}
+                    </div>
+                    
+                    {/* Time picker area - natural height */}
+                    <div className="w-full mb-2">
+                      {isEditing ? (
+                        <div className="w-full">
+                          {showFullPickerFor === `day-${dayIndex}` ? (
+                            customTime.hour === '' ? (
+                              <div className="grid grid-cols-3 gap-1 p-1 bg-white/50 rounded-lg">
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                                  <button 
+                                    key={h} 
+                                    onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
+                                    className="text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
+                                  >
+                                    {h}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                <div className="flex flex-col gap-1">
+                                  {['00', '15', '30', '45'].map(m => (
+                                    <button 
+                                      key={m} 
+                                      onClick={() => setCustomTime({ ...customTime, minute: m })} 
+                                      className={`text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                                    >
+                                      {`:${m}`}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <button 
+                                    onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} AM`)} 
+                                    disabled={!customTime.minute} 
+                                    className="text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                  >
+                                    AM
+                                  </button>
+                                  <button 
+                                    onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} PM`)} 
+                                    disabled={!customTime.minute} 
+                                    className="text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                  >
+                                    PM
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          ) : (
+                            <div 
+                              className="space-y-1 overflow-y-auto hide-scrollbar max-h-24"
+                              style={{
+                                scrollbarWidth: 'none',
+                                msOverflowStyle: 'none'
+                              } as React.CSSProperties}
                             >
-                              {h}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="flex flex-col gap-1">
-                            {['00', '15', '30', '45'].map(m => (
+                              {quickTimeOptions.map(opt => (
+                                <button 
+                                  key={opt} 
+                                  data-time={opt} 
+                                  onClick={() => handleSetTimeForDay(dayIndex, opt)} 
+                                  className="w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
+                                >
+                                  {opt}
+                                </button>
+                              ))}
                               <button 
-                                key={m} 
-                                onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                className={`text-xs p-1 w-10 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                                onClick={() => { 
+                                  setShowFullPickerFor(`day-${dayIndex}`); 
+                                  setCustomTime({ hour: '', minute: '', ampm: '' }); 
+                                }} 
+                                className="w-full text-xs text-[#217e8f] pt-1 hover:underline"
                               >
-                                {`:${m}`}
+                                Custom
                               </button>
-                            ))}
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <button 
-                              onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} AM`)} 
-                              disabled={!customTime.minute} 
-                              className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
-                            >
-                              AM
-                            </button>
-                            <button 
-                              onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} PM`)} 
-                              disabled={!customTime.minute} 
-                              className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
-                            >
-                              PM
-                            </button>
-                          </div>
+                            </div>
+                          )}
                         </div>
-                      )
-                    ) : (
-                      <div ref={scrollableTimeRef} className="space-y-1 max-h-32 overflow-y-auto">
-                        {quickTimeOptions.map(opt => (
-                          <button 
-                            key={opt} 
-                            data-time={opt} 
-                            onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                            className="w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
-                          >
-                            {opt}
-                          </button>
-                        ))}
+                      ) : time ? (
+                        <button
+                          onClick={() => {
+                            setEditingTimeForDay(dayIndex);
+                            setShowFullPickerFor(null);
+                            // Pre-fill the custom picker with the existing time
+                            const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                            if (match) {
+                              setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
+                            }
+                          }}
+                          className="text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full"
+                        >
+                          {time}
+                        </button>
+                      ) : (
                         <button 
                           onClick={() => { 
-                            setShowFullPickerFor(`day-${dayIndex}`); 
-                            setCustomTime({ hour: '', minute: '', ampm: '' }); 
+                            setEditingTimeForDay(dayIndex); 
+                            setShowFullPickerFor(null); 
                           }} 
-                          className="w-full text-xs text-blue-600 pt-1 hover:underline"
+                          className="text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
                         >
-                          Custom
+                          Set Time
                         </button>
+                      )}
+                    </div>
+                  
+                  {/* Date slots area - positioned immediately below time picker */}
+                  <div className="w-full">
+                    <div 
+                      className="space-y-1 hide-scrollbar"
+                      style={{
+                        maxHeight: hasMoreThanFourDates ? '112px' : 'auto', // 4 slots × 28px each
+                        overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none'
+                      } as React.CSSProperties}
+                    >
+                      {datesForThisDay.map((dateStr) => {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                        const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+                        const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+                        
+                        return (
+                          <div 
+                            key={dateStr} 
+                            className="text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium bg-white/30"
+                            style={{ height: '24px', minHeight: '24px' }}
+                          >
+                            {dayOfWeekName} {monthName} {dayNum}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Helper text for overflow */}
+                    {hasMoreThanFourDates && (
+                      <div className="text-[9px] text-gray-500 text-center italic mt-1">
+                        Scroll for more
                       </div>
                     )}
                   </div>
-                ) : time ? (
-                  <button
-                    onClick={() => {
-                      setEditingTimeForDay(dayIndex);
-                      setShowFullPickerFor(null);
-                      // Pre-fill the custom picker with the existing time
-                      const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                      if (match) {
-                        setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
-                      }
-                    }}
-                    className="text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/5 w-full"
-                  >
-                    {time}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => { 
-                      setEditingTimeForDay(dayIndex); 
-                      setShowFullPickerFor(null); 
-                    }} 
-                    className="text-xs bg-black/5 text-gray-700 px-2 py-1 rounded-md hover:bg-black/10 w-full"
-                  >
-                    Set Time
-                  </button>
-                )}
-              </div>
-              <div className="w-full space-y-1 flex-1">
-                {datesForThisDay.map(dateStr => {
-                  const [year, month, day] = dateStr.split('-').map(Number);
-                  const date = new Date(year, month - 1, day);
-                  const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-                  const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
-                  const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-                  
-                  return (
-                    <div 
-                      key={dateStr} 
-                      className="text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium bg-white/30"
-                    >
-                      {dayOfWeekName} {monthName} {dayNum}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </div>
+              );
+            })}
+          </div>
+        ));
+      })()}
+    </div>
       <div className="mt-4 flex justify-end">
         <button
           onClick={handleContinue}

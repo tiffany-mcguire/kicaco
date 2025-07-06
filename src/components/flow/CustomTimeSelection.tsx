@@ -85,9 +85,9 @@ export const CustomTimeSelection: React.FC<Props> = ({
                 return (
                   <div key={dateStr} className="flex flex-col items-center justify-between p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor }}>
                     <div className="font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
-                    <div className="mt-1 w-full flex-grow flex items-center justify-center">
+                    <div className="time-all-dates mt-1 w-full flex-grow flex items-center justify-center">
                       {isEditing ? (
-                        <div className="w-full">
+                        <div className="w-full time-all-dates">
                           {showFullPickerFor === dateStr ? (
                             customTime.hour === '' ? (
                               <div className="grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">

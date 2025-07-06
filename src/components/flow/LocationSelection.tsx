@@ -108,14 +108,14 @@ export const LocationSelection: React.FC<Props> = ({
     <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
       <div className="flex justify-center">
         <div 
-          className="flex flex-col items-center justify-between p-1.5 rounded-lg text-center min-w-[160px]" 
+          className="flex flex-col items-center justify-between p-1.5 rounded-lg text-center min-w-[240px]" 
           style={{ backgroundColor: getBackgroundColor() }}
         >
           <div className="font-semibold text-gray-800 text-xs mb-1">
             {getHeaderText()}
           </div>
           <div className="w-full">
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {getLocationButtons().map(loc => (
                 <button 
                   key={loc.id} 
@@ -125,13 +125,13 @@ export const LocationSelection: React.FC<Props> = ({
                   {loc.label}
                 </button>
               ))}
-              <div className="flex gap-1 mt-2">
+              <div className="mt-2 space-y-1">
                 <input
                   type="text"
                   value={customLocationInput}
                   onChange={(e) => setCustomLocationInput(e.target.value)}
                   placeholder="Other Location..."
-                  className="flex-1 text-xs px-1 py-0.5 rounded-md bg-white/60 text-gray-800 placeholder-gray-500 border-0 outline-none focus:ring-2 focus:ring-[#217e8f]/50 focus:bg-white"
+                  className="w-full text-xs px-1 py-0.5 rounded-md bg-white/60 text-gray-800 placeholder-gray-500 border-0 outline-none focus:ring-2 focus:ring-[#217e8f]/50 focus:bg-white"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleLocationSubmit();
@@ -141,7 +141,7 @@ export const LocationSelection: React.FC<Props> = ({
                 <button
                   onClick={handleLocationSubmit}
                   disabled={!customLocationInput.trim()}
-                  className="text-xs px-2 py-0.5 bg-[#217e8f] text-white rounded-md disabled:bg-gray-300"
+                  className="w-full text-xs px-1 py-0.5 bg-[#217e8f] text-white rounded-md disabled:bg-gray-300"
                 >
                   Set Location
                 </button>

@@ -111,7 +111,7 @@ export const TimeSelection: React.FC<Props> = ({
     <div className="bg-white rounded-lg shadow-sm p-3 mb-8">
       <div className="flex justify-center">
         <div 
-          className={`flex flex-col items-center justify-between p-1.5 rounded-lg text-center ${flowContext.step === 'whenTimePeriod' ? 'min-w-[160px]' : 'min-w-[200px]'}`} 
+          className={`flex custom-timer-width flex-col items-center justify-between p-1.5 rounded-lg text-center ${flowContext.step === 'whenTimePeriod' ? 'min-w-[240px]' : 'min-w-[200px]'}`} 
           style={{ backgroundColor: getBackgroundColor() }}
         >
           <div className="font-semibold text-gray-800 text-xs mb-1">
@@ -119,49 +119,68 @@ export const TimeSelection: React.FC<Props> = ({
           </div>
           <div className="w-full">
             {showFullPickerFor === 'single' ? (
-              customTime.hour === '' ? (
-                <div className="grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                    <button 
-                      key={h} 
-                      onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                      className="text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex flex-col gap-1">
-                    {['00', '15', '30', '45'].map(m => (
+              <div className="space-y-2 w-full">
+                <div className="flex gap-3 w-full px-2 sm:px-4 md:px-6 lg:px-8">
+                  <div className="flex-1 bg-white/50 rounded-lg p-3 custom-timer-parent">
+                    <div className="grid grid-cols-6 gap-0.5 sm:gap-1">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                        <button 
+                          key={h} 
+                          onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
+                          className={`text-xs p-1 rounded-md font-semibold custom-timer-button-adjust ${customTime.hour === h.toString() ? 'bg-[#217e8f] text-white' : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'}`}
+                        >
+                          {h}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white/50 rounded-lg p-3 custom-timer-parent">
+                    <div className="grid grid-cols-2 gap-1">
+                      {['00', '15', '30', '45'].map(m => (
+                        <button 
+                          key={m} 
+                          onClick={() => setCustomTime({ ...customTime, minute: m })} 
+                          className={`text-xs p-1 rounded-md font-semibold custom-timer-button-adjust ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white'}`}
+                          disabled={!customTime.hour}
+                        >
+                          {`:${m}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white/50 rounded-lg p-3 custom-timer-parent">
+                    <div className="grid grid-cols-1 gap-1">
                       <button 
-                        key={m} 
-                        onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                        className={`text-xs p-1 w-10 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                        onClick={() => setCustomTime({ ...customTime, ampm: 'AM' })} 
+                        className={`text-xs px-2 py-1 rounded-md font-semibold custom-timer-button-adjust ${customTime.ampm === 'AM' ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white'}`}
+                        disabled={!customTime.hour}
                       >
-                        {`:${m}`}
+                        AM
                       </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <button 
-                      onClick={() => handleButtonSelect(`${customTime.hour}:${customTime.minute} AM`)} 
-                      disabled={!customTime.minute} 
-                      className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
-                    >
-                      AM
-                    </button>
-                    <button 
-                      onClick={() => handleButtonSelect(`${customTime.hour}:${customTime.minute} PM`)} 
-                      disabled={!customTime.minute} 
-                      className="text-xs px-2 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
-                    >
-                      PM
-                    </button>
+                      <button 
+                        onClick={() => setCustomTime({ ...customTime, ampm: 'PM' })} 
+                        className={`text-xs px-2 py-1 rounded-md font-semibold custom-timer-button-adjust ${customTime.ampm === 'PM' ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white'}`}
+                        disabled={!customTime.hour}
+                      >
+                        PM
+                      </button>
+                    </div>
                   </div>
                 </div>
-              )
+                <button 
+                  onClick={() => handleButtonSelect(`${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
+                  disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
+                  className="mx-2 text-xs px-3 py-1 bg-[#217e8f] text-white rounded-md font-semibold hover:bg-[#1a6b7a] disabled:bg-gray-300 disabled:text-gray-500"
+                >
+                  Set Time
+                </button>
+                <button 
+                  onClick={() => setShowFullPickerFor(null)} 
+                  className="w-full text-xs text-[#217e8f] hover:underline"
+                >
+                  ← Scrollable Time Options
+                </button>
+              </div>
             ) : (
               <div ref={singleTimeScrollRef} className="space-y-1 max-h-32 overflow-y-auto">
                 {(() => {
@@ -186,7 +205,7 @@ export const TimeSelection: React.FC<Props> = ({
                     setShowFullPickerFor('single'); 
                     setCustomTime({ hour: '', minute: '', ampm: '' }); 
                   }} 
-                  className="w-full text-xs text-blue-600 pt-1 hover:underline"
+                  className="w-full text-xs text-[#217e8f] pt-1 hover:underline"
                 >
                   Custom time
                 </button>

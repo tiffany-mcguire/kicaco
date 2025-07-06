@@ -102,7 +102,11 @@ export const getTimePeriodButtons = (): SmartButton[] => [
 export const getLocationButtons = (): SmartButton[] => [
   { id: 'westfield-park', label: 'Westfield Park', description: 'Main soccer field, 123 Park Ave' },
   { id: 'school-field', label: 'School Field', description: 'Lincoln Elementary field' },
-  { id: 'sports-complex', label: 'Sports Complex', description: 'City Sports Complex, Field 2' }
+  { id: 'sports-complex', label: 'Sports Complex', description: 'City Sports Complex, Field 2' },
+  { id: 'community-center', label: 'Community Center', description: 'Downtown Community Center' },
+  { id: 'riverside-park', label: 'Riverside Park', description: 'Riverside Park Fields' },
+  { id: 'north-field', label: 'North Athletic Field', description: 'North Side Athletic Complex' },
+  { id: 'memorial-stadium', label: 'Memorial Stadium', description: 'City Memorial Stadium' }
 ];
 
 export const getMonthButtons = (flowContext: FlowContext): SmartButton[] => {

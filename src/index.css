@@ -87,7 +87,33 @@ input[type="checkbox"]:checked {
   background-color: rgba(156, 163, 175, 0.7);
 } 
 
-/* DCC Styling */
+/**** DCC Styling ****/
+.custom-timer-width {
+  width: 100%;
+}
+
+/* Custom time picker adjustments for small screens */
+.custom-timer-parent {
+  padding: 0.5rem; /* 8px for small screens */
+}
+
+/* Responsive padding for larger screens to match scrollable options width */
+@media (min-width: 640px) {
+  .custom-timer-parent {
+    padding: 1rem; /* 16px for larger screens - more padding to increase width */
+  }
+}
+
+/* Additional padding for very large screens */
+@media (min-width: 768px) {
+  .custom-timer-parent {
+    padding: 1.25rem; /* 20px for tablet and larger screens */
+  }
+}
+
+.custom-timer-button-adjust {
+  min-width: 20px; /* Ensures buttons don't get too narrow for double-digit numbers */
+}
 
 /* Prevent auto-zoom on mobile devices */
 input[type="text"],
@@ -301,3 +327,4 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
