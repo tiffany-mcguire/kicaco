@@ -255,35 +255,6 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
   };
 
   const getDateSelectionButton = () => {
-    if (flowContext.step === 'monthPart') {
-      return (
-        <button
-          onClick={() => {
-            const { selectedDates = [] } = flowContext.eventPreview;
-            if (selectedDates.length > 0) {
-              setFlowContext({
-                ...flowContext,
-                step: selectedDates.length > 1 ? 'repeatAnotherMonth' : 'whenTimePeriod',
-                eventPreview: { ...flowContext.eventPreview, date: selectedDates.join(', '), isRepeating: selectedDates.length > 1 }
-              });
-            }
-          }}
-          disabled={!flowContext.eventPreview.selectedDates?.length}
-          className={`flow-navigation-header__date-selection-btn px-3 py-1.5 rounded-lg text-xs transition-colors ${
-            flowContext.eventPreview.selectedDates?.length 
-              ? 'flow-navigation-header__date-selection-btn--active bg-[#217e8f] text-white hover:bg-[#1a6e7e]' 
-              : 'flow-navigation-header__date-selection-btn--disabled bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          {(() => {
-            const count = flowContext.eventPreview.selectedDates?.length || 0;
-            if (count === 0) return 'Select Dates';
-            if (count === 1) return '1 Date Selected';
-            return `${count} Dates Selected`;
-          })()}
-        </button>
-      );
-    }
     return null;
   };
 

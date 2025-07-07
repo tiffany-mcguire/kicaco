@@ -25,16 +25,16 @@ export const EventNotes: React.FC<Props> = ({
       />
       <div className="event-notes__actions mt-4">
         {currentButtons.map((button: SmartButton) => (
-          <div key={button.id} className="event-notes__action-item flex items-center gap-3 max-[375px]:gap-2">
+          <div key={button.id} className="event-notes__action-item flex items-end justify-end gap-3 max-[375px]:gap-2">
+            {button.description && (
+              <span className="event-notes__action-description text-xs text-gray-500 max-[375px]:text-[11px]">{button.description}</span>
+            )}
             <button 
               onClick={() => handleButtonSelect(button.id)} 
               className="event-notes__action-btn bg-[#217e8f] text-white text-xs px-2 py-1 rounded-md max-[375px]:text-[11px] max-[375px]:px-2 max-[375px]:py-1 whitespace-nowrap"
             >
               {button.label}
             </button>
-            {button.description && (
-              <span className="event-notes__action-description text-xs text-gray-500 max-[375px]:text-[11px]">{button.description}</span>
-            )}
           </div>
         ))}
       </div>

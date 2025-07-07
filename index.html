@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Cache busting for mobile debugging -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
     <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#217e8f" />
@@ -16,6 +21,29 @@
     <meta name="mobile-web-app-capable" content="yes" />
     
     <title>Kicaco - Family Assistant</title>
+    
+    <!-- Mobile debugging script -->
+    <script>
+      console.log('HTML loaded, starting mobile debug...');
+      console.log('User Agent:', navigator.userAgent);
+      console.log('Screen:', screen.width + 'x' + screen.height);
+      console.log('Viewport:', window.innerWidth + 'x' + window.innerHeight);
+      
+      // Log when DOM is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM Content Loaded');
+        const root = document.getElementById('root');
+        console.log('Root element found:', !!root);
+        if (root) {
+          console.log('Root element:', root);
+        }
+      });
+      
+      // Check if scripts load
+      window.addEventListener('load', function() {
+        console.log('Window loaded');
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

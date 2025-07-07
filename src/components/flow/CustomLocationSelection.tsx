@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getLocationButtons } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
+import { searchLocations, LocationResult, formatLocationString } from '../../utils/mapsSearch';
 
 interface Props {
   flowContext: FlowContext;
@@ -24,15 +25,70 @@ export const CustomLocationSelection: React.FC<Props> = ({
   handleSetLocationForDate,
   areAllLocationsSet
 }) => {
+  const [showLocationSearchFor, setShowLocationSearchFor] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<LocationResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<{dateStr: string, locationId: string} | null>(null);
+
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchLocations(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching locations:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleLocationSelect = (dateStr: string, location: LocationResult) => {
+    const locationString = formatLocationString(location);
+    setSelectedLocation(locationString);
+    setCustomLocationInput(locationString);
+    // Keep search results visible so user can change selection
+  };
+
+  const handlePredefinedLocationSelect = (dateStr: string, locationId: string) => {
+    const location = getLocationButtons().find(loc => loc.id === locationId);
+    if (location) {
+      setSelectedPredefinedLocation({dateStr, locationId});
+    }
+  };
+
+  const handleConfirmPredefinedLocation = () => {
+    if (selectedPredefinedLocation) {
+      const location = getLocationButtons().find(loc => loc.id === selectedPredefinedLocation.locationId);
+      if (location) {
+        handleSetLocationForDate(selectedPredefinedLocation.dateStr, location.label);
+        setSelectedPredefinedLocation(null);
+        setEditingLocationForDate(null);
+      }
+    }
+  };
+
   const handleCustomLocationSubmit = (dateStr: string) => {
     if (customLocationInput.trim()) {
-      // Convert to title case
-      const titleCaseLocation = customLocationInput.trim()
+      // Convert to title case if it's manual input, otherwise use as-is
+      const locationToUse = selectedLocation || customLocationInput.trim()
         .toLowerCase()
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      handleSetLocationForDate(dateStr, titleCaseLocation);
+      
+      handleSetLocationForDate(dateStr, locationToUse);
+      setShowLocationSearchFor(null);
+      setCustomLocationInput('');
+      setSearchResults([]);
+      setSelectedLocation('');
+      setEditingLocationForDate(null);
     }
   };
 
@@ -83,37 +139,128 @@ export const CustomLocationSelection: React.FC<Props> = ({
                     <div className="custom-location-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
                     <div className="custom-location-selection__location-picker mt-1 w-full flex-grow flex items-center justify-center">
                       {isEditing ? (
-                        <div className="custom-location-selection__location-editor w-full space-y-1">
-                          {getLocationButtons().map(loc => (
-                            <button
-                              key={loc.id}
-                              onClick={() => handleSetLocationForDate(dateStr, loc.label)}
-                              className="custom-location-selection__location-option w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white truncate"
-                            >
-                              {loc.label}
-                            </button>
-                          ))}
-                          <div className="custom-location-selection__custom-input-section w-full">
-                            <input
-                              type="text"
-                              value={customLocationInput}
-                              onChange={(e) => setCustomLocationInput(e.target.value)}
-                              placeholder="Other Location..."
-                              className="custom-location-selection__custom-input w-full text-[10px] px-1 py-0.5 rounded-md bg-white/60 text-gray-800 placeholder-gray-500 border-0 outline-none focus:ring-1 focus:ring-[#217e8f]/50 focus:bg-white min-w-0"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleCustomLocationSubmit(dateStr);
-                                }
-                              }}
-                            />
-                            <button
-                              onClick={() => handleCustomLocationSubmit(dateStr)}
-                              disabled={!customLocationInput.trim()}
-                              className="custom-location-selection__custom-submit text-[10px] px-1 py-0.5 bg-[#217e8f] text-white rounded-md disabled:bg-gray-300 mt-1 w-full"
-                            >
-                              {location ? 'Location Set' : 'Set Location'}
-                            </button>
-                          </div>
+                        <div className="custom-location-selection__location-editor w-full">
+                          {showLocationSearchFor === dateStr ? (
+                            <div className="custom-location-selection__search-container" style={{ marginTop: '-6px' }}>
+                              <div className="custom-location-selection__search-header flex items-center justify-between mb-0.5">
+                                <button 
+                                  onClick={() => {
+                                    setCustomLocationInput('');
+                                    setSelectedLocation('');
+                                    setSearchResults([]);
+                                  }}
+                                  className="text-[11px] text-[#217e8f] hover:underline max-[375px]:text-[10px] relative"
+                                  style={{ left: '2px', top: '0px' }}
+                                >
+                                  Clear
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setShowLocationSearchFor(null);
+                                    setCustomLocationInput('');
+                                    setSearchResults([]);
+                                  }}
+                                  className="text-[12px] text-[#217e8f] hover:opacity-70 max-[375px]:text-[11px] relative -left-1"
+                                  style={{ top: '0px' }}
+                                >
+                                  ←
+                                </button>
+                              </div>
+                              
+                              <div className="custom-location-selection__search-input-section space-y-1">
+                                <input
+                                  type="text"
+                                  value={customLocationInput}
+                                  onChange={(e) => {
+                                    setCustomLocationInput(e.target.value);
+                                    if (e.target.value !== selectedLocation) {
+                                      setSelectedLocation(''); // Clear selection if user types something different
+                                    }
+                                    handleSearch(e.target.value);
+                                  }}
+                                  placeholder="Search for location or enter address..."
+                                  className={`custom-location-selection__search-input w-full text-[10px] px-1 py-0.5 rounded-md text-gray-800 placeholder-gray-500 border outline-none focus:ring-1 focus:ring-[#217e8f]/50 mb-1 max-[375px]:text-[9px] ${
+                                    selectedLocation ? 'bg-white border-[#217e8f]' : 'bg-white/60 border-[#217e8f]/30'
+                                  } focus:bg-white`}
+                                  style={{ paddingTop: '1px', paddingBottom: '1px' }}
+                                  autoFocus
+                                />
+                                
+                                {isSearching && (
+                                  <div className="custom-location-selection__search-loading text-[10px] text-gray-500 text-center py-1">
+                                    Searching...
+                                  </div>
+                                )}
+                                
+                                {searchResults.length > 0 && (
+                                  <div className="custom-location-selection__search-results space-y-1 max-h-24 overflow-y-auto">
+                                    {searchResults.map(result => {
+                                      const isSelected = selectedLocation === formatLocationString(result);
+                                      return (
+                                        <button
+                                          key={result.id}
+                                          onClick={() => handleLocationSelect(dateStr, result)}
+                                          className={`custom-location-selection__search-result w-full text-left px-1 py-1 rounded-md ${
+                                            isSelected 
+                                              ? 'bg-white border-2 border-[#1a6e7e]' 
+                                              : 'bg-white/60 hover:bg-white border border-gray-200'
+                                          }`}
+                                        >
+                                          <div className="text-[10px] font-medium text-[#217e8f] truncate max-[375px]:text-[9px]">{result.name}</div>
+                                          <div className="text-[8px] text-gray-600 truncate max-[375px]:text-[7px]">{result.address}</div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                
+                                {customLocationInput.trim() && !isSearching && (
+                                  <button
+                                    onClick={() => handleCustomLocationSubmit(dateStr)}
+                                    className="custom-location-selection__manual-submit w-full text-[10px] px-1 py-0.5 bg-[#217e8f] text-white rounded-md hover:bg-[#1a6e7e] max-[375px]:text-[9px]"
+                                  >
+                                    {selectedLocation ? 'Confirm Location' : `Use "${customLocationInput}" as location`}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <button 
+                                onClick={() => setShowLocationSearchFor(dateStr)} 
+                                className="custom-location-selection__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 sticky top-0 z-10 mb-1"
+                              >
+                                New Location
+                              </button>
+                              <div className="custom-location-selection__scrollable-options space-y-1 max-h-28 overflow-y-auto">
+                                {getLocationButtons().map(loc => {
+                                  const isSelected = selectedPredefinedLocation?.dateStr === dateStr && selectedPredefinedLocation?.locationId === loc.id;
+                                  return (
+                                    <div key={loc.id} className="custom-location-selection__option-container relative">
+                                      <button
+                                        onClick={() => handlePredefinedLocationSelect(dateStr, loc.id)}
+                                        className={`custom-location-selection__location-option w-full text-xs px-1 py-0.5 rounded-md max-[375px]:text-[11px] truncate ${
+                                          isSelected 
+                                            ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30 font-semibold' 
+                                            : 'bg-white/60 text-[#217e8f] hover:bg-white'
+                                        }`}
+                                      >
+                                        {loc.label}
+                                      </button>
+                                      {isSelected && (
+                                        <button
+                                          onClick={handleConfirmPredefinedLocation}
+                                          className="custom-location-selection__confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] transition-colors shadow-sm max-[375px]:text-[7px] max-[375px]:px-0.5 z-10"
+                                        >
+                                          Confirm
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : location ? (
                         <button
@@ -131,7 +278,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
                             setEditingLocationForDate(dateStr);
                             setCustomLocationInput('');
                           }}
-                          className="custom-location-selection__set-location-btn text-xs bg-black/5 text-gray-700 px-2 py-1 rounded-md hover:bg-black/10 w-full"
+                          className="custom-location-selection__set-location-btn text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
                         >
                           Set Location
                         </button>

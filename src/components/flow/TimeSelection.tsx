@@ -182,33 +182,35 @@ export const TimeSelection: React.FC<Props> = ({
                 </button>
               </div>
             ) : (
-              <div ref={singleTimeScrollRef} className="time-selection__scroll-picker space-y-1 max-h-32 overflow-y-auto">
-                {(() => {
-                  const options = [];
-                  for (let h = 7; h <= 21; h++) {
-                    options.push(`${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
-                    options.push(`${h % 12 === 0 ? 12 : h % 12}:30 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
-                  }
-                  return options.map(opt => (
-                    <button 
-                      key={opt} 
-                      data-time={opt} 
-                      onClick={() => handleButtonSelect(opt)} 
-                      className="time-selection__time-option w-full text-xs bg-white/60 text-gray-800 px-1 py-0.5 rounded-md hover:bg-white"
-                    >
-                      {opt}
-                    </button>
-                  ));
-                })()}
+              <div className="time-selection__scroll-picker">
                 <button 
                   onClick={() => { 
                     setShowFullPickerFor('single'); 
                     setCustomTime({ hour: '', minute: '', ampm: '' }); 
                   }} 
-                  className="time-selection__custom-time-btn w-full text-xs text-[#217e8f] pt-1 hover:underline"
+                  className="time-selection__custom-time-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 sticky top-0 z-10 mb-1"
                 >
-                  Custom time
+                  Custom
                 </button>
+                <div ref={singleTimeScrollRef} className="time-selection__scrollable-options space-y-1 max-h-28 overflow-y-auto">
+                  {(() => {
+                    const options = [];
+                    for (let h = 7; h <= 21; h++) {
+                      options.push(`${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
+                      options.push(`${h % 12 === 0 ? 12 : h % 12}:30 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
+                    }
+                    return options.map(opt => (
+                      <button 
+                        key={opt} 
+                        data-time={opt} 
+                        onClick={() => handleButtonSelect(opt)} 
+                        className="time-selection__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
+                      >
+                        {opt}
+                      </button>
+                    ));
+                  })()}
+                </div>
               </div>
             )}
           </div>

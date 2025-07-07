@@ -32,19 +32,15 @@
 
 /* Child selection specific styles */
 .kicaco-flow__child-selection-hint {
-  @apply text-center mb-4;
+  @apply text-center mb-6;
 }
 
 .kicaco-flow__child-selection-hint-text {
   @apply text-[10px] text-gray-400;
 }
 
-.kicaco-flow__child-selection-wrapper {
-  @apply flex items-start justify-between mb-3;
-}
-
 .kicaco-flow__child-selection-list {
-  @apply space-y-3 flex-1;
+  @apply space-y-3;
 }
 
 .kicaco-flow__child-selection-continue {

@@ -59,15 +59,16 @@ export const DateSelection: React.FC<Props> = ({
     return (
       <div className="date-selection date-selection--month-part bg-white rounded-lg shadow-sm p-4 mb-8 relative">
         {flowContext.eventPreview.hasPatternPreselection ? (
-          <div className="date-selection__hint date-selection__hint--pattern absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
+          <div className="date-selection__hint date-selection__hint--pattern absolute top-3 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
             Matching days preselected - tap to deselect
           </div>
         ) : (
-          <div className="date-selection__hint date-selection__hint--default absolute top-1 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
+          <div className="date-selection__hint date-selection__hint--default absolute top-3 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400 leading-none whitespace-nowrap">
             Select one date or many for this event
           </div>
         )}
         
+        <div style={{ marginTop: '8px' }}>
         {getMonthDates(flowContext.eventPreview.selectedMonth || '').map((week: (SmartButton | null)[], weekIndex: number) => (
           <div key={weekIndex} className={`date-selection__week ${weekIndex > 0 ? "mt-3" : ""}`}>
             <h4 className="date-selection__week-title text-sm font-medium text-gray-700 mb-2">Week {weekIndex + 1}</h4>
@@ -103,6 +104,36 @@ export const DateSelection: React.FC<Props> = ({
             </div>
           </div>
         ))}
+        </div>
+        
+        {/* Select Dates Button - Own Row */}
+        <div className="date-selection__button-row flex justify-end mt-6">
+          <button
+            onClick={() => {
+              const { selectedDates = [] } = flowContext.eventPreview;
+              if (selectedDates.length > 0) {
+                setFlowContext({
+                  ...flowContext,
+                  step: selectedDates.length > 1 ? 'repeatAnotherMonth' : 'whenTimePeriod',
+                  eventPreview: { ...flowContext.eventPreview, date: selectedDates.join(', '), isRepeating: selectedDates.length > 1 }
+                });
+              }
+            }}
+            disabled={!flowContext.eventPreview.selectedDates?.length}
+            className={`date-selection__continue-btn px-3 py-1.5 rounded-lg text-xs transition-colors ${
+              flowContext.eventPreview.selectedDates?.length 
+                ? 'date-selection__continue-btn--active bg-[#217e8f] text-white hover:bg-[#1a6e7e]' 
+                : 'date-selection__continue-btn--disabled bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {(() => {
+              const count = flowContext.eventPreview.selectedDates?.length || 0;
+              if (count === 0) return 'Select Dates';
+              if (count === 1) return '1 Date Selected';
+              return `${count} Dates Selected`;
+            })()}
+          </button>
+        </div>
       </div>
     );
   }

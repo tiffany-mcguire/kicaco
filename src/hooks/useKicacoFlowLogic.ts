@@ -176,7 +176,7 @@ export const getRepeatAnotherMonthButtons = (flowContext: FlowContext): SmartBut
     if (selectedMonth) {
       return [
         { id: 'yes-same-month', label: 'Yes', description: pattern ? "We'll suggest matching days" : "Pick additional dates" },
-        { id: 'no-done', label: 'No, Done', description: 'Continue with selected dates' },
+        { id: 'no-done', label: 'Done', description: 'Continue with selected dates' },
         { id: 'no-other-month', label: 'Other Month', description: 'Pick a different month' }
       ];
     }

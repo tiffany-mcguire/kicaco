@@ -7,11 +7,6 @@ import UpcomingEvents from './pages/UpcomingEvents';
 import Keepers from './pages/Keepers';
 import MonthlyCalendar from './pages/MonthlyCalendar';
 import WeeklyCalendar from './pages/WeeklyCalendar';
-// import WeeklyCalendarTest from './pages/WeeklyCalendarTest';
-// import WeeklyCalendarDebug from './pages/WeeklyCalendarDebug';
-// import WeeklyCalendarSafe from './pages/WeeklyCalendarSafe';
-// import WeeklyCalendarMinimal from './pages/WeeklyCalendarMinimal';
-// import WeeklyCalendarFunctional from './pages/WeeklyCalendarFunctional';
 import ChatDefaults from './pages/ChatDefaults';
 import ProfilesRoles from './pages/ProfilesRoles';
 import EditChild from './pages/EditChild';
@@ -19,12 +14,38 @@ import AddEvent from './pages/AddEvent';
 import AddKeeper from './pages/AddKeeper';
 import DailyView from './pages/DailyView';
 import ShareProcessor from './pages/ShareProcessor';
-// import SmartButtonPlayground from './pages/SmartButtonPlayground';
 import KicacoFlow from './pages/KicacoFlow';
 import './index.css';
 
 // Import Vite PWA service worker registration
 import { registerSW } from 'virtual:pwa-register';
+
+// Mobile debugging - log errors to help identify mobile-specific issues
+if (typeof window !== 'undefined') {
+  // Catch all JavaScript errors
+  window.addEventListener('error', (e) => {
+    console.error('JavaScript Error:', e.error);
+    console.error('Error details:', {
+      message: e.message,
+      filename: e.filename,
+      lineno: e.lineno,
+      colno: e.colno,
+      stack: e.error?.stack
+    });
+  });
+
+  // Catch unhandled promise rejections
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled Promise Rejection:', e.reason);
+  });
+
+  // Log when React starts mounting
+  console.log('React app starting...', {
+    userAgent: navigator.userAgent,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    timestamp: new Date().toISOString()
+  });
+}
 
 // Register service worker for PWA functionality using Vite PWA
 const updateSW = registerSW({
@@ -37,6 +58,7 @@ const updateSW = registerSW({
   },
 });
 
+console.log('Creating React root...');
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -58,9 +80,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="add-event" element={<AddEvent />} />
           <Route path="add-keeper" element={<AddKeeper />} />
           <Route path="kicaco-flow" element={<KicacoFlow />} />
-          {/* <Route path="smart-button-playground" element={<SmartButtonPlayground />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
-); 
+);
+
+console.log('React app render completed'); 

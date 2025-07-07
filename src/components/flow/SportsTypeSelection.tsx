@@ -31,11 +31,17 @@ export const SportsTypeSelection: React.FC<Props> = ({
       <div className="sports-type-selection__family-section bg-white rounded-lg shadow-sm p-4 mb-6">
         <div className="sports-type-selection__family-list space-y-3">
           {getPersonalizedSports().map((button: SmartButton) => 
-            <SmartActionButton 
-              key={button.id} 
-              button={button} 
-              onClick={() => handleButtonSelect(button.id)} 
-            />
+            <div key={button.id} className="flex items-end justify-between">
+              {button.description && (
+                <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
+              )}
+              <div className="flex-shrink-0">
+                <SmartActionButton 
+                  button={{ id: button.id, label: button.label }} 
+                  onClick={() => handleButtonSelect(button.id)} 
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -46,11 +52,17 @@ export const SportsTypeSelection: React.FC<Props> = ({
       <div className="sports-type-selection__all-section bg-white rounded-lg shadow-sm p-4 mb-8">
         <div className="sports-type-selection__all-list space-y-3">
           {getAllSportsAlphabetical().map((button: SmartButton) => 
-            <SmartActionButton 
-              key={button.id} 
-              button={button} 
-              onClick={() => handleButtonSelect(button.id)} 
-            />
+            <div key={button.id} className="flex items-end justify-between">
+              {button.description && (
+                <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
+              )}
+              <div className="flex-shrink-0">
+                <SmartActionButton 
+                  button={{ id: button.id, label: button.label }} 
+                  onClick={() => handleButtonSelect(button.id)} 
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>

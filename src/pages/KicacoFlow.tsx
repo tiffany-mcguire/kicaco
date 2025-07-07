@@ -212,36 +212,50 @@ export default function KicacoFlow() {
             />
           ) : flowContext.step === 'repeatingSameLocation' ? (
             <div className="kicaco-flow__step-container">
-              <div className="kicaco-flow__button-list">
-                {currentButtons.map((button: SmartButton) => (
-                  <SmartActionButton 
-                    key={button.id} 
-                    button={button} 
-                    onClick={() => handleButtonSelect(button.id)} 
-                    isChildButton={false} 
-                    getChildColor={getChildColor} 
-                  />
-                ))}
+              <div className="kicaco-flow__button-list space-y-3">
+                {currentButtons.map((button: SmartButton) => 
+                  <div key={button.id} className="flex items-end justify-between">
+                    {button.description && (
+                      <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
+                    )}
+                    <div className="flex-shrink-0">
+                      <SmartActionButton 
+                        button={{ id: button.id, label: button.label }} 
+                        onClick={() => handleButtonSelect(button.id)} 
+                        isChildButton={false} 
+                        getChildColor={getChildColor} 
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : flowContext.step === 'whichChild' ? (
             <div className="kicaco-flow__step-container">
-              <div className="kicaco-flow__child-selection-hint">
+              <div className="kicaco-flow__child-selection-hint" style={{ marginTop: '-8px' }}>
                 <div className="kicaco-flow__child-selection-hint-text">Select one child or more for this event</div>
               </div>
-              <div className="kicaco-flow__child-selection-wrapper">
-                <div className="kicaco-flow__child-selection-list">
-                  {currentButtons.map((button: SmartButton) => 
-                    <ChildSelectionButton 
-                      key={button.id} 
-                      button={button} 
-                      isSelected={flowContext.eventPreview.selectedChildren?.includes(button.id) || false} 
-                      onClick={() => handleButtonSelect(button.id)} 
-                      getChildColor={getChildColor} 
-                      fadeUnselected 
-                    />
-                  )}
-                </div>
+              <div className="kicaco-flow__child-selection-list space-y-3">
+                {currentButtons.map((button: SmartButton) => 
+                  <div key={button.id} className="flex items-end">
+                    <div className="flex-shrink-0">
+                      <ChildSelectionButton 
+                        button={{ id: button.id, label: button.label }}
+                        isSelected={flowContext.eventPreview.selectedChildren?.includes(button.id) || false} 
+                        onClick={() => handleButtonSelect(button.id)} 
+                        getChildColor={getChildColor} 
+                        fadeUnselected 
+                      />
+                    </div>
+                    {button.description && (
+                      <div className="text-xs text-gray-500 ml-3">{button.description}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Select Children Button - Own Row */}
+              <div className="kicaco-flow__child-selection-button-row flex justify-end mt-6">
                 <button 
                   onClick={() => { 
                     if ((flowContext.eventPreview.selectedChildren || []).length > 0) 
@@ -261,17 +275,55 @@ export default function KicacoFlow() {
             </div>
           ) : (
             <div className="kicaco-flow__step-container">
-              <div className="kicaco-flow__button-list">
-                {currentButtons.map((button: SmartButton) => 
-                  <SmartActionButton 
-                    key={button.id} 
-                    button={button} 
-                    onClick={() => handleButtonSelect(button.id)} 
-                    isChildButton={flowContext.step === 'whichChild'} 
-                    getChildColor={getChildColor} 
-                  />
-                )}
-              </div>
+              {(flowContext.step === 'initial' || flowContext.step === 'eventCategory' || flowContext.step === 'eventType' || flowContext.step === 'whenDate' || flowContext.step === 'repeatAnotherMonth' || flowContext.step === 'repeatingSameTime') ? (
+                // Special layout for various screens with right-aligned or center-aligned buttons
+                <div className="kicaco-flow__button-list space-y-3">
+                  {currentButtons.map((button: SmartButton) => 
+                    flowContext.step === 'whenDate' ? (
+                      // Center-aligned layout for Quick Dates
+                      <div key={button.id} className="flex flex-col items-center text-center">
+                        <SmartActionButton 
+                          button={{ id: button.id, label: button.label }} 
+                          onClick={() => handleButtonSelect(button.id)} 
+                          isChildButton={false} 
+                          getChildColor={getChildColor} 
+                        />
+                        {button.description && (
+                          <div className="text-xs text-gray-500 mt-1">{button.description}</div>
+                        )}
+                      </div>
+                    ) : (
+                      // Right-aligned layout for other screens
+                      <div key={button.id} className="flex items-end justify-between">
+                        {button.description && (
+                          <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
+                        )}
+                        <div className="flex-shrink-0">
+                          <SmartActionButton 
+                            button={{ id: button.id, label: button.label }} 
+                            onClick={() => handleButtonSelect(button.id)} 
+                            isChildButton={flowContext.step === 'whichChild'} 
+                            getChildColor={getChildColor} 
+                          />
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                // Default layout for all other screens
+                <div className="kicaco-flow__button-list">
+                  {currentButtons.map((button: SmartButton) => 
+                    <SmartActionButton 
+                      key={button.id} 
+                      button={button} 
+                      onClick={() => handleButtonSelect(button.id)} 
+                      isChildButton={flowContext.step === 'whichChild'} 
+                      getChildColor={getChildColor} 
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
 

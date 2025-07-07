@@ -25,9 +25,7 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
       // Scroll to noon-ish time for single time picker
       const noonElement = singleTimeScrollRef.current.querySelector('[data-time="12:00 PM"]');
       if (noonElement) {
-        setTimeout(() => {
-          noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
-        }, 50);
+        noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
       }
     }
   }, [flowContext.step]);

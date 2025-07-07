@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getUniqueDaysOfWeek } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
@@ -36,6 +36,17 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
     }
     return options;
   };
+
+  // Scroll to noon when editing time for a day
+  useEffect(() => {
+    if (editingTimeForDay !== null && !showFullPickerFor && scrollableTimeRef.current) {
+      // Scroll to noon-ish time
+      const noonElement = scrollableTimeRef.current.querySelector('[data-time="12:00 PM"]');
+      if (noonElement) {
+        noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    }
+  }, [editingTimeForDay, showFullPickerFor]);
 
   const isAllTimesSet = () => {
     const uniqueDays = getUniqueDaysOfWeek(flowContext.eventPreview.selectedDates || []);
@@ -136,7 +147,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   <button 
                                     key={h} 
                                     onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                                    className="day-based-time-grid__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900"
+                                    className="day-based-time-grid__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]"
                                   >
                                     {h}
                                   </button>
@@ -149,7 +160,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button 
                                       key={m} 
                                       onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                      className={`day-based-time-grid__minute-btn text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-gray-700 hover:bg-white'}`}
+                                      className={`day-based-time-grid__minute-btn text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]'}`}
                                     >
                                       {`:${m}`}
                                     </button>
@@ -159,14 +170,14 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   <button 
                                     onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} AM`)} 
                                     disabled={!customTime.minute} 
-                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--am text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--am text-xs px-1 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     AM
                                   </button>
                                   <button 
                                     onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} PM`)} 
                                     disabled={!customTime.minute} 
-                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--pm text-xs px-1 py-1 rounded-md bg-white/70 text-gray-700 font-semibold hover:bg-white disabled:bg-gray-200 disabled:text-gray-400"
+                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--pm text-xs px-1 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
                                   >
                                     PM
                                   </button>
@@ -174,32 +185,35 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                               </div>
                             )
                           ) : (
-                            <div 
-                              className="day-based-time-grid__time-options space-y-1 overflow-y-auto hide-scrollbar max-h-24"
-                              style={{
-                                scrollbarWidth: 'none',
-                                msOverflowStyle: 'none'
-                              } as React.CSSProperties}
-                            >
-                              {quickTimeOptions.map(opt => (
-                                <button 
-                                  key={opt} 
-                                  data-time={opt} 
-                                  onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                                  className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
-                                >
-                                  {opt}
-                                </button>
-                              ))}
+                            <div className="day-based-time-grid__time-options">
                               <button 
                                 onClick={() => { 
                                   setShowFullPickerFor(`day-${dayIndex}`); 
                                   setCustomTime({ hour: '', minute: '', ampm: '' }); 
                                 }} 
-                                className="day-based-time-grid__custom-btn w-full text-xs text-[#217e8f] pt-1 hover:underline"
+                                className="day-based-time-grid__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] max-[375px]:px-0.5 sticky top-0 z-10 mb-1"
                               >
                                 Custom
                               </button>
+                              <div 
+                                ref={scrollableTimeRef}
+                                className="day-based-time-grid__scrollable-options space-y-1 overflow-y-auto hide-scrollbar max-h-20"
+                                style={{
+                                  scrollbarWidth: 'none',
+                                  msOverflowStyle: 'none'
+                                } as React.CSSProperties}
+                              >
+                                {quickTimeOptions.map(opt => (
+                                  <button 
+                                    key={opt} 
+                                    data-time={opt} 
+                                    onClick={() => handleSetTimeForDay(dayIndex, opt)} 
+                                    className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
