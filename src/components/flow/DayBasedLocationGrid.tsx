@@ -414,7 +414,7 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                           <div 
                             className="day-based-location-grid__date-list space-y-1 hide-scrollbar"
                             style={{
-                              maxHeight: hasMoreThanFourDates ? '112px' : 'auto',
+                              height: '112px', // Fixed height for all containers (4 slots × 28px each)
                               overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
                               scrollbarWidth: 'none',
                               msOverflowStyle: 'none'
@@ -439,11 +439,10 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                             })}
                           </div>
                           
-                          {hasMoreThanFourDates && (
-                            <div className="day-based-location-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1">
-                              Scroll for more
-                            </div>
-                          )}
+                          {/* Helper text for overflow - always reserve space */}
+                          <div className="day-based-location-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1" style={{ height: '14px' }}>
+                            {hasMoreThanFourDates ? 'Scroll for more' : ''}
+                          </div>
                         </>
                       ) : null}
                     </div>

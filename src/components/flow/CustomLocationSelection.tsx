@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getLocationButtons } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
@@ -30,6 +30,9 @@ export const CustomLocationSelection: React.FC<Props> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<{dateStr: string, locationId: string} | null>(null);
+  // Sticky confirm state and scroll refs
+  const [stickyConfirmVisible, setStickyConfirmVisible] = useState<{[key: string]: boolean}>({});
+  const scrollContainerRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -98,8 +101,31 @@ export const CustomLocationSelection: React.FC<Props> = ({
     }
   };
 
+  // Check if the selected confirm button is partially hidden
+  const checkStickyConfirmVisibility = (dateStr: string) => {
+    const container = scrollContainerRefs.current[dateStr];
+    if (!container || !selectedPredefinedLocation || selectedPredefinedLocation.dateStr !== dateStr) return;
+    const selectedBtn = container.querySelector('.custom-location-selection__location-option[class*="border-2"]') as HTMLElement;
+    if (!selectedBtn) return;
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = selectedBtn.getBoundingClientRect();
+    const isPartiallyHidden = btnRect.bottom > containerRect.bottom;
+    const isCompletelyHidden = btnRect.top > containerRect.bottom;
+    setStickyConfirmVisible(prev => ({
+      ...prev,
+      [dateStr]: isPartiallyHidden && !isCompletelyHidden
+    }));
+  };
+  // Run visibility check on scroll and selection changes
+  useEffect(() => {
+    if (selectedPredefinedLocation) {
+      setTimeout(() => checkStickyConfirmVisibility(selectedPredefinedLocation.dateStr), 10);
+    }
+  }, [selectedPredefinedLocation]);
+
   return (
     <div className="custom-location-selection bg-white rounded-lg shadow-sm p-3 mb-8">
+      <style>{` .hide-scrollbar::-webkit-scrollbar { display: none; } `}</style>
       <div className="custom-location-selection__grid grid grid-cols-3 gap-2">
         {(() => {
           const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
@@ -135,9 +161,9 @@ export const CustomLocationSelection: React.FC<Props> = ({
                 const isEditing = editingLocationForDate === dateStr;
 
                 return (
-                  <div key={dateStr} className="custom-location-selection__date-card flex flex-col items-center justify-between p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor }}>
+                  <div key={dateStr} className="custom-location-selection__date-card flex flex-col p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor, overflow: 'visible' }}>
                     <div className="custom-location-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
-                    <div className="custom-location-selection__location-picker mt-1 w-full flex-grow flex items-center justify-center">
+                    <div className="custom-location-selection__location-picker mt-1 w-full mb-2">
                       {isEditing ? (
                         <div className="custom-location-selection__location-editor w-full">
                           {showLocationSearchFor === dateStr ? (
@@ -228,29 +254,33 @@ export const CustomLocationSelection: React.FC<Props> = ({
                             <>
                               <button 
                                 onClick={() => setShowLocationSearchFor(dateStr)} 
-                                className="custom-location-selection__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 sticky top-0 z-10 mb-1"
+                                className="custom-location-selection__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#217e8e] px-1 py-0.5 rounded-md sticky top-0 z-10 mb-1"
                               >
                                 New Location
                               </button>
-                              <div className="custom-location-selection__scrollable-options space-y-1 max-h-28 overflow-y-auto">
+                              <div className="custom-location-selection__location-options-container relative">
+                                <div
+                                  ref={el => { scrollContainerRefs.current[dateStr] = el; }}
+                                  className="custom-location-selection__scrollable-options space-y-1 max-h-20 overflow-y-auto hide-scrollbar"
+                                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+                                  onScroll={() => checkStickyConfirmVisibility(dateStr)}
+                                >
                                 {getLocationButtons().map(loc => {
                                   const isSelected = selectedPredefinedLocation?.dateStr === dateStr && selectedPredefinedLocation?.locationId === loc.id;
                                   return (
                                     <div key={loc.id} className="custom-location-selection__option-container relative">
                                       <button
                                         onClick={() => handlePredefinedLocationSelect(dateStr, loc.id)}
-                                        className={`custom-location-selection__location-option w-full text-xs px-1 py-0.5 rounded-md max-[375px]:text-[11px] truncate ${
-                                          isSelected 
-                                            ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30 font-semibold' 
-                                            : 'bg-white/60 text-[#217e8f] hover:bg-white'
+                                        className={`custom-location-selection__location-option w-full text-xs px-1 py-0.5 rounded-md truncate ${
+                                          isSelected ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30' : 'bg-white/60 text-[#217e8f] hover:bg-white'
                                         }`}
                                       >
                                         {loc.label}
                                       </button>
-                                      {isSelected && (
+                                      {isSelected && !stickyConfirmVisible[dateStr] && (
                                         <button
                                           onClick={handleConfirmPredefinedLocation}
-                                          className="custom-location-selection__confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] transition-colors shadow-sm max-[375px]:text-[7px] max-[375px]:px-0.5 z-10"
+                                          className="custom-location-selection__confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] shadow-sm z-10"
                                         >
                                           Confirm
                                         </button>
@@ -258,6 +288,16 @@ export const CustomLocationSelection: React.FC<Props> = ({
                                     </div>
                                   );
                                 })}
+                                </div>
+                                {selectedPredefinedLocation?.dateStr === dateStr && stickyConfirmVisible[dateStr] && (
+                                  <button
+                                    onClick={handleConfirmPredefinedLocation}
+                                    className="custom-location-selection__sticky-confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] shadow-lg z-20"
+                                    style={{ background: 'linear-gradient(to bottom, rgba(33,126,143,0.95), rgba(33,126,143,1))', backdropFilter: 'blur(2px)' }}
+                                  >
+                                    Confirm
+                                  </button>
+                                )}
                               </div>
                             </>
                           )}
