@@ -126,10 +126,10 @@ export const CustomLocationSelection: React.FC<Props> = ({
   return (
     <div className="custom-location-selection bg-white rounded-lg shadow-sm p-3 mb-8">
       <style>{` .hide-scrollbar::-webkit-scrollbar { display: none; } `}</style>
-      <div className="custom-location-selection__grid grid grid-cols-3 gap-2">
+      <div className="custom-location-selection__grid grid grid-cols-2 gap-2">
         {(() => {
           const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
-          const numColumns = 3; // Use 3 columns for mobile-first design
+          const numColumns = 2; // Use 2 columns for wider layout
           
           // Better distribution algorithm
           const quarters: string[][] = Array.from({ length: numColumns }, () => []);
@@ -161,7 +161,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
                 const isEditing = editingLocationForDate === dateStr;
 
                 return (
-                  <div key={dateStr} className="custom-location-selection__date-card flex flex-col p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor, overflow: 'visible' }}>
+                  <div key={dateStr} className="custom-location-selection__date-card flex flex-col p-1.5 rounded-lg text-center border-2" style={{ backgroundColor: bgColor, borderColor: `color-mix(in srgb, ${bgColor} 90%, black)`, overflow: 'visible' }}>
                     <div className="custom-location-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
                     <div className="custom-location-selection__location-picker mt-1 w-full mb-2">
                       {isEditing ? (
@@ -175,7 +175,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
                                     setSelectedLocation('');
                                     setSearchResults([]);
                                   }}
-                                  className="text-[11px] text-[#217e8f] hover:underline max-[375px]:text-[10px] relative"
+                                  className="text-[13px] text-[#217e8f] max-[375px]:text-[12px] relative"
                                   style={{ left: '2px', top: '0px' }}
                                 >
                                   Clear
@@ -308,7 +308,24 @@ export const CustomLocationSelection: React.FC<Props> = ({
                             setEditingLocationForDate(dateStr);
                             setCustomLocationInput('');
                           }}
-                          className="custom-location-selection__selected-location text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/5 w-full truncate"
+                          className="custom-location-selection__selected-location text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md w-full truncate"
+                          style={{ 
+                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
+                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
+                            borderWidth: '0.5px',
+                            borderStyle: 'solid',
+                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
+                          }}
                         >
                           {location}
                         </button>

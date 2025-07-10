@@ -34,13 +34,13 @@ export const SmallDateButton: React.FC<Props> = ({ button, onClick, isSelected =
 
     let s: React.CSSProperties = {
       width: '100%',
-      height: '32px',
-      padding: '4px 2px',
+      height: '36px',
+      padding: '6px 2px',
       border: isSelected ? '3px solid #217e8f' : '1px solid #9ca3af',
       borderRadius: '4px',
-      fontWeight: 600,
-      fontSize: '10px',
-      lineHeight: '12px',
+      fontWeight: 500,
+      fontSize: '11px',
+      lineHeight: '13px',
       background: isSelected ? selectedColors[dayOfWeek] : shouldFade ? fadedColor : baseColor,
       color: '#374151',
       outline: 'none',
@@ -56,7 +56,8 @@ export const SmallDateButton: React.FC<Props> = ({ button, onClick, isSelected =
     };
 
     if (hovered || focused) {
-      const hoverColor = selectedColors[dayOfWeek];
+      // Only use selected color for hover if button is actually selected
+      const hoverColor = isSelected ? selectedColors[dayOfWeek] : baseColor;
       s = {
         ...s,
         background: hoverColor,

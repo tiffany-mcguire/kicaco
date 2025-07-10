@@ -191,7 +191,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                   setShowFullPickerFor(`day-${dayIndex}`); 
                                   setCustomTime({ hour: '', minute: '', ampm: '' }); 
                                 }} 
-                                className="day-based-time-grid__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] max-[375px]:px-0.5 sticky top-0 z-10 mb-1"
+                                className="day-based-time-grid__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] max-[375px]:px-0.5 sticky top-0 z-10 mb-1"
                               >
                                 Custom
                               </button>
@@ -208,7 +208,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     key={opt} 
                                     data-time={opt} 
                                     onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                                    className="day-based-time-grid__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
+                                    className="day-based-time-grid__time-option w-full text-[13px] bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
                                   >
                                     {opt}
                                   </button>
@@ -228,7 +228,24 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                               setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
                             }
                           }}
-                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full max-[375px]:text-[11px] max-[375px]:px-1"
+                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] px-2 py-1 rounded-md w-full max-[375px]:text-[11px] max-[375px]:px-1"
+                          style={{ 
+                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
+                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
+                            borderWidth: '0.5px',
+                            borderStyle: 'solid',
+                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
+                          }}
                         >
                           {time}
                         </button>

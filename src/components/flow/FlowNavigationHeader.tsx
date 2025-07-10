@@ -19,7 +19,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
               selections: { ...flowContext.selections, type: 'event', category: 'sports' }, 
               eventPreview: { ...flowContext.eventPreview, type: 'event', category: 'sports' } 
             })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Select Other Sport
           </button>
@@ -37,7 +37,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 eventPreview: { ...flowContext.eventPreview, subtype: selectedSport } 
               });
             }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← {flowContext.eventPreview.subtype ? 
               `${flowContext.eventPreview.subtype.charAt(0).toUpperCase() + flowContext.eventPreview.subtype.slice(1)} Event Type` : 
@@ -49,7 +49,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button 
             onClick={() => setFlowContext({ ...flowContext, step: 'whichChild' })} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Select Other Child
           </button>
@@ -62,7 +62,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
               const step = (flowContext.eventPreview.selectedDates || []).length > 0 ? 'repeatAnotherMonth' : 'whenDate';
               setFlowContext({ ...flowContext, step });
             }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             {(flowContext.eventPreview.selectedDates || []).length > 0 ? '← No More Dates to Add' : '← Quick Dates'}
           </button>
@@ -77,7 +77,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 step: 'customDatePicker'
               });
             }} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Month & Year
           </button>
@@ -94,7 +94,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 setFlowContext({ ...flowContext, step: 'customDatePicker' });
               }
             }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             {(flowContext.eventPreview.selectedDates || []).length > 1 
               ? '← Multi-Event Time Pattern' 
@@ -114,7 +114,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 setFlowContext({ ...flowContext, step: 'whenTimePeriod' });
               }
             }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             {(flowContext.eventPreview.selectedDates || []).length > 1 
               ? '← Multi-Event Location Pattern' 
@@ -142,7 +142,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 setFlowContext({ ...flowContext, step: 'whereLocation' });
               }
             }} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Change Location
           </button>
@@ -152,7 +152,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button 
             onClick={() => setFlowContext({ ...flowContext, step: 'monthPart' })} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             {(() => {
               const selectedMonth = flowContext.eventPreview.selectedMonth;
@@ -173,7 +173,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'customDatePicker' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Select More Dates
           </button>
@@ -183,7 +183,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'repeatingSameTime' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Multi-Event Time Pattern
           </button>
@@ -193,7 +193,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'repeatingSameTime' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Multi-Event Time Pattern
           </button>
@@ -213,7 +213,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
                 setFlowContext({ ...flowContext, step: 'customTimeSelection' });
               }
             }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Set Times
           </button>
@@ -223,7 +223,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'repeatingSameLocation' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Multi-Event Location Pattern
           </button>
@@ -233,7 +233,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'repeatingSameLocation' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Multi-Event Location Pattern
           </button>
@@ -243,7 +243,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
         return (
           <button
             onClick={() => setFlowContext({ ...flowContext, step: 'initial' })}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-xs hover:underline"
+            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Create Keeper
           </button>

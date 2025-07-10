@@ -23,7 +23,7 @@ export const SportsTypeSelection: React.FC<Props> = ({
         <h3 className="sports-type-selection__family-title text-sm font-medium text-gray-600 ml-1">Your Family's Sports</h3>
         <button 
           onClick={() => setFlowContext({ ...flowContext, step: 'eventCategory' })} 
-          className="sports-type-selection__back-btn text-[#217e8f] text-xs hover:underline"
+          className="sports-type-selection__back-btn text-[#217e8f] text-[13px]"
         >
           ← Event Category
         </button>

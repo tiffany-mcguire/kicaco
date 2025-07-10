@@ -16,23 +16,24 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
 
   const shouldFade = fadeUnselected && !isSelected;
   const childColor = getChildColor ? getChildColor(button.id) : '#217e8f';
-  const fadedColor = childColor + '40';
+  const fadedColor = `color-mix(in srgb, ${childColor} 60%, white)`;
 
   const getButtonStyle = (): React.CSSProperties => {
     let s: React.CSSProperties = {
-      width: '90px',
-      padding: '5px 8px',
-      border: isSelected ? '3px solid #217e8f' : '1px solid #9ca3af',
-      borderRadius: '5px',
-      fontWeight: 600,
-      fontSize: '12px',
-      lineHeight: '14px',
+      width: '115px',
+      height: '30px',
+      padding: '0px 0px',
+      border: isSelected ? `3px solid color-mix(in srgb, ${childColor} 75%, black)` : `0.5px solid color-mix(in srgb, ${childColor} 75%, black)`,
+      borderRadius: '6px',
+      fontWeight: 500,
+      fontSize: '13px',
+      lineHeight: '20px',
       background: shouldFade ? fadedColor : childColor,
       color: '#374151',
       outline: 'none',
       transition: 'all 0.2s ease',
       cursor: 'pointer',
-      boxShadow: isSelected ? '0 2px 6px rgba(33,126,143,0.3)' : '0 1px 2px rgba(0,0,0,0.08)',
+      boxShadow: isSelected ? `0 2px 6px color-mix(in srgb, ${childColor} 75%, black)` : `0 0 2px color-mix(in srgb, ${childColor} 75%, black)`,
       textAlign: 'center',
       display: 'flex',
       alignItems: 'center',
@@ -45,8 +46,8 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
       s = {
         ...s,
         background: childColor,
-        border: isSelected ? '3px solid #217e8f' : '1px solid #6b7280',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.12)'
+        border: isSelected ? `3px solid color-mix(in srgb, ${childColor} 75%, black)` : `0.5px solid color-mix(in srgb, ${childColor} 75%, black)`,
+        boxShadow: isSelected ? `0 2px 6px color-mix(in srgb, ${childColor} 75%, black)` : `0 0 2px color-mix(in srgb, ${childColor} 75%, black)`
       };
     }
     if (pressed) {

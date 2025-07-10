@@ -22,16 +22,16 @@ export const getMinuteOptions = () => ['00', '15', '30', '45'];
 export const getAmPmOptions = () => ['AM', 'PM'];
 
 export const getInitialButtons = (): SmartButton[] => [
-  { id: 'event', label: 'Event', description: 'Something to attend or participate in' },
-  { id: 'keeper', label: 'Keeper', description: 'A task or deadline to remember' }
+  { id: 'event', label: 'Event', description: 'Something to attend' },
+  { id: 'keeper', label: 'Keeper', description: 'A task, deadline, or due date' }
 ];
 
 export const getEventCategoryButtons = (): SmartButton[] => [
-  { id: 'sports', label: 'Sports', description: 'Games, practices, tournaments, lessons' },
+  { id: 'sports', label: 'Sports', description: 'Games, practices, lessons' },
   { id: 'medical', label: 'Medical', description: 'Appointments, checkups, procedures' },
   { id: 'school', label: 'School', description: 'Classes, meetings, field trips, events' },
   { id: 'social', label: 'Social', description: 'Parties, playdates, gatherings' },
-  { id: 'activities', label: 'Activities', description: 'Lessons, clubs, performances, hobbies' },
+  { id: 'activities', label: 'Activities', description: 'Lessons, clubs, performances' },
   { id: 'family', label: 'Family', description: 'Outings, vacations, family time' }
 ];
 
@@ -42,7 +42,7 @@ export const getPersonalizedSports = (): SmartButton[] => [
 ];
 
 export const getAllSportsAlphabetical = (): SmartButton[] => [
-  { id: 'american-football', label: 'Amer Football', description: 'American football, flag football, tackle' },
+  { id: 'american-football', label: 'Amer Football', description: 'American football, flag, tackle' },
   { id: 'baseball', label: 'Baseball', description: 'Baseball, softball, tee-ball' },
   { id: 'cheerleading', label: 'Cheerleading', description: 'Cheer practice, competitions' },
   { id: 'cross-country', label: 'Cross Country', description: 'Running, meets, training' },
@@ -60,7 +60,7 @@ export const getAllSportsAlphabetical = (): SmartButton[] => [
 ];
 
 export const getSportsEventTypeButtons = (): SmartButton[] => [
-  { id: 'game', label: 'Game', description: 'Match, scrimmage, tournament game' },
+  { id: 'game', label: 'Game', description: 'Match, scrimmage, tournament' },
   { id: 'practice', label: 'Practice', description: 'Team practice, training session' },
   { id: 'lesson', label: 'Lesson', description: 'Private lesson, coaching session' },
   { id: 'tournament', label: 'Tournament', description: 'Multi-game tournament or event' }

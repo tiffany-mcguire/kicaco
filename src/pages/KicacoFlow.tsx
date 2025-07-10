@@ -130,6 +130,7 @@ export default function KicacoFlow() {
           ) : flowContext.step === 'whenTimePeriod' || flowContext.step === 'daySpecificTime' ? (
             <TimeSelection
               flowContext={flowContext}
+              setFlowContext={setFlowContext}
               showFullPickerFor={showFullPickerFor}
               setShowFullPickerFor={setShowFullPickerFor}
               customTime={customTime}
@@ -213,11 +214,11 @@ export default function KicacoFlow() {
           ) : flowContext.step === 'repeatingSameLocation' ? (
             <div className="kicaco-flow__step-container">
               <div className="kicaco-flow__button-list space-y-3">
-                {currentButtons.map((button: SmartButton) => 
-                  <div key={button.id} className="flex items-end justify-between">
-                    {button.description && (
-                      <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
-                    )}
+                                  {currentButtons.map((button: SmartButton) => 
+                    <div key={button.id} className="flex items-end justify-between min-h-[30px]">
+                      {button.description && (
+                        <div className="text-[12.5px] text-gray-500 flex-1 pr-3 max-h-[30px] overflow-hidden leading-tight">{button.description}</div>
+                      )}
                     <div className="flex-shrink-0">
                       <SmartActionButton 
                         button={{ id: button.id, label: button.label }} 
@@ -237,7 +238,7 @@ export default function KicacoFlow() {
               </div>
               <div className="kicaco-flow__child-selection-list space-y-3">
                 {currentButtons.map((button: SmartButton) => 
-                  <div key={button.id} className="flex items-end">
+                  <div key={button.id} className="flex items-end min-h-[30px]">
                     <div className="flex-shrink-0">
                       <ChildSelectionButton 
                         button={{ id: button.id, label: button.label }}
@@ -248,7 +249,7 @@ export default function KicacoFlow() {
                       />
                     </div>
                     {button.description && (
-                      <div className="text-xs text-gray-500 ml-3">{button.description}</div>
+                      <div className="text-[12.5px] text-gray-500 ml-3 max-h-[30px] overflow-hidden leading-tight">{button.description}</div>
                     )}
                   </div>
                 )}
@@ -263,6 +264,9 @@ export default function KicacoFlow() {
                   }} 
                   disabled={!flowContext.eventPreview.selectedChildren?.length} 
                   className={`kicaco-flow__child-selection-continue ${flowContext.eventPreview.selectedChildren?.length ? 'kicaco-flow__child-selection-continue--active' : 'kicaco-flow__child-selection-continue--disabled'}`}
+                  style={{
+                    width: (flowContext.eventPreview.selectedChildren?.length || 0) > 1 ? '140px' : '115px'
+                  }}
                 >
                   {(() => {
                     const count = flowContext.eventPreview.selectedChildren?.length || 0;
@@ -289,15 +293,15 @@ export default function KicacoFlow() {
                           getChildColor={getChildColor} 
                         />
                         {button.description && (
-                          <div className="text-xs text-gray-500 mt-1">{button.description}</div>
+                          <div className="text-[12.5px] text-gray-500 mt-1">{button.description}</div>
                         )}
                       </div>
                     ) : (
                       // Right-aligned layout for other screens
-                      <div key={button.id} className="flex items-end justify-between">
-                        {button.description && (
-                          <div className="text-xs text-gray-500 flex-1 pr-3">{button.description}</div>
-                        )}
+                                              <div key={button.id} className="flex items-end justify-between min-h-[30px]">
+                          {button.description && (
+                            <div className="text-[12.5px] text-gray-500 flex-1 pr-3 max-h-[30px] overflow-hidden leading-tight">{button.description}</div>
+                          )}
                         <div className="flex-shrink-0">
                           <SmartActionButton 
                             button={{ id: button.id, label: button.label }} 

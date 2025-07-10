@@ -29,8 +29,6 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
   const [searchInput, setSearchInput] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<{dayIndex: number, locationId: string} | null>(null);
-  const [stickyConfirmVisible, setStickyConfirmVisible] = useState<{[key: number]: boolean}>({});
-  const scrollContainerRefs = useRef<{[key: number]: HTMLDivElement | null}>({});
 
   const generateLocationOptions = () => {
     return getLocationButtons().map(loc => loc.label);
@@ -64,8 +62,12 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
   const handlePredefinedLocationSelect = (dayIndex: number, locationId: string) => {
     const location = getLocationButtons().find(loc => loc.id === locationId);
     if (location) {
-      setSelectedPredefinedLocation({dayIndex, locationId});
-      // Don't auto-fill input or trigger search mode
+      // Toggle selection - if same location is selected, deselect it
+      if (selectedPredefinedLocation?.dayIndex === dayIndex && selectedPredefinedLocation?.locationId === locationId) {
+        setSelectedPredefinedLocation(null);
+      } else {
+        setSelectedPredefinedLocation({dayIndex, locationId});
+      }
     }
   };
 
@@ -75,44 +77,9 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
       if (location) {
         handleSetLocationForDay(selectedPredefinedLocation.dayIndex, location.label);
         setSelectedPredefinedLocation(null);
-        setStickyConfirmVisible(prev => ({ ...prev, [selectedPredefinedLocation.dayIndex]: false }));
       }
     }
   };
-
-  // Check if the selected location button is partially obscured by scroll
-  const checkStickyConfirmVisibility = (dayIndex: number) => {
-    const container = scrollContainerRefs.current[dayIndex];
-    if (!container || !selectedPredefinedLocation || selectedPredefinedLocation.dayIndex !== dayIndex) {
-      return;
-    }
-
-    const selectedButton = container.querySelector('.day-based-location-grid__location-option[class*="border-2"]') as HTMLElement;
-    if (!selectedButton) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const buttonRect = selectedButton.getBoundingClientRect();
-    
-    // Check if button is partially below the visible area
-    const isPartiallyHidden = buttonRect.bottom > containerRect.bottom;
-    // Check if button is completely out of view
-    const isCompletelyHidden = buttonRect.top > containerRect.bottom;
-    
-    setStickyConfirmVisible(prev => ({
-      ...prev,
-      [dayIndex]: isPartiallyHidden && !isCompletelyHidden
-    }));
-  };
-
-  // Effect to check sticky visibility when selection changes
-  useEffect(() => {
-    if (selectedPredefinedLocation) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        checkStickyConfirmVisibility(selectedPredefinedLocation.dayIndex);
-      }, 10);
-    }
-  }, [selectedPredefinedLocation]);
 
   const handleCustomLocationSubmit = (dayIndex: number) => {
     if (searchInput.trim()) {
@@ -171,25 +138,20 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
           display: none;
         }
       `}</style>
-      <div className="day-based-location-grid__grid grid grid-cols-3 gap-3">
+      <div className="day-based-location-grid__grid grid grid-cols-2 gap-3">
         {(() => {
           const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
           
-          // Create 3 columns: Mon-Wed in columns 0-2, Thu-Sat in columns 0-2, Sun in column 0
-          const columns: Array<Array<number>> = Array.from({ length: 3 }, () => []);
+          // Create 2 columns with the specified layout:
+          // Column 0: Monday, Wednesday, Friday, Sunday
+          // Column 1: Tuesday, Thursday, Saturday
+          const columns: Array<Array<number>> = Array.from({ length: 2 }, () => []);
           
-          // Place Monday-Wednesday in columns 0-2
-          for (let dayIndex = 0; dayIndex <= 2; dayIndex++) {
-            columns[dayIndex].push(dayIndex);
-          }
+          // Column 0: Monday (0), Wednesday (2), Friday (4), Sunday (6)
+          columns[0].push(0, 2, 4, 6);
           
-          // Place Thursday-Saturday in columns 0-2 (below Mon-Wed)
-          for (let dayIndex = 3; dayIndex <= 5; dayIndex++) {
-            columns[dayIndex - 3].push(dayIndex);
-          }
-          
-          // Place Sunday in column 0 (below Mon and Thu)
-          columns[0].push(6);
+          // Column 1: Tuesday (1), Thursday (3), Saturday (5)
+          columns[1].push(1, 3, 5);
           
           return columns.map((column, colIndex) => (
             <div key={`col${colIndex}`} className="day-based-location-grid__column space-y-2">
@@ -205,24 +167,26 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                 return (
                   <div 
                     key={dayIndex} 
-                    className={`day-based-location-grid__day-card flex flex-col p-1.5 rounded-lg ${
-                      hasSelectedDates ? 'border-2' : 'opacity-40'
+                    className={`day-based-location-grid__day-card flex flex-col p-1.5 rounded-lg border-2 ${
+                      hasSelectedDates ? '' : 'opacity-40'
                     }`}
                     style={{ 
                       backgroundColor: bgColor,
-                      borderColor: hasSelectedDates ? `color-mix(in srgb, ${bgColor} 90%, black)` : 'transparent',
-                      minHeight: '200px'
+                      borderColor: hasSelectedDates 
+                        ? `color-mix(in srgb, ${bgColor} 90%, black)` 
+                        : `color-mix(in srgb, ${bgColor} 50%, white)`,
+                      minHeight: '240px'
                     }}
                   >
                     {/* Day name header */}
-                    <div className="day-based-location-grid__day-header font-semibold text-gray-800 text-xs mb-2 text-center max-[375px]:text-[11px]">
+                    <div className="day-based-location-grid__day-header font-semibold text-gray-800 text-sm mb-2 text-center max-[375px]:text-xs">
                       {dayNames[dayIndex]}
                     </div>
                     
                     {/* Location picker area */}
                     <div className="day-based-location-grid__location-picker w-full mb-2">
                       {!hasSelectedDates ? (
-                        <div className="day-based-location-grid__no-dates text-xs text-gray-600 text-center py-2 bg-white/30 rounded-md max-[375px]:text-[11px]">
+                        <div className="day-based-location-grid__no-dates text-sm text-gray-600 text-center py-2 bg-white/30 rounded-md max-[375px]:text-xs">
                           No dates selected
                         </div>
                       ) : isEditing ? (
@@ -236,7 +200,7 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                     setSelectedLocation('');
                                     setSearchResults([]);
                                   }}
-                                  className="text-[11px] text-[#217e8f] hover:underline max-[375px]:text-[10px] relative"
+                                  className="text-[13px] text-[#217e8f] max-[375px]:text-xs relative"
                                   style={{ left: '2px', top: '0px' }}
                                 >
                                   Clear
@@ -248,7 +212,7 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                     setSearchResults([]);
                                     setSelectedLocation('');
                                   }}
-                                  className="text-[12px] text-[#217e8f] hover:opacity-70 max-[375px]:text-[11px] relative -left-1"
+                                  className="text-base text-[#217e8f] hover:opacity-70 max-[375px]:text-sm relative -left-1"
                                   style={{ top: '0px' }}
                                 >
                                   ←
@@ -294,8 +258,8 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                                 : 'bg-white/60 hover:bg-white border border-gray-200'
                                             }`}
                                           >
-                                            <div className="text-[10px] font-medium text-[#217e8f] truncate max-[375px]:text-[9px]">{result.name}</div>
-                                            <div className="text-[8px] text-gray-600 truncate max-[375px]:text-[7px]">{result.address}</div>
+                                            <div className="text-xs font-medium text-[#217e8f] truncate max-[375px]:text-[11px]">{result.name}</div>
+                                            <div className="text-[10px] text-gray-600 truncate max-[375px]:text-[9px]">{result.address}</div>
                                           </button>
                                         );
                                       })}
@@ -307,17 +271,27 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                   )}
                                   
                                   {/* Fixed position manual submit button */}
-                                  <div className="day-based-location-grid__manual-submit-container mt-1 h-6 flex items-center max-[375px]:h-5">
+                                  <div className="day-based-location-grid__manual-submit-container mt-1 flex items-center">
                                     <button
                                       onClick={() => handleCustomLocationSubmit(dayIndex)}
                                       disabled={!searchInput.trim() || isSearching}
-                                      className={`day-based-location-grid__manual-submit w-full text-[10px] px-1 py-0.5 rounded-md transition-opacity max-[375px]:text-[9px] ${
+                                      className={`day-based-location-grid__manual-submit w-full bg-[#217e8f] text-white hover:bg-[#1a6e7e] transition-opacity rounded-md ${
                                         searchInput.trim() 
-                                          ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e] opacity-100' 
+                                          ? 'opacity-100' 
                                           : 'bg-gray-300 text-gray-500 opacity-0 pointer-events-none'
                                       }`}
+                                      style={{
+                                        height: '30px',
+                                        padding: '0px 8px',
+                                        fontSize: '14px',
+                                        lineHeight: '20px',
+                                        fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
                                     >
-                                      {selectedLocation ? 'Confirm Location' : 'Use as location'}
+                                      {selectedLocation ? 'Confirm Location' : 'Use As Location'}
                                     </button>
                                   </div>
                                 </div>
@@ -326,60 +300,39 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                           ) : (
                             <>
                               <button 
-                                onClick={() => setShowLocationSearchFor(dayIndex)} 
-                                className="day-based-location-grid__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] sticky top-0 z-10 mb-1"
+                                onClick={() => {
+                                  setShowLocationSearchFor(dayIndex);
+                                  setSelectedPredefinedLocation(null); // Clear selected location when starting search
+                                }} 
+                                className="day-based-location-grid__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-2 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] sticky top-0 z-10 mb-1"
                               >
                                 New Location
                               </button>
-                              <div className="day-based-location-grid__location-options-container relative">
+                              <div className="day-based-location-grid__location-options-container">
                                 <div 
-                                  ref={(el) => { scrollContainerRefs.current[dayIndex] = el; }}
                                   className="day-based-location-grid__location-options space-y-1 overflow-y-auto hide-scrollbar max-h-20"
                                   style={{
                                     scrollbarWidth: 'none',
                                     msOverflowStyle: 'none'
                                   } as React.CSSProperties}
-                                  onScroll={() => checkStickyConfirmVisibility(dayIndex)}
                                 >
                                   {getLocationButtons().map(loc => {
                                     const isSelected = selectedPredefinedLocation?.dayIndex === dayIndex && selectedPredefinedLocation?.locationId === loc.id;
                                     return (
-                                      <div key={loc.id} className="day-based-location-grid__option-container relative">
-                                        <button 
-                                          onClick={() => handlePredefinedLocationSelect(dayIndex, loc.id)} 
-                                          className={`day-based-location-grid__location-option w-full text-xs px-1 py-0.5 rounded-md max-[375px]:text-[11px] truncate ${
-                                            isSelected 
-                                              ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30 font-semibold' 
-                                              : 'bg-white/60 text-[#217e8f] hover:bg-white'
-                                          }`}
-                                        >
-                                          {loc.label}
-                                        </button>
-                                        {isSelected && !stickyConfirmVisible[dayIndex] && (
-                                          <button
-                                            onClick={handleConfirmPredefinedLocation}
-                                            className="day-based-location-grid__confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] transition-colors shadow-sm max-[375px]:text-[7px] max-[375px]:px-0.5 z-10"
-                                          >
-                                            Confirm
-                                          </button>
-                                        )}
-                                      </div>
+                                      <button 
+                                        key={loc.id}
+                                        onClick={() => handlePredefinedLocationSelect(dayIndex, loc.id)} 
+                                        className={`day-based-location-grid__location-option w-full text-xs px-1 py-2 rounded-md max-[375px]:text-[11px] truncate ${
+                                          isSelected 
+                                            ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30 font-semibold' 
+                                            : 'bg-white/60 text-[#217e8f] hover:bg-white'
+                                        }`}
+                                      >
+                                        {loc.label}
+                                      </button>
                                     );
                                   })}
                                 </div>
-                                {/* Sticky confirm button that appears when selected item is partially obscured */}
-                                {selectedPredefinedLocation?.dayIndex === dayIndex && stickyConfirmVisible[dayIndex] && (
-                                  <button
-                                    onClick={handleConfirmPredefinedLocation}
-                                    className="day-based-location-grid__sticky-confirm-btn absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2 bg-[#217e8f] text-white text-[8px] px-1 py-0.5 rounded-md hover:bg-[#1a6e7e] transition-colors shadow-lg max-[375px]:text-[7px] max-[375px]:px-0.5 z-20"
-                                    style={{
-                                      background: 'linear-gradient(to bottom, rgba(33, 126, 143, 0.95), rgba(33, 126, 143, 1))',
-                                      backdropFilter: 'blur(2px)'
-                                    }}
-                                  >
-                                    Confirm
-                                  </button>
-                                )}
                               </div>
                             </>
                           )}
@@ -390,7 +343,24 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                             setEditingLocationForDay(dayIndex);
                             setShowFullPickerFor(null);
                           }}
-                          className="day-based-location-grid__selected-location text-xs font-semibold text-[#217e8f] bg-white/60 px-2 py-1 rounded-md hover:bg-white w-full max-[375px]:text-[11px] truncate"
+                          className="day-based-location-grid__selected-location text-sm font-semibold text-[#217e8f] px-2 py-2 rounded-md w-full max-[375px]:text-xs truncate"
+                          style={{ 
+                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
+                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
+                            borderWidth: '0.5px',
+                            borderStyle: 'solid',
+                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
+                          }}
                         >
                           {location}
                         </button>
@@ -400,52 +370,71 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                             setEditingLocationForDay(dayIndex); 
                             setShowFullPickerFor(null); 
                           }} 
-                          className="day-based-location-grid__set-location-btn text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full max-[375px]:text-[11px]"
+                          className="day-based-location-grid__set-location-btn text-sm bg-black/5 text-[#217e8f] px-2 py-2 rounded-md hover:bg-black/10 w-full max-[375px]:text-xs"
                         >
                           Set Location
                         </button>
                       )}
                     </div>
                   
-                    {/* Date slots area */}
+                    {/* Date slots area - always present for consistent height */}
                     <div className="day-based-location-grid__date-slots w-full">
-                      {hasSelectedDates ? (
-                        <>
-                          <div 
-                            className="day-based-location-grid__date-list space-y-1 hide-scrollbar"
-                            style={{
-                              height: '112px', // Fixed height for all containers (4 slots × 28px each)
-                              overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
-                              scrollbarWidth: 'none',
-                              msOverflowStyle: 'none'
-                            } as React.CSSProperties}
-                          >
-                            {datesForThisDay.map((dateStr) => {
-                              const [year, month, day] = dateStr.split('-').map(Number);
-                              const date = new Date(year, month - 1, day);
-                              const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-                              const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
-                              const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-                              
-                              return (
-                                <div 
-                                  key={dateStr} 
-                                  className="day-based-location-grid__date-item text-[10px] px-1 py-1 rounded text-center text-gray-700 font-medium bg-white/30 max-[375px]:text-[9px] max-[375px]:px-0.5 whitespace-nowrap flex items-center justify-center"
-                                  style={{ height: '24px', minHeight: '24px' }}
-                                >
-                                  {dayOfWeekName} {monthName} {dayNum}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          
-                          {/* Helper text for overflow - always reserve space */}
-                          <div className="day-based-location-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1" style={{ height: '14px' }}>
-                            {hasMoreThanFourDates ? 'Scroll for more' : ''}
-                          </div>
-                        </>
-                      ) : null}
+                      <div 
+                        className="day-based-location-grid__date-list space-y-1 hide-scrollbar"
+                        style={{
+                          height: '140px', // Fixed height for all containers regardless of content
+                          overflowY: hasSelectedDates && hasMoreThanFourDates ? 'auto' : 'visible',
+                          scrollbarWidth: 'none',
+                          msOverflowStyle: 'none'
+                        } as React.CSSProperties}
+                      >
+                        {hasSelectedDates ? (
+                          datesForThisDay.map((dateStr) => {
+                            const [year, month, day] = dateStr.split('-').map(Number);
+                            const date = new Date(year, month - 1, day);
+                            const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                            const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+                            const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+                            
+                            return (
+                              <div 
+                                key={dateStr} 
+                                className="day-based-location-grid__date-item text-xs px-1 py-2 rounded text-center text-gray-700 font-medium bg-white/30 max-[375px]:text-[11px] max-[375px]:px-0.5 whitespace-nowrap flex items-center justify-center"
+                              >
+                                {dayOfWeekName} {monthName} {dayNum}
+                              </div>
+                            );
+                          })
+                        ) : null}
+                      </div>
+                      
+                                              {/* Helper text for overflow - always reserve space */}
+                        <div className="day-based-location-grid__scroll-hint text-[10px] text-gray-500 text-center italic mt-1" style={{ height: '14px' }}>
+                          {hasSelectedDates && hasMoreThanFourDates ? 'Scroll for more' : ''}
+                        </div>
                     </div>
+                    
+                    {/* Full-width confirm button at bottom of day card */}
+                    {isEditing && selectedPredefinedLocation?.dayIndex === dayIndex && (
+                      <div className="day-based-location-grid__confirm-container mt-2">
+                        <button
+                          onClick={handleConfirmPredefinedLocation}
+                          className="day-based-location-grid__confirm-btn w-full bg-[#217e8f] text-white hover:bg-[#1a6e7e] transition-colors rounded-md"
+                          style={{
+                            height: '30px',
+                            padding: '0px 8px',
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          Confirm Location
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

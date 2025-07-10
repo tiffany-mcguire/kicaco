@@ -17,14 +17,15 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
     const buttonColor = isChildButton && getChildColor ? getChildColor(button.id) : '#217e8f';
 
     let s: React.CSSProperties = {
-      width: '90px',
-      padding: '5px 8px',
+      width: '115px',
+      height: '30px',
+      padding: '0px 0px',
       border: isChildButton ? '1px solid #9ca3af' : 'none',
       boxSizing: 'border-box',
-      borderRadius: '5px',
-      fontWeight: isChildButton ? 600 : 400,
-      fontSize: '12px',
-      lineHeight: '14px',
+      borderRadius: '6px',
+      fontWeight: isChildButton ? 600 : 500,
+      fontSize: '13px',
+      lineHeight: '20px',
       background: buttonColor,
       color: isChildButton ? '#374151' : '#ffffff',
       outline: 'none',

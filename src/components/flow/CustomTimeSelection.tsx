@@ -83,7 +83,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
                 const quickTimeOptions = generateTimeOptions();
 
                 return (
-                  <div key={dateStr} className="custom-time-selection__date-card flex flex-col items-center justify-between p-1.5 rounded-lg text-center" style={{ backgroundColor: bgColor }}>
+                  <div key={dateStr} className="custom-time-selection__date-card flex flex-col items-center justify-between p-1.5 rounded-lg text-center border-2" style={{ backgroundColor: bgColor, borderColor: `color-mix(in srgb, ${bgColor} 90%, black)` }}>
                     <div className="custom-time-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
                     <div className="custom-time-selection__time-picker time-all-dates mt-1 w-full flex-grow flex items-center justify-center">
                       {isEditing ? (
@@ -186,7 +186,24 @@ export const CustomTimeSelection: React.FC<Props> = ({
                             }
                             return time;
                           }}
-                          className="custom-time-selection__selected-time text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/5 w-full"
+                          className="custom-time-selection__selected-time text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md w-full"
+                          style={{ 
+                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
+                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
+                            borderWidth: '0.5px',
+                            borderStyle: 'solid',
+                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
+                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
+                          }}
                         >
                           {time}
                         </button>

@@ -52,7 +52,12 @@ export const LocationSelection: React.FC<Props> = ({
   const handlePredefinedLocationSelect = (locationId: string) => {
     const location = getLocationButtons().find(loc => loc.id === locationId);
     if (location) {
-      setSelectedPredefinedLocation(locationId);
+      // Toggle selection - if already selected, deselect it
+      if (selectedPredefinedLocation === locationId) {
+        setSelectedPredefinedLocation('');
+      } else {
+        setSelectedPredefinedLocation(locationId);
+      }
       // Don't auto-fill input or trigger search mode
     }
   };
@@ -115,19 +120,15 @@ export const LocationSelection: React.FC<Props> = ({
     if (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 1) {
       return (
         <div className="location-selection__date-grid mt-4">
-          <div className="location-selection__date-grid-hint text-[10px] text-gray-500 text-center mb-2">Selected dates ({flowContext.eventPreview.selectedDates.length} total)</div>
+          <div className="location-selection__date-grid-hint text-[11px] text-gray-500 text-center mb-2">Selected dates ({flowContext.eventPreview.selectedDates.length} total)</div>
           <div className="location-selection__date-grid-container grid grid-cols-4 gap-2">
             {(() => {
               const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
-              const quartersSize = Math.ceil(dates.length / 4);
-              const quarters = [];
-              for (let i = 0; i < 4; i++) {
-                quarters.push(dates.slice(i * quartersSize, (i + 1) * quartersSize));
-              }
-              
-              return quarters.map((quarter, qIndex) => (
-                <div key={qIndex} className="location-selection__date-quarter space-y-1">
-                  {quarter.map(dateStr => {
+              const columns: string[][] = [[], [], [], []];
+              dates.forEach((dateStr, idx) => columns[idx % 4].push(dateStr));
+              return columns.map((column, colIndex) => (
+                <div key={colIndex} className="location-selection__date-quarter space-y-1">
+                  {column.map(dateStr => {
                     const [year, month, day] = dateStr.split('-').map(Number);
                     const date = new Date(year, month - 1, day);
                     const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
@@ -141,7 +142,7 @@ export const LocationSelection: React.FC<Props> = ({
                     return (
                       <div 
                         key={dateStr} 
-                        className="location-selection__date-item text-[10px] px-2 py-1 rounded text-center text-gray-700 font-medium"
+                        className="location-selection__date-item text-[12px] px-3 py-2 rounded text-gray-700 font-medium whitespace-nowrap flex items-center justify-center"
                         style={{ backgroundColor: bgColor }}
                       >
                         {dayOfWeekName} {monthName} {dayNum}
@@ -165,7 +166,7 @@ export const LocationSelection: React.FC<Props> = ({
           className="location-selection__picker flex flex-col items-center justify-between p-1.5 rounded-lg text-center w-[400px]" 
           style={{ backgroundColor: getBackgroundColor() }}
         >
-          <div className="location-selection__header font-semibold text-gray-800 text-xs mb-1">
+          <div className="location-selection__header font-semibold text-gray-700 text-[13px] mb-2 px-2 py-1">
             {getHeaderText()}
           </div>
           <div className="location-selection__content w-full">
@@ -178,7 +179,7 @@ export const LocationSelection: React.FC<Props> = ({
                       setSelectedLocation('');
                       setSearchResults([]);
                     }}
-                    className="text-xs text-[#217e8f] hover:underline"
+                    className="text-[13px] text-[#217e8f] px-1"
                   >
                     Clear Location
                   </button>
@@ -189,7 +190,7 @@ export const LocationSelection: React.FC<Props> = ({
                       setSearchResults([]);
                       setSelectedLocation('');
                     }}
-                    className="text-xs text-[#217e8f] hover:underline"
+                    className="text-[13px] text-[#217e8f] px-1"
                   >
                     ← Back
                   </button>
@@ -207,56 +208,55 @@ export const LocationSelection: React.FC<Props> = ({
                       handleSearch(e.target.value);
                     }}
                     placeholder="Search for location or enter address..."
-                    className={`location-selection__search-input w-full text-xs px-2 py-1 rounded-md text-gray-800 placeholder-gray-500 border outline-none focus:ring-2 focus:ring-[#217e8f]/50 mb-2 ${
+                    className={`location-selection__search-input w-full text-xs px-2 py-1 rounded-md text-gray-800 placeholder-gray-500 border outline-none focus:ring-2 focus:ring-[#217e8f]/50 ${
                       selectedLocation ? 'bg-white border-[#217e8f]' : 'bg-white/60 border-[#217e8f]/30'
                     } focus:bg-white`}
                     autoFocus
                   />
                   
                   {/* Fixed height container for dynamic content */}
-                  <div className="location-selection__dynamic-content h-40 flex flex-col">
-                    {isSearching ? (
-                      <div className="location-selection__search-loading text-xs text-gray-500 text-center py-2">
-                        Searching...
-                      </div>
-                    ) : searchResults.length > 0 ? (
-                      <div className="location-selection__search-results space-y-1 overflow-y-auto flex-1">
-                        {searchResults.map(result => {
-                          const isSelected = selectedLocation === formatLocationString(result);
-                          return (
-                            <button
-                              key={result.id}
-                              onClick={() => handleLocationSelect(result)}
-                              className={`location-selection__search-result w-full text-left px-2 py-2 rounded-md ${
-                                isSelected 
-                                  ? 'bg-white/60 border-2 border-[#1a6e7e]' 
-                                  : 'bg-white/60 hover:bg-white border border-gray-200'
-                              }`}
-                            >
-                              <div className="text-xs font-medium text-[#217e8f]">{result.name}</div>
-                              <div className="text-[10px] text-gray-600">{result.address}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="location-selection__no-results text-xs text-gray-500 text-center py-2">
-                        {customLocationInput.trim() ? 'No locations found' : 'Start typing to search...'}
-                      </div>
-                    )}
+                  <div className="location-selection__dynamic-content h-[170px] flex flex-col">
+                    {/* Scrollable content area that takes up available space */}
+                    <div className="location-selection__scrollable-content flex-1 overflow-y-auto scrollbar-hide">
+                      {isSearching ? (
+                        <div className="location-selection__search-loading text-xs text-gray-500 text-center py-2">
+                          Searching...
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        <div className="location-selection__search-results space-y-2 pt-2">
+                          {searchResults.map(result => {
+                            const isSelected = selectedLocation === formatLocationString(result);
+                            return (
+                              <button
+                                key={result.id}
+                                onClick={() => handleLocationSelect(result)}
+                                className={`location-selection__search-result w-full text-left px-2 py-2 rounded-md transition-all duration-200 ${
+                                  isSelected 
+                                    ? 'bg-white border-2 border-emerald-500 shadow-lg shadow-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-2 ring-emerald-500/25' 
+                                    : 'bg-white/60 hover:bg-white border border-gray-200'
+                                }`}
+                              >
+                                <div className="text-[13px] font-medium text-[#217e8f]">{result.name}</div>
+                                <div className="text-[13px] text-gray-600">{result.address}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="location-selection__no-results text-xs text-gray-500 text-center py-2">
+                          {customLocationInput.trim() ? 'No locations found' : 'Start typing to search...'}
+                        </div>
+                      )}
+                    </div>
                     
-                    {/* Fixed position manual submit button */}
-                    <div className="location-selection__manual-submit-container mt-2 h-8 flex items-center">
+                    {/* Fixed position manual submit button - always at bottom */}
+                    <div className="location-selection__manual-submit-container h-8 flex items-center flex-shrink-0">
                       <button
                         onClick={handleManualLocationSubmit}
                         disabled={!customLocationInput.trim() || isSearching}
-                        className={`location-selection__manual-submit w-full text-xs px-2 py-1 rounded-md transition-opacity ${
-                          customLocationInput.trim() 
-                            ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e] opacity-100' 
-                            : 'bg-gray-300 text-gray-500 opacity-0 pointer-events-none'
-                        }`}
+                        className="location-selection__manual-submit w-full h-[30px] rounded-md bg-[#217e8f] text-white text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none hover:bg-[#1a6b7a] active:scale-95 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500"
                       >
-                        {selectedLocation ? 'Confirm Location' : 'Use as location'}
+                        {selectedLocation ? 'Confirm Location' : 'Use As Location'}
                       </button>
                     </div>
                   </div>
@@ -264,38 +264,51 @@ export const LocationSelection: React.FC<Props> = ({
               </div>
             ) : (
               <div className="location-selection__options">
-                <button 
-                  onClick={() => setShowLocationSearch(true)} 
-                  className="location-selection__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 sticky top-0 z-10 mb-1"
-                >
-                  New Location
-                </button>
-                <div className="location-selection__scrollable-options space-y-1 max-h-28 overflow-y-auto">
-                  {getLocationButtons().map(loc => {
-                    const isSelected = selectedPredefinedLocation === loc.id;
-                    return (
-                      <div key={loc.id} className="location-selection__option-container relative">
+                {/* Fixed height container for predefined options */}
+                <div className="location-selection__predefined-content h-[229px] flex flex-col">
+                  {/* Sticky New Location button that looks like a scrollable option */}
+                  <button 
+                    onClick={() => setShowLocationSearch(true)} 
+                    className="location-selection__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center mb-2"
+                  >
+                    New Location
+                  </button>
+                  
+                  {/* Scrollable predefined options */}
+                  <div className="location-selection__scrollable-options space-y-2 flex-1 overflow-y-auto scrollbar-hide">
+                    {getLocationButtons().map(loc => {
+                      const isSelected = selectedPredefinedLocation === loc.id;
+                      return (
                         <button 
+                          key={loc.id}
                           onClick={() => handlePredefinedLocationSelect(loc.id)} 
-                          className={`location-selection__option w-full text-xs px-1 py-0.5 rounded-md ${
+                          className={`location-selection__option w-full text-[13px] px-1 py-1.5 rounded-lg transition-all duration-200 ${
                             isSelected 
-                              ? 'bg-white text-[#217e8f] border-2 border-[#217e8f]/30 font-semibold' 
-                              : 'bg-white/60 text-[#217e8f] hover:bg-white'
-                          }`}
+                              ? 'bg-white text-[#217e8f] border-2 border-emerald-500 font-semibold shadow-lg shadow-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-2 ring-emerald-500/25' 
+                              : 'text-[#217e8f] hover:bg-white'
+                          } flex justify-center`}
+                          style={!isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.6)' } : {}}
                         >
                           {loc.label}
                         </button>
-                        {isSelected && (
-                          <button
-                            onClick={handleConfirmPredefinedLocation}
-                            className="location-selection__confirm-btn absolute right-[18%] top-1/2 transform -translate-y-1/2 translate-x-1/2 bg-[#217e8f] text-white text-[10px] px-2 py-0.5 rounded-md hover:bg-[#1a6e7e] transition-colors shadow-sm"
-                          >
-                            Confirm
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Fixed position confirm button - always at bottom */}
+                  <div className="location-selection__predefined-confirm-container h-8 flex items-center flex-shrink-0">
+                    <button
+                      onClick={handleConfirmPredefinedLocation}
+                      disabled={!selectedPredefinedLocation}
+                      className={`location-selection__predefined-confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                        selectedPredefinedLocation 
+                          ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {selectedPredefinedLocation ? 'Confirm Location' : 'Select Location'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
