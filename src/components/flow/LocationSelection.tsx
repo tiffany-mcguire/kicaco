@@ -269,13 +269,13 @@ export const LocationSelection: React.FC<Props> = ({
                   {/* Sticky New Location button that looks like a scrollable option */}
                   <button 
                     onClick={() => setShowLocationSearch(true)} 
-                    className="location-selection__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center mb-2"
+                    className="location-selection__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center"
                   >
                     New Location
                   </button>
                   
                   {/* Scrollable predefined options */}
-                  <div className="location-selection__scrollable-options space-y-2 flex-1 overflow-y-auto scrollbar-hide">
+                  <div className="location-selection__scrollable-options space-y-2 flex-1 overflow-y-auto scrollbar-hide pt-2">
                     {getLocationButtons().map(loc => {
                       const isSelected = selectedPredefinedLocation === loc.id;
                       return (

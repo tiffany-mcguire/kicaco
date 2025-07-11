@@ -14,7 +14,7 @@ import { generateUUID } from '../utils/uuid';
 // Rainbow colors palette
 const rainbowColors = [
   { name: 'Pink', value: '#f8b6c2', dark: '#f48fb1' },
-  { name: 'Orange', value: '#fbd3a2', dark: '#ffb380' },
+  { name: 'Orange', value: '#ffd8b5', dark: '#ffb380' },
   { name: 'Yellow', value: '#fde68a', dark: '#fbbf24' },
   { name: 'Green', value: '#bbf7d0', dark: '#81c784' },
   { name: 'Blue', value: '#c0e2e7', dark: '#90cad1' },
@@ -29,14 +29,14 @@ const UpdateChildButton = (props: { label?: string; onClick?: () => void; disabl
 
   const getButtonStyle = () => {
     let s = {
-      width: '140px',
+      width: '115px',
       height: '30px',
       padding: '0px 8px',
       border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
       fontWeight: 500,
-      fontSize: '14px',
+      fontSize: '13px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
       background: '#217e8f',

@@ -99,18 +99,6 @@ const ProfilesRolesIcon = () => (
   </svg>
 );
 
-const UpdateProfilesButton = (props: { label?: string }) => {
-  return (
-    <button
-      type="button"
-      onClick={() => console.log('Update profiles')}
-      className="px-4 py-1.5 bg-[#217e8f] text-white text-sm font-medium rounded-md hover:bg-[#1a6e7e] active:scale-95 transition-all"
-    >
-      {props.label ?? 'Update Profiles'}
-    </button>
-  );
-};
-
 const BigActionButton = (props: { children: React.ReactNode; onClick?: () => void }) => {
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
@@ -119,12 +107,12 @@ const BigActionButton = (props: { children: React.ReactNode; onClick?: () => voi
   const getButtonStyle = () => {
     let s = {
       height: '30px',
-      width: '140px',
+      width: '115px',
       margin: '12px auto 0 auto',
       padding: '0px 8px',
       boxSizing: 'border-box' as const,
       fontWeight: 400,
-      fontSize: '14px',
+      fontSize: '13px',
       lineHeight: '20px',
       background: '#fff',
       color: '#217e8f',
@@ -652,7 +640,6 @@ export default function ProfilesRoles() {
         ref={subheaderRef}
         icon={<Users />}
         title="Profiles & Roles"
-        action={<UpdateProfilesButton />}
       />
       <div
         ref={pageScrollRef}

@@ -20,14 +20,14 @@ const SaveButton = (props: { label?: string; onClick?: () => void }) => {
 
   const getButtonStyle = () => {
     let s = {
-      width: '140px',
+      width: '115px',
       height: '30px',
       padding: '0px 8px',
       border: 'none',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
       fontWeight: 400,
-      fontSize: '14px',
+      fontSize: '13px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
       background: '#217e8f',
