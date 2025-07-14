@@ -7,26 +7,84 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
   const [editingLocationForDay, setEditingLocationForDay] = useState<number | null>(null);
   const [showFullPickerFor, setShowFullPickerFor] = useState<string | null>(null);
   const [customTime, setCustomTime] = useState({ hour: '', minute: '', ampm: '' });
+  const [hasUserScrolled, setHasUserScrolled] = useState(false);
+  const [hasUserScrolledScrollable, setHasUserScrolledScrollable] = useState(false);
   const scrollableTimeRef = useRef<HTMLDivElement>(null);
   const singleTimeScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (editingTimeForDate && !showFullPickerFor && scrollableTimeRef.current) {
-      // Scroll to noon-ish time
+    if (editingTimeForDate && !showFullPickerFor && scrollableTimeRef.current && !hasUserScrolledScrollable) {
+      // Scroll to noon-ish time only if user hasn't manually scrolled
       const noonElement = scrollableTimeRef.current.querySelector('[data-time="12:00 PM"]');
       if (noonElement) {
         noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
       }
     }
-  }, [editingTimeForDate, showFullPickerFor]);
+  }, [editingTimeForDate, showFullPickerFor, hasUserScrolledScrollable]);
+
+  // Handle return from custom picker to scrollable times for CustomTimeSelection
+  useEffect(() => {
+    if (flowContext.step === 'customTimeSelection' && showFullPickerFor === null && scrollableTimeRef.current && !hasUserScrolledScrollable) {
+      // Only scroll to noon if user hasn't manually scrolled
+      const noonElement = scrollableTimeRef.current.querySelector('[data-time="12:00 PM"]');
+      if (noonElement) {
+        noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    }
+  }, [showFullPickerFor, hasUserScrolledScrollable]);
 
   useEffect(() => {
     if (flowContext.step === 'whenTimePeriod' && singleTimeScrollRef.current) {
-      // Scroll to noon-ish time for single time picker
+      // Scroll to noon-ish time for single time picker on initial load
       const noonElement = singleTimeScrollRef.current.querySelector('[data-time="12:00 PM"]');
       if (noonElement) {
         noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
       }
+      setHasUserScrolled(false); // Reset scroll tracking when step changes
+    }
+  }, [flowContext.step]);
+
+  // Handle return from custom picker to scrollable times
+  useEffect(() => {
+    if (flowContext.step === 'whenTimePeriod' && showFullPickerFor === null && singleTimeScrollRef.current && !hasUserScrolled) {
+      // Only scroll to noon if user hasn't manually scrolled
+      const noonElement = singleTimeScrollRef.current.querySelector('[data-time="12:00 PM"]');
+      if (noonElement) {
+        noonElement.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    }
+  }, [showFullPickerFor, hasUserScrolled]);
+
+  // Track user scrolling for single time picker
+  useEffect(() => {
+    const scrollContainer = singleTimeScrollRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      setHasUserScrolled(true);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Track user scrolling for scrollable time picker
+  useEffect(() => {
+    const scrollContainer = scrollableTimeRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      setHasUserScrolledScrollable(true);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Reset scroll tracking when step changes
+  useEffect(() => {
+    if (flowContext.step === 'customTimeSelection' || flowContext.step === 'dayBasedTimeGrid') {
+      setHasUserScrolledScrollable(false);
     }
   }, [flowContext.step]);
 

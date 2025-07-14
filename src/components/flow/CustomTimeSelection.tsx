@@ -31,7 +31,7 @@ export const CustomTimeSelection: React.FC<Props> = ({
 }) => {
   const generateTimeOptions = () => {
     const options = [];
-    for (let h = 7; h <= 21; h++) { // 7am to 9pm
+    for (let h = 7; h <= 21; h++) {
       options.push(`${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
       options.push(`${h % 12 === 0 ? 12 : h % 12}:30 ${h < 12 || h === 24 ? 'AM' : 'PM'}`);
     }
@@ -44,193 +44,299 @@ export const CustomTimeSelection: React.FC<Props> = ({
     }
   };
 
+  const getFormattedDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+    const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+    return { dayOfWeekName, dayNum, monthName };
+  };
+
+  const getDayOfWeekIndex = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const jsDay = date.getDay();
+    return jsDay === 0 ? 6 : jsDay - 1;
+  };
+
+  const renderDateCard = (dateStr: string) => {
+    const { dayOfWeekName, dayNum, monthName } = getFormattedDate(dateStr);
+    const dayOfWeekIndex = getDayOfWeekIndex(dateStr);
+    const bgColor = roygbivColors[dayOfWeekIndex];
+    const time = flowContext.eventPreview.dayBasedTimes?.[dateStr];
+    const isEditing = editingTimeForDate === dateStr;
+    const quickTimeOptions = generateTimeOptions();
+
+    return (
+      <div 
+        key={dateStr} 
+        className="custom-time-selection__date-card flex flex-col rounded-lg border-2 overflow-hidden" 
+        style={{ 
+          backgroundColor: bgColor,
+          borderColor: `color-mix(in srgb, ${bgColor} 90%, black)`
+        }}
+      >
+        {isEditing && (
+          <div className="custom-time-selection__date-header text-center px-4 pt-4 pb-2">
+            <h3 className="font-semibold text-gray-800 text-[13px]">
+              {dayOfWeekName}, {monthName} {dayNum}
+            </h3>
+          </div>
+        )}
+
+        <div className="custom-time-selection__time-display px-1 py-2">
+          {time && !isEditing && (
+            <div className="px-1">
+              <button
+                onClick={() => {
+                  setEditingTimeForDate(dateStr);
+                  setShowFullPickerFor(null);
+                  const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                  if (match) {
+                    setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
+                  }
+                }}
+                className="custom-time-selection__selected-time w-full text-[13px] font-semibold text-[#217e8f] py-1.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                style={{ 
+                  backgroundColor: `color-mix(in srgb, ${bgColor} 30%, white)`,
+                  borderColor: `color-mix(in srgb, ${bgColor} 70%, black)`,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  boxShadow: `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                  e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 80%, black)`;
+                  e.currentTarget.style.boxShadow = `0 4px 8px color-mix(in srgb, ${bgColor} 60%, black)`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 30%, white)`;
+                  e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 70%, black)`;
+                  e.currentTarget.style.boxShadow = `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`;
+                }}
+              >
+                <span className="font-semibold text-gray-800">{monthName} {dayNum}</span>
+                <span>|</span>
+                <span>{time}</span>
+              </button>
+            </div>
+          )}
+
+          {isEditing && showFullPickerFor === dateStr && (
+            <div className="custom-time-selection__custom-picker space-y-3 w-full px-1 sm:px-2">
+              <div className="custom-time-selection__hour-section bg-white/50 rounded-lg p-1">
+                <div className="text-center text-xs font-semibold text-gray-600 mb-2">Select Hour</div>
+                <div className="custom-time-selection__hour-grid grid grid-cols-6 gap-0.5 sm:gap-1">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                    <button 
+                      key={h}
+                      onClick={() => setCustomTime({ ...customTime, hour: h.toString() })}
+                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                        customTime.hour === h.toString()
+                          ? 'bg-[#217e8f] text-white'
+                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                      }`}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="custom-time-selection__minute-section bg-white/50 rounded-lg p-1">
+                <div className="text-center text-xs font-semibold text-gray-600 mb-2">Minute</div>
+                <div className="custom-time-selection__minute-grid grid grid-cols-4 gap-0.5 sm:gap-1">
+                  {['00', '15', '30', '45'].map(m => (
+                    <button 
+                      key={m}
+                      onClick={() => setCustomTime({ ...customTime, minute: m })}
+                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                        customTime.minute === m
+                          ? 'bg-[#217e8f] text-white'
+                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="custom-time-selection__ampm-section bg-white/50 rounded-lg p-1">
+                <div className="text-center text-xs font-semibold text-gray-600 mb-2">AM/PM</div>
+                <div className="custom-time-selection__ampm-grid grid grid-cols-2 gap-0.5 sm:gap-1">
+                  {['AM', 'PM'].map(period => (
+                    <button 
+                      key={period}
+                      onClick={() => setCustomTime({ ...customTime, ampm: period })}
+                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                        customTime.ampm === period
+                          ? 'bg-[#217e8f] text-white'
+                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                      }`}
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="py-6">
+                <button 
+                  onClick={() => handleSetTimeForDate(dateStr, `${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
+                  disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
+                  className={`custom-time-selection__set-time-btn w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                    (customTime.minute && customTime.hour && customTime.ampm) 
+                      ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {(customTime.minute && customTime.hour && customTime.ampm) ? 'Confirm Time' : 'Select Time'}
+                </button>
+              </div>
+              <button 
+                onClick={() => setShowFullPickerFor(null)} 
+                className="custom-time-selection__back-btn w-full text-xs md:text-[13px] text-[#217e8f] whitespace-nowrap"
+              >
+                ← Scrollable Time
+              </button>
+            </div>
+          )}
+
+          {isEditing && showFullPickerFor !== dateStr && (
+            <div className="custom-time-selection__scroll-picker">
+              <div className="px-1">
+                <button 
+                  onClick={() => { 
+                    setShowFullPickerFor(dateStr); 
+                    setCustomTime({ hour: '', minute: '', ampm: '' }); 
+                  }} 
+                  className="custom-time-selection__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center"
+                >
+                  Custom
+                </button>
+              </div>
+              
+              <div className="custom-time-selection__time-content h-[240px] flex flex-col px-1">
+                <div ref={scrollableTimeRef} className="custom-time-selection__scrollable-options space-y-[8.5px] flex-1 overflow-y-auto hide-scrollbar pt-[8.5px]">
+                  {quickTimeOptions.map((opt) => {
+                    const isSelected = flowContext.eventPreview.dayBasedTimes?.[dateStr] === opt;
+                    return (
+                      <button
+                        key={opt}
+                        data-time={opt}
+                        onClick={() => {
+                          const newTimes = { ...flowContext.eventPreview.dayBasedTimes };
+                          if (isSelected) {
+                            delete newTimes[dateStr];
+                          } else {
+                            newTimes[dateStr] = opt;
+                          }
+                          setFlowContext(prev => ({
+                            ...prev,
+                            eventPreview: {
+                              ...prev.eventPreview,
+                              dayBasedTimes: newTimes
+                            }
+                          }));
+                        }}
+                        className={`custom-time-selection__time-option w-full text-[13px] px-1 py-1.5 rounded-lg transition-all duration-200 ${
+                          isSelected 
+                            ? 'bg-white text-[#217e8f] border-2 border-emerald-500 font-semibold shadow-lg shadow-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-2 ring-emerald-500/25' 
+                            : 'text-[#217e8f] hover:bg-white'
+                        } flex justify-center`}
+                        style={!isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.6)' } : {}}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="custom-time-selection__confirm-container h-8 flex items-center flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      const selectedTime = flowContext.eventPreview.dayBasedTimes?.[dateStr];
+                      if (selectedTime) {
+                        handleSetTimeForDate(dateStr, selectedTime);
+                        setEditingTimeForDate(null);
+                      }
+                    }}
+                    disabled={!flowContext.eventPreview.dayBasedTimes?.[dateStr]}
+                    className={`custom-time-selection__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                      flowContext.eventPreview.dayBasedTimes?.[dateStr] 
+                        ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {flowContext.eventPreview.dayBasedTimes?.[dateStr] ? 'Confirm Time' : 'Select Time'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!time && !isEditing && (
+            <div className="px-1">
+              <button 
+                onClick={() => { 
+                  setEditingTimeForDate(dateStr); 
+                  setShowFullPickerFor(null); 
+                }} 
+                className="custom-time-selection__set-time-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="font-semibold text-gray-800">{monthName} {dayNum}</span>
+                <span>|</span>
+                <span>Set Time</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
+  const leftColumnDates = dates.filter((_, index) => index % 2 === 0);
+  const rightColumnDates = dates.filter((_, index) => index % 2 === 1);
+
   return (
     <div className="custom-time-selection bg-white rounded-lg shadow-sm p-3 mb-8">
-      <div className="custom-time-selection__grid grid grid-cols-3 gap-2">
-        {(() => {
-          const dates = [...(flowContext.eventPreview.selectedDates || [])].sort();
-          const numColumns = 3; // Use 3 columns for mobile-first design
-          
-          // Better distribution algorithm
-          const quarters: string[][] = Array.from({ length: numColumns }, () => []);
-          const itemsPerColumn = Math.floor(dates.length / numColumns);
-          const extraItems = dates.length % numColumns;
-          
-          let dateIndex = 0;
-          for (let col = 0; col < numColumns; col++) {
-            const itemsInThisColumn = itemsPerColumn + (col < extraItems ? 1 : 0);
-            quarters[col] = dates.slice(dateIndex, dateIndex + itemsInThisColumn);
-            dateIndex += itemsInThisColumn;
-          }
-          
-          return quarters.map((quarter, qIndex) => (
-            <div key={qIndex} className="custom-time-selection__column space-y-2">
-              {quarter.map((dateStr) => {
-                // Timezone-safe date parsing
-                const [year, month, day] = dateStr.split('-').map(Number);
-                const date = new Date(year, month - 1, day);
-                
-                const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-                const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
-                const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-                
-                const jsDay = date.getDay();
-                const dayOfWeekIndex = jsDay === 0 ? 6 : jsDay - 1;
-                const bgColor = roygbivColors[dayOfWeekIndex];
-
-                const time = flowContext.eventPreview.dayBasedTimes?.[dateStr];
-                const isEditing = editingTimeForDate === dateStr;
-                const quickTimeOptions = generateTimeOptions();
-
-                return (
-                  <div key={dateStr} className="custom-time-selection__date-card flex flex-col items-center justify-between p-1.5 rounded-lg text-center border-2" style={{ backgroundColor: bgColor, borderColor: `color-mix(in srgb, ${bgColor} 90%, black)` }}>
-                    <div className="custom-time-selection__date-header font-semibold text-gray-800 text-xs mb-1">{`${dayOfWeekName}, ${monthName} ${dayNum}`}</div>
-                    <div className="custom-time-selection__time-picker time-all-dates mt-1 w-full flex-grow flex items-center justify-center">
-                      {isEditing ? (
-                        <div className="custom-time-selection__time-editor w-full time-all-dates">
-                          {showFullPickerFor === dateStr ? (
-                            customTime.hour === '' ? (
-                              <div className="custom-time-selection__hour-grid grid grid-cols-4 gap-1 p-1 bg-white/50 rounded-lg">
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                                  <button 
-                                    key={h} 
-                                    onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                                    className="custom-time-selection__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]"
-                                  >
-                                    {h}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="custom-time-selection__minute-ampm-picker flex items-center justify-center gap-2">
-                                <div className="custom-time-selection__minute-section flex flex-col gap-1">
-                                  {['00', '15', '30', '45'].map(m => (
-                                    <button 
-                                      key={m} 
-                                      onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                      className={`custom-time-selection__minute-btn text-xs p-1 w-10 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]'}`}
-                                    >
-                                      {`:${m}`}
-                                    </button>
-                                  ))}
-                                </div>
-                                <div className="custom-time-selection__ampm-section flex flex-col gap-1">
-                                  <button 
-                                    onClick={() => handleSetTimeForDate(dateStr, `${customTime.hour}:${customTime.minute} AM`)} 
-                                    disabled={!customTime.minute} 
-                                    className="custom-time-selection__ampm-btn custom-time-selection__ampm-btn--am text-xs px-2 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
-                                  >
-                                    AM
-                                  </button>
-                                  <button 
-                                    onClick={() => handleSetTimeForDate(dateStr, `${customTime.hour}:${customTime.minute} PM`)} 
-                                    disabled={!customTime.minute} 
-                                    className="custom-time-selection__ampm-btn custom-time-selection__ampm-btn--pm text-xs px-2 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
-                                  >
-                                    PM
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          ) : (
-                            <div className="custom-time-selection__time-options">
-                              <button 
-                                onClick={() => { 
-                                  setShowFullPickerFor(dateStr); 
-                                  setCustomTime({ hour: '', minute: '', ampm: '' }); 
-                                }} 
-                                className="custom-time-selection__custom-btn w-full text-xs bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 sticky top-0 z-10 mb-1"
-                              >
-                                Custom
-                              </button>
-                              <div ref={scrollableTimeRef} className="custom-time-selection__scrollable-options space-y-1 max-h-28 overflow-y-auto">
-                                {quickTimeOptions.map(opt => (
-                                  <button 
-                                    key={opt} 
-                                    data-time={opt} 
-                                    onClick={() => handleSetTimeForDate(dateStr, opt)} 
-                                    className="custom-time-selection__time-option w-full text-xs bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white"
-                                  >
-                                    {opt}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : time ? (
-                        <button
-                          onClick={() => {
-                            setEditingTimeForDate(dateStr);
-                            setShowFullPickerFor(null);
-                            // Pre-fill the custom picker with the existing time
-                            const match = time.match(/(\d{1,4}):?(\d{2})?\s*(am|pm)/i);
-                            if (match) {
-                              let [, timeDigits, explicitMinutes, period] = match;
-                              let hours, minutes;
-                              
-                              if (explicitMinutes) {
-                                hours = timeDigits;
-                                minutes = explicitMinutes;
-                              } else if (timeDigits.length <= 2) {
-                                hours = timeDigits;
-                                minutes = '00';
-                              } else {
-                                hours = timeDigits.slice(0, -2);
-                                minutes = timeDigits.slice(-2);
-                              }
-                              
-                              const formattedHours = hours.padStart(2, '0');
-                              const formattedMinutes = minutes.padStart(2, '0');
-                              return `${formattedHours}:${formattedMinutes} ${period.toUpperCase()}`;
-                            }
-                            return time;
-                          }}
-                          className="custom-time-selection__selected-time text-sm font-semibold text-[#217e8f] px-2 py-1 rounded-md w-full"
-                          style={{ 
-                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
-                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
-                            borderWidth: '0.5px',
-                            borderStyle: 'solid',
-                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
-                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
-                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
-                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
-                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
-                          }}
-                        >
-                          {time}
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => { 
-                            setEditingTimeForDate(dateStr); 
-                            setShowFullPickerFor(null); 
-                          }} 
-                          className="custom-time-selection__set-time-btn text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
-                        >
-                          Set Time
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ));
-        })()}
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      
+      <div className="custom-time-selection__dates flex gap-3">
+        <div className="flex-1 space-y-3 min-w-0">
+          {leftColumnDates.map(renderDateCard)}
+        </div>
+        
+        <div className="flex-1 space-y-3 min-w-0">
+          {rightColumnDates.map(renderDateCard)}
+        </div>
       </div>
+      
+      
       <div className="custom-time-selection__actions mt-4 flex justify-end">
         <button
           onClick={handleContinue}
           disabled={!areAllTimesSet}
-          className="custom-time-selection__continue-btn bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="custom-time-selection__continue-btn bg-[#217e8f] text-white rounded-md font-medium transition-colors enabled:hover:bg-[#1a6e7e] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+          style={{
+            width: '115px',
+            height: '30px',
+            fontSize: '13px',
+            lineHeight: '20px',
+            fontWeight: 500,
+            borderRadius: '6px',
+            padding: '0px 8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden'
+          }}
         >
           {areAllTimesSet ? 'Times Set' : 'Set Times'}
         </button>
