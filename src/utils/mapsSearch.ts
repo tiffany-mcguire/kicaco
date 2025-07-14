@@ -64,4 +64,15 @@ export const searchWithGooglePlaces = async (query: string): Promise<LocationRes
 
 export const formatLocationString = (location: LocationResult): string => {
   return `${location.name} - ${location.address}`;
+};
+
+export const formatLocationForDisplay = (location: LocationResult): string => {
+  // If location has a name, use just the name
+  if (location.name && location.name.trim()) {
+    return location.name;
+  }
+  
+  // If no name, extract just the street address (everything before the first comma)
+  const streetAddress = location.address.split(',')[0];
+  return streetAddress.trim();
 }; 
