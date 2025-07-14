@@ -59,6 +59,7 @@ export function useFlowPickers(flowContext: FlowContext, setFlowContext: React.D
       }
     });
     setEditingTimeForDay(null);
+    setShowFullPickerFor(null);
     setCustomTime({ hour: '', minute: '', ampm: '' });
   };
 

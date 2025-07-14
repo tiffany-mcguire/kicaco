@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getUniqueDaysOfWeek } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
@@ -28,6 +28,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
   scrollableTimeRef,
   handleSetTimeForDay
 }) => {
+  const [expandedDates, setExpandedDates] = useState<{[key: number]: boolean}>({});
   const generateTimeOptions = () => {
     const options = [];
     for (let h = 7; h <= 21; h++) {
@@ -87,232 +88,598 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
           display: none;
         }
       `}</style>
-      <div className="day-based-time-grid__grid grid grid-cols-4 gap-2">
-        {(() => {
-          const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-          
-          // Create 4 columns: Mon-Thu in first positions, Fri-Sun in next positions
-          const columns: Array<Array<number>> = Array.from({ length: 4 }, () => []);
-          
-          // Place Monday-Thursday in columns 0-3
-          for (let dayIndex = 0; dayIndex <= 3; dayIndex++) {
-            columns[dayIndex].push(dayIndex);
-          }
-          
-          // Place Friday-Sunday in columns 0-2 (below Mon-Thu)
-          for (let dayIndex = 4; dayIndex <= 6; dayIndex++) {
-            columns[dayIndex - 4].push(dayIndex);
-          }
-          
-          return columns.map((column, colIndex) => (
-            <div key={`col${colIndex}`} className="day-based-time-grid__column space-y-2">
-              {column.map((dayIndex) => {
-                const bgColor = roygbivColors[dayIndex];
-                const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
-                const isEditing = editingTimeForDay === dayIndex;
-                const hasSelectedDates = dayHasSelectedDates(dayIndex);
-                const datesForThisDay = getDatesForDay(dayIndex);
-                const quickTimeOptions = generateTimeOptions();
-                const hasMoreThanFourDates = datesForThisDay.length > 4;
+      
+      <div className="day-based-time-grid__days flex gap-3">
+        {/* Left Column - Monday, Tuesday, Wednesday, Thursday */}
+        <div className="flex-1 space-y-3 min-w-0">
+          {[0, 1, 2, 3].filter(dayIndex => dayHasSelectedDates(dayIndex)).map((dayIndex) => {
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const bgColor = roygbivColors[dayIndex];
+            const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
+            const isEditing = editingTimeForDay === dayIndex;
+            const datesForThisDay = getDatesForDay(dayIndex);
+            const quickTimeOptions = generateTimeOptions();
 
-                return (
-                  <div 
-                    key={dayIndex} 
-                    className={`day-based-time-grid__day-card flex flex-col p-1.5 rounded-lg ${
-                      hasSelectedDates ? 'border-2' : 'opacity-40'
-                    } max-[375px]:mx-[-2px]`}
-                    style={{ 
-                      backgroundColor: bgColor,
-                      borderColor: hasSelectedDates ? `color-mix(in srgb, ${bgColor} 90%, black)` : 'transparent',
-                      minHeight: '200px'
-                    }}
-                  >
-                    {/* Day name header */}
-                    <div className="day-based-time-grid__day-header font-semibold text-gray-800 text-xs mb-2 text-center max-[375px]:text-[11px]">
+            return (
+              <div 
+                key={dayIndex} 
+                className="day-based-time-grid__day-card flex flex-col rounded-lg border-2 overflow-hidden" 
+                style={{ 
+                  backgroundColor: bgColor,
+                  borderColor: `color-mix(in srgb, ${bgColor} 90%, black)`
+                }}
+              >
+                {/* Day Header - Only when time selection is expanded */}
+                {isEditing && (
+                  <div className="day-based-time-grid__day-header text-center px-4 pt-4 pb-2">
+                    <h3 className="font-semibold text-gray-800 text-xs md:text-sm">
                       {dayNames[dayIndex]}
+                    </h3>
+                  </div>
+                )}
+
+                {/* Time Button/Display with Day Name - Always Visible */}
+                <div className={`day-based-time-grid__time-display px-1 ${isEditing ? 'pb-2' : 'pt-3 pb-1'}`}>
+                  {time && !isEditing ? (
+                    <div className="px-1">
+                      <button
+                        onClick={() => {
+                          setEditingTimeForDay(dayIndex);
+                          setShowFullPickerFor(null);
+                          // Pre-fill the custom picker with the existing time
+                          const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                          if (match) {
+                            setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
+                          }
+                        }}
+                        className="day-based-time-grid__selected-time w-full text-[13px] font-semibold text-[#217e8f] py-1.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                        style={{ 
+                          backgroundColor: `color-mix(in srgb, ${bgColor} 30%, white)`,
+                          borderColor: `color-mix(in srgb, ${bgColor} 70%, black)`,
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                          boxShadow: `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                          e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 80%, black)`;
+                          e.currentTarget.style.boxShadow = `0 4px 8px color-mix(in srgb, ${bgColor} 60%, black)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 30%, white)`;
+                          e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 70%, black)`;
+                          e.currentTarget.style.boxShadow = `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`;
+                        }}
+                      >
+                        <span className="font-semibold text-gray-800">{dayNames[dayIndex]}</span>
+                        <span>{time}</span>
+                      </button>
                     </div>
-                    
-                    {/* Time picker area - natural height */}
-                    <div className="day-based-time-grid__time-picker w-full mb-2">
-                      {!hasSelectedDates ? (
-                        <div className="day-based-time-grid__no-dates text-xs text-gray-600 text-center py-2 bg-white/30 rounded-md">
-                          No dates selected
-                        </div>
-                      ) : isEditing ? (
-                        <div className="day-based-time-grid__time-editor w-full">
-                          {showFullPickerFor === `day-${dayIndex}` ? (
-                            customTime.hour === '' ? (
-                              <div className="day-based-time-grid__hour-grid grid grid-cols-3 gap-1 p-1 bg-white/50 rounded-lg">
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                  ) : isEditing ? (
+                    <div className="day-based-time-grid__time-picker w-full">
+                      {showFullPickerFor === `day-${dayIndex}` ? (
+                        <div className="day-based-time-grid__custom-picker space-y-3 w-full px-1 sm:px-2">
+                          {/* Hour Keypad - Top Row */}
+                          <div className="day-based-time-grid__hour-section bg-white/50 rounded-lg p-1">
+                            <div className="text-center text-xs font-semibold text-gray-600 mb-2">Select Hour</div>
+                            <div className="day-based-time-grid__hour-grid grid grid-cols-6 gap-0.5 sm:gap-1">
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                                <button 
+                                  key={h}
+                                  onClick={() => setCustomTime({ ...customTime, hour: h.toString() })}
+                                  className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                    customTime.hour === h.toString()
+                                      ? 'bg-[#217e8f] text-white'
+                                      : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                                  }`}
+                                >
+                                  {h}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-5 gap-1 sm:gap-2 mt-2">
+                            {/* Minutes */}
+                            <div className="bg-white/50 rounded-lg p-1 sm:p-2 col-span-3">
+                              <div className="text-center text-xs font-semibold text-gray-600 mb-2">Minutes</div>
+                              <div className="grid grid-cols-2 gap-1 sm:gap-2">
+                                {['00', '15', '30', '45'].map(m => (
                                   <button 
-                                    key={h} 
-                                    onClick={() => setCustomTime({ ...customTime, hour: h.toString() })} 
-                                    className="day-based-time-grid__hour-btn text-xs font-semibold p-1 rounded-md bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]"
+                                    key={m}
+                                    onClick={() => setCustomTime({ ...customTime, minute: m })}
+                                    className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      customTime.minute === m
+                                        ? 'bg-[#217e8f] text-white'
+                                        : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                    }`}
+                                    disabled={!customTime.hour}
                                   >
-                                    {h}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="day-based-time-grid__minute-ampm-picker flex items-center justify-center gap-1">
-                                <div className="day-based-time-grid__minute-section flex flex-col gap-1">
-                                  {['00', '15', '30', '45'].map(m => (
-                                    <button 
-                                      key={m} 
-                                      onClick={() => setCustomTime({ ...customTime, minute: m })} 
-                                      className={`day-based-time-grid__minute-btn text-xs p-1 w-8 rounded-md font-semibold ${customTime.minute === m ? 'bg-[#217e8f] text-white' : 'bg-white/70 text-[#217e8f] hover:bg-white hover:text-[#1a6e7e]'}`}
-                                    >
-                                      {`:${m}`}
-                                    </button>
-                                  ))}
-                                </div>
-                                <div className="day-based-time-grid__ampm-section flex flex-col gap-1">
-                                  <button 
-                                    onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} AM`)} 
-                                    disabled={!customTime.minute} 
-                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--am text-xs px-1 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
-                                  >
-                                    AM
-                                  </button>
-                                  <button 
-                                    onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} PM`)} 
-                                    disabled={!customTime.minute} 
-                                    className="day-based-time-grid__ampm-btn day-based-time-grid__ampm-btn--pm text-xs px-1 py-1 rounded-md bg-white/70 text-[#217e8f] font-semibold hover:bg-white hover:text-[#1a6e7e] disabled:bg-gray-200 disabled:text-gray-400"
-                                  >
-                                    PM
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          ) : (
-                            <div className="day-based-time-grid__time-options">
-                              <button 
-                                onClick={() => { 
-                                  setShowFullPickerFor(`day-${dayIndex}`); 
-                                  setCustomTime({ hour: '', minute: '', ampm: '' }); 
-                                }} 
-                                className="day-based-time-grid__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-0.5 rounded-md hover:bg-[#217e8f]/30 max-[375px]:text-[11px] max-[375px]:px-0.5 sticky top-0 z-10 mb-1"
-                              >
-                                Custom
-                              </button>
-                              <div 
-                                ref={scrollableTimeRef}
-                                className="day-based-time-grid__scrollable-options space-y-1 overflow-y-auto hide-scrollbar max-h-20"
-                                style={{
-                                  scrollbarWidth: 'none',
-                                  msOverflowStyle: 'none'
-                                } as React.CSSProperties}
-                              >
-                                {quickTimeOptions.map(opt => (
-                                  <button 
-                                    key={opt} 
-                                    data-time={opt} 
-                                    onClick={() => handleSetTimeForDay(dayIndex, opt)} 
-                                    className="day-based-time-grid__time-option w-full text-[13px] bg-white/60 text-[#217e8f] px-1 py-0.5 rounded-md hover:bg-white max-[375px]:text-[11px] max-[375px]:px-0.5"
-                                  >
-                                    {opt}
+                                    :{m}
                                   </button>
                                 ))}
                               </div>
                             </div>
-                          )}
-                        </div>
-                      ) : time ? (
-                        <button
-                          onClick={() => {
-                            setEditingTimeForDay(dayIndex);
-                            setShowFullPickerFor(null);
-                            // Pre-fill the custom picker with the existing time
-                            const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                            if (match) {
-                              setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
-                            }
-                          }}
-                          className="day-based-time-grid__selected-time text-xs font-semibold text-[#217e8f] px-2 py-1 rounded-md w-full max-[375px]:text-[11px] max-[375px]:px-1"
-                          style={{ 
-                            backgroundColor: `color-mix(in srgb, ${bgColor} 40%, white)`,
-                            borderColor: `color-mix(in srgb, ${bgColor} 85%, black)`,
-                            borderWidth: '0.5px',
-                            borderStyle: 'solid',
-                            boxShadow: `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 50%, white)`;
-                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 90%, black)`;
-                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 90%, black)`;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
-                            e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 85%, black)`;
-                            e.currentTarget.style.boxShadow = `0 0 2px color-mix(in srgb, ${bgColor} 85%, black)`;
-                          }}
-                        >
-                          {time}
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => { 
-                            setEditingTimeForDay(dayIndex); 
-                            setShowFullPickerFor(null); 
-                          }} 
-                          className="day-based-time-grid__set-time-btn text-xs bg-black/5 text-[#217e8f] px-2 py-1 rounded-md hover:bg-black/10 w-full"
-                        >
-                          Set Time
-                        </button>
-                      )}
-                    </div>
-                  
-                    {/* Date slots area - positioned immediately below time picker */}
-                    <div className="day-based-time-grid__date-slots w-full">
-                      {hasSelectedDates ? (
-                        <>
-                          <div 
-                            className="day-based-time-grid__date-list space-y-1 hide-scrollbar"
-                            style={{
-                              height: '112px', // Fixed height for all containers (4 slots × 28px each)
-                              overflowY: hasMoreThanFourDates ? 'auto' : 'visible',
-                              scrollbarWidth: 'none',
-                              msOverflowStyle: 'none'
-                            } as React.CSSProperties}
+
+                            {/* AM/PM */}
+                            <div className="bg-white/50 rounded-lg p-1 sm:p-2 col-span-2">
+                              <div className="text-center text-xs font-semibold text-gray-600 mb-2">AM/PM</div>
+                              <div className="grid grid-cols-1 gap-1 sm:gap-2">
+                                {['AM', 'PM'].map(period => (
+                                  <button
+                                    key={period}
+                                    onClick={() => setCustomTime({ ...customTime, ampm: period })}
+                                    className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      customTime.ampm === period
+                                        ? 'bg-[#217e8f] text-white'
+                                        : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                    }`}
+                                    disabled={!customTime.hour}
+                                  >
+                                    {period}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="py-6">
+                            <button 
+                              onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
+                              disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
+                              className="day-based-time-grid__set-time-btn mx-auto bg-[#217e8f] text-white rounded-md font-semibold hover:bg-[#1a6b7a] disabled:bg-gray-300 disabled:text-gray-500"
+                              style={{
+                                width: '115px',
+                                height: '30px',
+                                fontSize: '13px',
+                                lineHeight: '20px',
+                                padding: '0px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 500,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              Set Time
+                            </button>
+                          </div>
+                          <button 
+                            onClick={() => setShowFullPickerFor(null)} 
+                            className="day-based-time-grid__back-btn w-full text-xs md:text-[13px] text-[#217e8f] whitespace-nowrap"
                           >
-                            {datesForThisDay.map((dateStr) => {
-                              const [year, month, day] = dateStr.split('-').map(Number);
-                              const date = new Date(year, month - 1, day);
-                              const dayOfWeekName = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-                              const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
-                              const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-                              
-                              return (
-                                <div 
-                                  key={dateStr} 
-                                  className="day-based-time-grid__date-item text-[10px] px-1 py-1 rounded text-center text-gray-700 font-medium bg-white/30 max-[375px]:text-[9px] max-[375px]:px-0.5 whitespace-nowrap flex items-center justify-center"
-                                  style={{ height: '24px', minHeight: '24px' }}
-                                >
-                                  {dayOfWeekName} {monthName} {dayNum}
-                                </div>
-                              );
-                            })}
+                            ← Scrollable Time
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="day-based-time-grid__scroll-picker">
+                          <div className="px-1">
+                            <button 
+                              onClick={() => { 
+                                setShowFullPickerFor(`day-${dayIndex}`); 
+                                setCustomTime({ hour: '', minute: '', ampm: '' }); 
+                              }} 
+                              className="day-based-time-grid__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center"
+                            >
+                              Custom
+                            </button>
                           </div>
                           
-                          {/* Helper text for overflow - always reserve space */}
-                          <div className="day-based-time-grid__scroll-hint text-[9px] text-gray-500 text-center italic mt-1" style={{ height: '14px' }}>
-                            {hasMoreThanFourDates ? 'Scroll for more' : ''}
+                          {/* Fixed height container for time options */}
+                          <div className="day-based-time-grid__time-content h-[240px] flex flex-col px-1">
+                            {/* Scrollable time options */}
+                            <div ref={scrollableTimeRef} className="day-based-time-grid__scrollable-options space-y-[8.5px] flex-1 overflow-y-auto hide-scrollbar">
+                              {quickTimeOptions.map((opt) => {
+                                const isSelected = flowContext.eventPreview.dayBasedTimes?.[dayIndex] === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    data-time={opt}
+                                    onClick={() => {
+                                      setFlowContext(prev => ({
+                                        ...prev,
+                                        eventPreview: {
+                                          ...prev.eventPreview,
+                                          dayBasedTimes: {
+                                            ...prev.eventPreview.dayBasedTimes,
+                                            [dayIndex]: isSelected ? undefined : opt
+                                          }
+                                        }
+                                      }));
+                                    }}
+                                    className={`day-based-time-grid__time-option w-full text-[13px] px-1 py-1.5 rounded-lg transition-all duration-200 ${
+                                      isSelected 
+                                        ? 'bg-white text-[#217e8f] border-2 border-emerald-500 font-semibold shadow-lg shadow-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-2 ring-emerald-500/25' 
+                                        : 'text-[#217e8f] hover:bg-white'
+                                    } flex justify-center`}
+                                    style={!isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.6)' } : {}}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Fixed position confirm button - always at bottom */}
+                            <div className="day-based-time-grid__confirm-container h-8 flex items-center flex-shrink-0">
+                              <button
+                                onClick={() => {
+                                  const selectedTime = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
+                                  if (selectedTime) {
+                                    handleSetTimeForDay(dayIndex, selectedTime);
+                                    setEditingTimeForDay(null);
+                                  }
+                                }}
+                                disabled={!flowContext.eventPreview.dayBasedTimes?.[dayIndex]}
+                                className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                  flowContext.eventPreview.dayBasedTimes?.[dayIndex] 
+                                    ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                {flowContext.eventPreview.dayBasedTimes?.[dayIndex] ? 'Confirm Time' : 'Select Time'}
+                              </button>
+                            </div>
                           </div>
-                        </>
-                      ) : null}
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <div className="px-1">
+                      <button 
+                        onClick={() => { 
+                          setEditingTimeForDay(dayIndex); 
+                          setShowFullPickerFor(null); 
+                        }} 
+                        className="day-based-time-grid__set-time-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="font-semibold text-gray-800">{dayNames[dayIndex]}</span>
+                        <span>Set Time</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dates Section - Collapsible */}
+                <div className="day-based-time-grid__dates-section bg-white/10 px-4 py-2">
+                  <button
+                    onClick={() => setExpandedDates(prev => ({...prev, [dayIndex]: !prev[dayIndex]}))}
+                    className="w-full text-center text-[11px] md:text-xs text-gray-500 mb-2 hover:text-gray-700 transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+                  >
+                    <span>{expandedDates[dayIndex] ? '−' : '+'}</span>
+                    <span>Selected dates ({datesForThisDay.length} total)</span>
+                  </button>
+                  {expandedDates[dayIndex] && (
+                    <div className="day-based-time-grid__date-list grid grid-cols-2 gap-2 justify-items-center">
+                      {datesForThisDay.map((dateStr) => {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+                        const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+                        
+                        return (
+                          <div 
+                            key={dateStr} 
+                            className="day-based-time-grid__date-item text-xs py-1 rounded bg-white/40 text-gray-700 font-medium whitespace-nowrap text-center w-[50px]"
+                          >
+                            {monthName} {dayNum}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Right Column - Friday, Saturday, Sunday */}
+        <div className="flex-1 space-y-3 min-w-0">
+          {[4, 5, 6].filter(dayIndex => dayHasSelectedDates(dayIndex)).map((dayIndex) => {
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const bgColor = roygbivColors[dayIndex];
+            const time = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
+            const isEditing = editingTimeForDay === dayIndex;
+            const datesForThisDay = getDatesForDay(dayIndex);
+            const quickTimeOptions = generateTimeOptions();
+
+            return (
+              <div 
+                key={dayIndex} 
+                className="day-based-time-grid__day-card flex flex-col rounded-lg border-2 overflow-hidden" 
+                style={{ 
+                  backgroundColor: bgColor,
+                  borderColor: `color-mix(in srgb, ${bgColor} 90%, black)`
+                }}
+              >
+                {/* Day Header - Only when time selection is expanded */}
+                {isEditing && (
+                  <div className="day-based-time-grid__day-header text-center px-4 pt-4 pb-2">
+                    <h3 className="font-semibold text-gray-800 text-xs md:text-sm">
+                      {dayNames[dayIndex]}
+                    </h3>
                   </div>
-                );
-              })}
-            </div>
-          ));
-        })()}
+                )}
+
+                {/* Time Button/Display with Day Name - Always Visible */}
+                <div className={`day-based-time-grid__time-display px-1 ${isEditing ? 'pb-2' : 'pt-3 pb-1'}`}>
+                  {time && !isEditing ? (
+                    <div className="px-1">
+                      <button
+                        onClick={() => {
+                          setEditingTimeForDay(dayIndex);
+                          setShowFullPickerFor(null);
+                          // Pre-fill the custom picker with the existing time
+                          const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                          if (match) {
+                            setCustomTime({ hour: match[1], minute: match[2], ampm: match[3] });
+                          }
+                        }}
+                        className="day-based-time-grid__selected-time w-full text-[13px] font-semibold text-[#217e8f] py-1.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                        style={{ 
+                          backgroundColor: `color-mix(in srgb, ${bgColor} 30%, white)`,
+                          borderColor: `color-mix(in srgb, ${bgColor} 70%, black)`,
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                          boxShadow: `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 40%, white)`;
+                          e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 80%, black)`;
+                          e.currentTarget.style.boxShadow = `0 4px 8px color-mix(in srgb, ${bgColor} 60%, black)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${bgColor} 30%, white)`;
+                          e.currentTarget.style.borderColor = `color-mix(in srgb, ${bgColor} 70%, black)`;
+                          e.currentTarget.style.boxShadow = `0 2px 4px color-mix(in srgb, ${bgColor} 50%, black)`;
+                        }}
+                      >
+                        <span className="font-semibold text-gray-800">{dayNames[dayIndex]}</span>
+                        <span>{time}</span>
+                      </button>
+                    </div>
+                  ) : isEditing ? (
+                    <div className="day-based-time-grid__time-picker w-full">
+                      {showFullPickerFor === `day-${dayIndex}` ? (
+                        <div className="day-based-time-grid__custom-picker space-y-3 w-full px-1 sm:px-2">
+                          {/* Hour Keypad - Top Row */}
+                          <div className="day-based-time-grid__hour-section bg-white/50 rounded-lg p-1">
+                            <div className="text-center text-xs font-semibold text-gray-600 mb-2">Select Hour</div>
+                            <div className="day-based-time-grid__hour-grid grid grid-cols-6 gap-0.5 sm:gap-1">
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                                <button 
+                                  key={h}
+                                  onClick={() => setCustomTime({ ...customTime, hour: h.toString() })}
+                                  className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                    customTime.hour === h.toString()
+                                      ? 'bg-[#217e8f] text-white'
+                                      : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                                  }`}
+                                >
+                                  {h}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-5 gap-1 sm:gap-2 mt-2">
+                            {/* Minutes */}
+                            <div className="bg-white/50 rounded-lg p-1 sm:p-2 col-span-3">
+                              <div className="text-center text-xs font-semibold text-gray-600 mb-2">Minutes</div>
+                              <div className="grid grid-cols-2 gap-1 sm:gap-2">
+                                {['00', '15', '30', '45'].map(m => (
+                                  <button 
+                                    key={m}
+                                    onClick={() => setCustomTime({ ...customTime, minute: m })}
+                                    className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      customTime.minute === m
+                                        ? 'bg-[#217e8f] text-white'
+                                        : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                    }`}
+                                    disabled={!customTime.hour}
+                                  >
+                                    :{m}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* AM/PM */}
+                            <div className="bg-white/50 rounded-lg p-1 sm:p-2 col-span-2">
+                              <div className="text-center text-xs font-semibold text-gray-600 mb-2">AM/PM</div>
+                              <div className="grid grid-cols-1 gap-1 sm:gap-2">
+                                {['AM', 'PM'].map(period => (
+                                  <button
+                                    key={period}
+                                    onClick={() => setCustomTime({ ...customTime, ampm: period })}
+                                    className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      customTime.ampm === period
+                                        ? 'bg-[#217e8f] text-white'
+                                        : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                    }`}
+                                    disabled={!customTime.hour}
+                                  >
+                                    {period}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="py-6">
+                            <button 
+                              onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
+                              disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
+                              className="day-based-time-grid__set-time-btn mx-auto bg-[#217e8f] text-white rounded-md font-semibold hover:bg-[#1a6b7a] disabled:bg-gray-300 disabled:text-gray-500"
+                              style={{
+                                width: '115px',
+                                height: '30px',
+                                fontSize: '13px',
+                                lineHeight: '20px',
+                                padding: '0px 8px',
+                                borderRadius: '6px',
+                                fontWeight: 500,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              Set Time
+                            </button>
+                          </div>
+                          <button 
+                            onClick={() => setShowFullPickerFor(null)} 
+                            className="day-based-time-grid__back-btn w-full text-xs md:text-[13px] text-[#217e8f] whitespace-nowrap"
+                          >
+                            ← Scrollable Time
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="day-based-time-grid__scroll-picker">
+                          <div className="px-1">
+                            <button 
+                              onClick={() => { 
+                                setShowFullPickerFor(`day-${dayIndex}`); 
+                                setCustomTime({ hour: '', minute: '', ampm: '' }); 
+                              }} 
+                              className="day-based-time-grid__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center"
+                            >
+                              Custom
+                            </button>
+                          </div>
+                          
+                          {/* Fixed height container for time options */}
+                          <div className="day-based-time-grid__time-content h-[240px] flex flex-col px-1">
+                            {/* Scrollable time options */}
+                            <div ref={scrollableTimeRef} className="day-based-time-grid__scrollable-options space-y-[8.5px] flex-1 overflow-y-auto hide-scrollbar">
+                              {quickTimeOptions.map((opt) => {
+                                const isSelected = flowContext.eventPreview.dayBasedTimes?.[dayIndex] === opt;
+                                return (
+                                  <button
+                                    key={opt}
+                                    data-time={opt}
+                                    onClick={() => {
+                                      setFlowContext(prev => ({
+                                        ...prev,
+                                        eventPreview: {
+                                          ...prev.eventPreview,
+                                          dayBasedTimes: {
+                                            ...prev.eventPreview.dayBasedTimes,
+                                            [dayIndex]: isSelected ? undefined : opt
+                                          }
+                                        }
+                                      }));
+                                    }}
+                                    className={`day-based-time-grid__time-option w-full text-[13px] px-1 py-1.5 rounded-lg transition-all duration-200 ${
+                                      isSelected 
+                                        ? 'bg-white text-[#217e8f] border-2 border-emerald-500 font-semibold shadow-lg shadow-emerald-500/30 shadow-[0_4px_12px_rgba(0,0,0,0.15)] ring-2 ring-emerald-500/25' 
+                                        : 'text-[#217e8f] hover:bg-white'
+                                    } flex justify-center`}
+                                    style={!isSelected ? { backgroundColor: 'rgba(255, 255, 255, 0.6)' } : {}}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Fixed position confirm button - always at bottom */}
+                            <div className="day-based-time-grid__confirm-container h-8 flex items-center flex-shrink-0">
+                              <button
+                                onClick={() => {
+                                  const selectedTime = flowContext.eventPreview.dayBasedTimes?.[dayIndex];
+                                  if (selectedTime) {
+                                    handleSetTimeForDay(dayIndex, selectedTime);
+                                    setEditingTimeForDay(null);
+                                  }
+                                }}
+                                disabled={!flowContext.eventPreview.dayBasedTimes?.[dayIndex]}
+                                className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                  flowContext.eventPreview.dayBasedTimes?.[dayIndex] 
+                                    ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                {flowContext.eventPreview.dayBasedTimes?.[dayIndex] ? 'Confirm Time' : 'Select Time'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-1">
+                      <button 
+                        onClick={() => { 
+                          setEditingTimeForDay(dayIndex); 
+                          setShowFullPickerFor(null); 
+                        }} 
+                        className="day-based-time-grid__set-time-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] py-1.5 rounded-lg hover:bg-[#217e8f]/30 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span className="font-semibold text-gray-800">{dayNames[dayIndex]}</span>
+                        <span>Set Time</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Dates Section - Collapsible */}
+                <div className="day-based-time-grid__dates-section bg-white/10 px-4 py-2">
+                  <button
+                    onClick={() => setExpandedDates(prev => ({...prev, [dayIndex]: !prev[dayIndex]}))}
+                    className="w-full text-center text-[11px] md:text-xs text-gray-500 mb-2 hover:text-gray-700 transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+                  >
+                    <span>{expandedDates[dayIndex] ? '−' : '+'}</span>
+                    <span>Selected dates ({datesForThisDay.length} total)</span>
+                  </button>
+                  {expandedDates[dayIndex] && (
+                    <div className="day-based-time-grid__date-list grid grid-cols-2 gap-2 justify-items-center">
+                      {datesForThisDay.map((dateStr) => {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const date = new Date(year, month - 1, day);
+                        const monthName = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
+                        const dayNum = new Intl.DateTimeFormat('en-US', { day: 'numeric' }).format(date);
+                        
+                        return (
+                          <div 
+                            key={dateStr} 
+                            className="day-based-time-grid__date-item text-xs py-1 rounded bg-white/40 text-gray-700 font-medium whitespace-nowrap text-center w-[50px]"
+                          >
+                            {monthName} {dayNum}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+      
       <div className="day-based-time-grid__actions mt-4 flex justify-end">
         <button
           onClick={handleContinue}
           disabled={!isAllTimesSet()}
-          className="day-based-time-grid__continue-btn bg-[#217e8f] text-white px-4 py-1 rounded-lg text-xs font-medium transition-colors enabled:hover:bg-[#1a6670] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="day-based-time-grid__continue-btn bg-[#217e8f] text-white rounded-md font-medium transition-colors enabled:hover:bg-[#1a6e7e] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+          style={{
+            width: '115px',
+            height: '30px',
+            fontSize: '13px',
+            lineHeight: '20px',
+            fontWeight: 500,
+            borderRadius: '6px',
+            padding: '0px 8px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden'
+          }}
         >
           {isAllTimesSet() ? 'Times Set' : 'Set Times'}
         </button>

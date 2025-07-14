@@ -110,7 +110,7 @@ export default function KicacoFlow() {
         title="Kicaco Flow"
       />
 
-      <main className="kicaco-flow__main">
+      <main className={`kicaco-flow__main ${(flowContext.step === 'dayBasedTimeGrid' || flowContext.step === 'whenTimePeriod' || flowContext.step === 'customTimeSelection' || flowContext.step === 'customDatePicker' || flowContext.step === 'monthPart') ? 'kicaco-flow__main--hide-scrollbar' : ''}`}>
         <div className="kicaco-flow__content-container">
           
           <FlowNavigationHeader 

@@ -97,6 +97,13 @@ input[type="checkbox"]:checked {
   padding: 0.5rem; /* 8px for small screens */
 }
 
+@media (max-width: 380px) {
+  .custom-timer-button-adjust {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+}
+
 /* Responsive padding for larger screens to match scrollable options width */
 @media (min-width: 640px) {
   .custom-timer-parent {
