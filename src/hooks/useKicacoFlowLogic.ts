@@ -169,22 +169,7 @@ export const detectDayOfWeekPattern = (selectedDates: string[]): number[] | null
     return null;
   };
 
-export const getRepeatAnotherMonthButtons = (flowContext: FlowContext): SmartButton[] => {
-    const existingDates = flowContext.eventPreview.selectedDates || [];
-    const pattern = detectDayOfWeekPattern(existingDates);
-    const selectedMonth = flowContext.eventPreview.selectedMonth;
-    if (selectedMonth) {
-      return [
-        { id: 'yes-same-month', label: 'Yes', description: pattern ? "We'll suggest matching days" : "Pick additional dates" },
-        { id: 'no-done', label: 'Done', description: 'Continue with selected dates' },
-        { id: 'no-other-month', label: 'Other Month', description: 'Pick a different month' }
-      ];
-    }
-    return [
-      { id: 'yes-another-month', label: 'Yes', description: pattern ? "We'll suggest matching days" : "Pick additional dates" },
-      { id: 'no-another-month', label: 'No', description: 'Continue with selected dates' }
-    ];
-  };
+
 
 export const getRepeatingSameLocationButtons = (): SmartButton[] => [
     { id: 'same-location-yes', label: 'Same', description: 'All occurrences at same location' },
@@ -295,125 +280,9 @@ export const handleButtonSelect = ({
         newContext.eventPreview.selectedChildren = newSelected;
         newContext.eventPreview.child = newSelected.length > 0 ? newSelected[0] : undefined;
       },
-      whenDate: () => {
-        if (buttonId === 'custom-date') {
-          newContext.step = 'customDatePicker';
-          newContext.eventPreview.date = 'custom-date-selected';
-        } else {
-          const now = new Date();
-          let selectedDate = new Date();
-          if (buttonId === 'tomorrow') {
-            selectedDate.setDate(now.getDate() + 1);
-          } else if (buttonId === 'this-saturday') {
-            selectedDate.setDate(now.getDate() + (6 - now.getDay()));
-          } else if (buttonId === 'next-monday') {
-            selectedDate.setDate(now.getDate() + (8 - (now.getDay() === 0 ? 7 : now.getDay())));
-          }
-          
-          const year = selectedDate.getFullYear();
-          const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
-          const day = selectedDate.getDate().toString().padStart(2, '0');
-          const formattedDate = `${year}-${month}-${day}`;
-          
-          newContext.step = 'whenTimePeriod';
-          newContext.eventPreview.date = buttonId;
-          newContext.eventPreview.selectedDates = [formattedDate];
-        }
-      },
-      customDatePicker: () => {
-        if (buttonId === 'other-month') {
-          setShowOtherMonths(true);
-          return;
-        }
-        if (buttonId === 'other-year') return;
 
-        newContext.step = 'monthPart';
-        newContext.eventPreview.selectedMonth = buttonId;
-        newContext.eventPreview.isComingFromOtherMonth = false;
-        newContext.eventPreview.monthToExclude = undefined;
-        setShowOtherMonths(false);
 
-        const existingDates = flowContext.eventPreview.selectedDates || [];
-        const pattern = detectDayOfWeekPattern(existingDates);
-        if (pattern && existingDates.length > 0) {
-          const monthWeeks = getMonthDates(buttonId);
-          const preselectDates: string[] = [];
-          monthWeeks.forEach(week => week.forEach(button => {
-            if (button) {
-              const date = new Date(button.id);
-              if (pattern.includes(date.getDay() === 0 ? 6 : date.getDay() - 1)) {
-                preselectDates.push(button.id);
-              }
-            }
-          }));
-          newContext.eventPreview.selectedDates = [...existingDates, ...preselectDates];
-          newContext.eventPreview.hasPatternPreselection = true;
-        } else {
-          newContext.eventPreview.selectedDates = existingDates;
-          newContext.eventPreview.hasPatternPreselection = false;
-        }
-      },
-      repeatAnotherMonth: () => {
-        if (buttonId === 'yes-same-month') {
-          const currentSelectedMonth = flowContext.eventPreview.selectedMonth || '';
-          if (currentSelectedMonth) {
-            const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-            const [monthStr, yearStr] = currentSelectedMonth.split('-');
-            let monthIndex = monthNames.indexOf(monthStr);
-            let year = parseInt(yearStr);
 
-            // Advance to the next month
-            monthIndex++;
-            if (monthIndex > 11) {
-                monthIndex = 0;
-                year++;
-            }
-            const nextMonthId = `${monthNames[monthIndex]}-${year}`;
-
-            // Update context to show the next month
-            newContext.step = 'monthPart';
-            newContext.eventPreview.selectedMonth = nextMonthId;
-
-            // Check for pattern pre-selection
-            const existingDates = flowContext.eventPreview.selectedDates || [];
-            const pattern = detectDayOfWeekPattern(existingDates);
-            if (pattern && existingDates.length > 0) {
-                newContext.eventPreview.hasPatternPreselection = true;
-                const monthWeeks = getMonthDates(nextMonthId);
-                const preselectDates: string[] = [];
-                monthWeeks.forEach(week => week.forEach(button => {
-                    if (button) {
-                        const date = new Date(button.id);
-                        if (pattern.includes(date.getDay() === 0 ? 6 : date.getDay() - 1)) {
-                            preselectDates.push(button.id);
-                        }
-                    }
-                }));
-                newContext.eventPreview.selectedDates = [...existingDates, ...preselectDates];
-            }
-          } else {
-            newContext.step = 'customDatePicker';
-          }
-        } else if (buttonId === 'no-other-month') {
-          newContext.step = 'customDatePicker';
-          newContext.eventPreview.isComingFromOtherMonth = true;
-          const currentSelectedMonth = flowContext.eventPreview.selectedMonth || '';
-          if (currentSelectedMonth) {
-            const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-            const [monthStr, yearStr] = currentSelectedMonth.split('-');
-            let nextMonthIndex = monthNames.indexOf(monthStr) + 1;
-            let nextYear = parseInt(yearStr);
-            if (nextMonthIndex >= 12) {
-              nextMonthIndex = 0;
-              nextYear++;
-            }
-            newContext.eventPreview.monthToExclude = `${monthNames[nextMonthIndex]}-${nextYear}`;
-          }
-        } else {
-          const selectedDates = flowContext.eventPreview.selectedDates || [];
-          newContext.step = selectedDates.length > 1 ? 'repeatingSameTime' : 'whenTimePeriod';
-        }
-      },
       repeatingSameTime: () => {
         newContext.eventPreview.repeatingSameTime = buttonId === 'same-time-yes';
         if (buttonId === 'same-time-by-day') {
@@ -529,9 +398,9 @@ export const getCurrentButtons = (flowContext: FlowContext) => {
       eventCategory: getEventCategoryButtons,
       eventType: getSportsEventTypeButtons,
       whichChild: getChildButtons,
-      whenDate: getDateButtons,
-      customDatePicker: () => getMonthButtons(flowContext),
-      repeatAnotherMonth: () => getRepeatAnotherMonthButtons(flowContext),
+
+
+
       repeatingSameTime: () => {
         const uniqueDays = getUniqueDaysOfWeek(selectedDates);
         const allButtons = getRepeatingSameTimeButtons();
@@ -557,8 +426,8 @@ export const getCurrentQuestion = (flowContext: FlowContext) => {
       sportsType: "",
       eventType: () => `${(flowContext.eventPreview.subtype || 'Soccer').charAt(0).toUpperCase() + (flowContext.eventPreview.subtype || 'soccer').slice(1)} Event Type`,
       whichChild: "Child Selection",
-      whenDate: "Quick Dates",
-      customDatePicker: "Month & Year",
+
+
       monthPart: () => {
         const { selectedMonth = '' } = flowContext.eventPreview;
         const [monthStr, yearStr] = selectedMonth.split('-');
@@ -567,20 +436,7 @@ export const getCurrentQuestion = (flowContext: FlowContext) => {
         const monthIndex = monthNames.indexOf(monthStr);
         return `${monthIndex >= 0 ? fullMonthNames[monthIndex] : 'the month'} ${yearStr || new Date().getFullYear()}`;
       },
-      repeatAnotherMonth: () => {
-        const { selectedMonth = '' } = flowContext.eventPreview;
-        if (!selectedMonth) return "Add Dates";
-        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-        const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const [monthStr, yearStr] = selectedMonth.split('-');
-        let nextMonthIndex = monthNames.indexOf(monthStr) + 1;
-        let nextYear = parseInt(yearStr);
-        if (nextMonthIndex >= 12) {
-          nextMonthIndex = 0;
-          nextYear++;
-        }
-        return `Add ${fullMonthNames[nextMonthIndex]} Dates`;
-      },
+
       repeatingSameTime: "Multi-Event Times",
       customTimeSelection: "Custom Times",
       dayBasedTimeGrid: "Day-Based Times",

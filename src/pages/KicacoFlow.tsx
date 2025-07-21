@@ -110,7 +110,7 @@ export default function KicacoFlow() {
         title="Kicaco Flow"
       />
 
-      <main className={`kicaco-flow__main ${(flowContext.step === 'dayBasedTimeGrid' || flowContext.step === 'whenTimePeriod' || flowContext.step === 'customTimeSelection' || flowContext.step === 'customDatePicker' || flowContext.step === 'monthPart') ? 'kicaco-flow__main--hide-scrollbar' : ''}`}>
+      <main className={`kicaco-flow__main ${(flowContext.step === 'dayBasedTimeGrid' || flowContext.step === 'whenTimePeriod' || flowContext.step === 'customTimeSelection' || flowContext.step === 'monthPart') ? 'kicaco-flow__main--hide-scrollbar' : ''}`}>
         <div className="kicaco-flow__content-container">
           
           <FlowNavigationHeader 
@@ -138,7 +138,7 @@ export default function KicacoFlow() {
               singleTimeScrollRef={singleTimeScrollRef}
               handleButtonSelect={handleButtonSelect}
             />
-          ) : flowContext.step === 'customDatePicker' || flowContext.step === 'monthPart' ? (
+          ) : flowContext.step === 'monthPart' ? (
             <DateSelection
               flowContext={flowContext}
               setFlowContext={setFlowContext}
@@ -256,47 +256,55 @@ export default function KicacoFlow() {
               </div>
               
               {/* Select Children Button - Own Row */}
-              <div className="kicaco-flow__child-selection-button-row flex justify-end mt-6">
+              <div className="kicaco-flow__child-selection-button-row flex items-end justify-between mt-6">
+                {/* Count Text - Left Aligned */}
+                <div className="text-[12.5px] text-gray-500 leading-tight">
+                  {(() => {
+                    const count = flowContext.eventPreview.selectedChildren?.length || 0;
+                    if (count === 0) return '';
+                    if (count === 1) return '1 child selected';
+                    return `${count} children selected`;
+                  })()}
+                </div>
+                
+                {/* Action Button - Right Aligned */}
                 <button 
                   onClick={() => { 
-                    if ((flowContext.eventPreview.selectedChildren || []).length > 0) 
-                      setFlowContext({ ...flowContext, step: 'whenDate' }); 
+                    if ((flowContext.eventPreview.selectedChildren || []).length > 0) {
+                      // Go directly to current month selection
+                      const today = new Date();
+                      const currentMonthId = today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toLowerCase().replace(' ', '-');
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'monthPart',
+                        eventPreview: {
+                          ...flowContext.eventPreview,
+                          selectedMonth: currentMonthId
+                        }
+                      }); 
+                    }
                   }} 
                   disabled={!flowContext.eventPreview.selectedChildren?.length} 
                   className={`kicaco-flow__child-selection-continue ${flowContext.eventPreview.selectedChildren?.length ? 'kicaco-flow__child-selection-continue--active' : 'kicaco-flow__child-selection-continue--disabled'}`}
                   style={{
-                    width: (flowContext.eventPreview.selectedChildren?.length || 0) > 1 ? '140px' : '115px'
+                    width: (flowContext.eventPreview.selectedChildren?.length || 0) > 1 ? '120px' : '115px'
                   }}
                 >
                   {(() => {
                     const count = flowContext.eventPreview.selectedChildren?.length || 0;
                     if (count === 0) return 'Select Children';
-                    if (count === 1) return '1 Child Selected';
-                    return `${count} Children Selected`;
+                    if (count === 1) return 'Confirm Child';
+                    return 'Confirm Children';
                   })()}
                 </button>
               </div>
             </div>
           ) : (
             <div className="kicaco-flow__step-container">
-              {(flowContext.step === 'initial' || flowContext.step === 'eventCategory' || flowContext.step === 'eventType' || flowContext.step === 'whenDate' || flowContext.step === 'repeatAnotherMonth' || flowContext.step === 'repeatingSameTime') ? (
+              {(flowContext.step === 'initial' || flowContext.step === 'eventCategory' || flowContext.step === 'eventType' || flowContext.step === 'repeatingSameTime') ? (
                 // Special layout for various screens with right-aligned or center-aligned buttons
                 <div className="kicaco-flow__button-list space-y-3">
-                  {currentButtons.map((button: SmartButton) => 
-                    flowContext.step === 'whenDate' ? (
-                      // Center-aligned layout for Quick Dates
-                      <div key={button.id} className="flex flex-col items-center text-center">
-                        <SmartActionButton 
-                          button={{ id: button.id, label: button.label }} 
-                          onClick={() => handleButtonSelect(button.id)} 
-                          isChildButton={false} 
-                          getChildColor={getChildColor} 
-                        />
-                        {button.description && (
-                          <div className="text-[12.5px] text-gray-500 mt-1">{button.description}</div>
-                        )}
-                      </div>
-                    ) : (
+                  {currentButtons.map((button: SmartButton) =>  (
                       // Right-aligned layout for other screens
                                               <div key={button.id} className="flex items-end justify-between min-h-[30px]">
                           {button.description && (

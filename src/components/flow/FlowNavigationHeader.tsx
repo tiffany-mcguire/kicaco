@@ -45,41 +45,18 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
           </button>
         );
 
-      case 'whenDate':
-        return (
-          <button 
-            onClick={() => setFlowContext({ ...flowContext, step: 'whichChild' })} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
-          >
-            ← Select Other Child
-          </button>
-        );
-
-      case 'customDatePicker':
-        return (
-          <button
-            onClick={() => {
-              const step = (flowContext.eventPreview.selectedDates || []).length > 0 ? 'repeatAnotherMonth' : 'whenDate';
-              setFlowContext({ ...flowContext, step });
-            }}
-            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
-          >
-            {(flowContext.eventPreview.selectedDates || []).length > 0 ? '← No More Dates to Add' : '← Quick Dates'}
-          </button>
-        );
-
       case 'monthPart':
         return (
           <button 
             onClick={() => {
               setFlowContext({ 
                 ...flowContext, 
-                step: 'customDatePicker'
+                step: 'whichChild'
               });
             }} 
             className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
-            ← Month & Year
+            ← Child Selection
           </button>
         );
 
@@ -91,7 +68,7 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
               if (hasMultipleDates) {
                 setFlowContext({ ...flowContext, step: 'repeatingSameTime' });
               } else {
-                setFlowContext({ ...flowContext, step: 'customDatePicker' });
+                setFlowContext({ ...flowContext, step: 'monthPart' });
               }
             }}
             className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
@@ -148,31 +125,10 @@ export const FlowNavigationHeader: React.FC<Props> = ({ flowContext, setFlowCont
           </button>
         );
 
-      case 'repeatAnotherMonth':
-        return (
-          <button 
-            onClick={() => setFlowContext({ ...flowContext, step: 'monthPart' })} 
-            className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
-          >
-            {(() => {
-              const selectedMonth = flowContext.eventPreview.selectedMonth;
-              if (selectedMonth) {
-                const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                const [monthStr] = selectedMonth.split('-');
-                const monthIndex = monthNames.indexOf(monthStr);
-                const monthName = fullMonthNames[monthIndex] || 'Month';
-                return `← ${monthName} Date Selection`;
-              }
-              return '← Date Selection';
-            })()}
-          </button>
-        );
-
       case 'repeatingSameTime':
         return (
           <button
-            onClick={() => setFlowContext({ ...flowContext, step: 'customDatePicker' })}
+            onClick={() => setFlowContext({ ...flowContext, step: 'monthPart' })}
             className="flow-navigation-header__back-btn text-[#217e8f] text-[13px]"
           >
             ← Select More Dates

@@ -22,6 +22,7 @@ export const LocationSelection: React.FC<Props> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<string>('');
+  const [originalSearchQuery, setOriginalSearchQuery] = useState('');
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -43,8 +44,15 @@ export const LocationSelection: React.FC<Props> = ({
 
   const handleLocationSelect = (location: LocationResult) => {
     const locationString = formatLocationString(location);
-    setSelectedLocation(locationString);
-    setCustomLocationInput(locationString);
+    
+    // If clicking the same location again, deselect it
+    if (selectedLocation === locationString) {
+      setSelectedLocation('');
+      setCustomLocationInput(originalSearchQuery);
+    } else {
+      setSelectedLocation(locationString);
+      setCustomLocationInput(locationString);
+    }
     // Keep search results visible so user can change selection
     // Don't trigger new search since we want to keep current results
   };
@@ -178,6 +186,7 @@ export const LocationSelection: React.FC<Props> = ({
                       setCustomLocationInput('');
                       setSelectedLocation('');
                       setSearchResults([]);
+                      setOriginalSearchQuery('');
                     }}
                     className="text-[13px] text-[#217e8f] px-1"
                   >
@@ -189,6 +198,7 @@ export const LocationSelection: React.FC<Props> = ({
                       setCustomLocationInput('');
                       setSearchResults([]);
                       setSelectedLocation('');
+                      setOriginalSearchQuery('');
                     }}
                     className="text-[13px] text-[#217e8f] px-1"
                   >
@@ -202,6 +212,7 @@ export const LocationSelection: React.FC<Props> = ({
                     value={customLocationInput}
                     onChange={(e) => {
                       setCustomLocationInput(e.target.value);
+                      setOriginalSearchQuery(e.target.value);
                       if (e.target.value !== selectedLocation) {
                         setSelectedLocation(''); // Clear selection if user types something different
                       }
@@ -268,7 +279,10 @@ export const LocationSelection: React.FC<Props> = ({
                 <div className="location-selection__predefined-content h-[229px] flex flex-col">
                   {/* Sticky New Location button that looks like a scrollable option */}
                   <button 
-                    onClick={() => setShowLocationSearch(true)} 
+                    onClick={() => {
+                      setShowLocationSearch(true);
+                      setOriginalSearchQuery('');
+                    }} 
                     className="location-selection__custom-btn w-full text-[13px] bg-[#217e8f]/20 text-[#1a6e7e] px-1 py-1.5 rounded-lg hover:bg-[#217e8f]/30 sticky top-0 z-10 flex justify-center"
                   >
                     New Location
