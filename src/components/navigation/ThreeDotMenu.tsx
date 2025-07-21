@@ -47,7 +47,7 @@ function ReportBugPopup({ open, onClose, onSubmit }: { open: boolean, onClose: (
             type="button"
           >Cancel</button>
           <button
-            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border-2 bg-[#2f8fa4] hover:bg-[#217e8f] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none border-[#217e8f] disabled:border-gray-300"
             onClick={() => { onSubmit(desc); setDesc(''); }}
             type="button"
             disabled={!desc.trim()}
@@ -103,7 +103,7 @@ function GiveFeedbackPopup({ open, onClose, onSubmit }: { open: boolean, onClose
             type="button"
           >Cancel</button>
           <button
-            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border-2 bg-[#2f8fa4] hover:bg-[#217e8f] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none border-[#217e8f] disabled:border-gray-300"
             onClick={() => { onSubmit(desc); setDesc(''); }}
             type="button"
             disabled={!desc.trim()}
@@ -169,7 +169,7 @@ function ContactSupportPopup({ open, onClose, onSubmit }: { open: boolean, onClo
             type="button"
           >Cancel</button>
           <button
-            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border bg-[#217e8f] hover:bg-[#1a6e7e] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+            className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all hover:shadow-md border-2 bg-[#2f8fa4] hover:bg-[#217e8f] text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none border-[#217e8f] disabled:border-gray-300"
             onClick={() => { onSubmit(email, msg); setEmail(''); setMsg(''); }}
             type="button"
             disabled={!msg.trim() || !isEmailValid}
@@ -212,42 +212,42 @@ export default function ThreeDotMenu({}: ThreeDotMenuProps) {
         }
       >
         {({ close: closeMenu }) => (
-          <div className="py-1 flex flex-col pr-4" role="menu" aria-orientation="vertical" style={{ color: '#c0e2e7' }}>
+          <div className="py-1 flex flex-col pr-4" role="menu" aria-orientation="vertical" style={{ color: '#ffffff' }}>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
               onClick={() => { setActivePopup('bug'); closeMenu(); }}
             >
               Report a Bug
             </button>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
               onClick={() => { setActivePopup('feedback'); closeMenu(); }}
             >
               Give Feedback
             </button>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
               onClick={() => { setActivePopup('support'); closeMenu(); }}
             >
               Contact Support
             </button>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
             >
               Rate This App
             </button>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
             >
               Check for Updates
             </button>
             <button
-              className="px-4 py-2 hover:bg-[#c0e2e7] hover:text-[#217e8f] rounded transition-colors duration-150 cursor-pointer text-left"
+              className="px-4 py-2 hover:bg-[#217e8f] hover:text-white rounded transition-colors duration-150 cursor-pointer text-left text-white"
               role="menuitem"
             >
               Log Out

@@ -27,14 +27,14 @@ const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) 
       width: '115px',
       height: '30px',
       padding: '0px 8px',
-      border: 'none',
+      border: '2px solid #217e8f',
       boxSizing: 'border-box' as const,
       borderRadius: '6px',
       fontWeight: 500,
       fontSize: '13px',
       lineHeight: '20px',
       boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-      background: '#217e8f',
+      background: '#2f8fa4',
       color: '#ffffff',
       outline: 'none',
       transition: 'all 0.2s ease',
@@ -42,7 +42,7 @@ const AddByDateButton = (props: { label?: string; selectedDate?: Date | null }) 
     if (hovered || focused) {
       s = {
         ...s,
-        background: '#1a6e7e',
+        background: '#217e8f',
         boxShadow: '0 2px 4px rgba(0,0,0,0.12)',
       };
     }

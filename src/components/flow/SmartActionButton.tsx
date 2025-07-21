@@ -77,13 +77,13 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
     }
 
     // Default styling for regular buttons
-    const buttonColor = isChildButton && getChildColor ? getChildColor(button.id) : '#217e8f';
+    const buttonColor = isChildButton && getChildColor ? getChildColor(button.id) : '#2f8fa4';
 
     let s: React.CSSProperties = {
       width: '115px',
       height: '30px',
       padding: '0px 0px',
-      border: isChildButton ? '1px solid #9ca3af' : 'none',
+      border: isChildButton ? '1px solid #9ca3af' : '2px solid #217e8f',
       boxSizing: 'border-box',
       borderRadius: '6px',
       fontWeight: isChildButton ? 600 : 500,
@@ -106,11 +106,11 @@ export const SmartActionButton: React.FC<Props> = ({ button, onClick, isChildBut
     if (hovered || focused) {
       const hoverColor = isChildButton && getChildColor
         ? getChildColor(button.id)
-        : '#1a6e7e';
+        : '#217e8f';
       s = {
         ...s,
         background: hoverColor,
-        border: isChildButton ? '1px solid #6b7280' : 'none',
+        border: isChildButton ? '1px solid #6b7280' : '2px solid #217e8f',
         boxShadow: '0 2px 4px rgba(0,0,0,0.12)'
       };
     }

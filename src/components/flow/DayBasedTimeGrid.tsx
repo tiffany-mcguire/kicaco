@@ -197,10 +197,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button 
                                       key={h}
                                       onClick={() => setCustomTime({ ...customTime, hour: h.toString() })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.hour === h.toString()
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f] border-[#217e8f]/30'
                                       }`}
                                     >
                                       {h}
@@ -217,10 +217,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button 
                                       key={m}
                                       onClick={() => setCustomTime({ ...customTime, minute: m })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.minute === m
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/70 text-[#217e8f] hover:bg-white border-[#217e8f]/30'
                                       }`}
                                       disabled={!customTime.hour}
                                     >
@@ -238,10 +238,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button
                                       key={period}
                                       onClick={() => setCustomTime({ ...customTime, ampm: period })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.ampm === period
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/70 text-[#217e8f] hover:bg-white border-[#217e8f]/30'
                                       }`}
                                       disabled={!customTime.hour}
                                     >
@@ -254,10 +254,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                 <button 
                                   onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
                                   disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
-                                  className={`day-based-time-grid__set-time-btn w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                  className={`day-based-time-grid__set-time-btn w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                     (customTime.minute && customTime.hour && customTime.ampm) 
-                                      ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                   }`}
                                 >
                                   {(customTime.minute && customTime.hour && customTime.ampm) ? 'Confirm Time' : 'Select Time'}
@@ -330,10 +330,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                       }
                                     }}
                                     disabled={!flowContext.eventPreview.dayBasedTimes?.[dayIndex]}
-                                    className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                    className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                       flowContext.eventPreview.dayBasedTimes?.[dayIndex] 
-                                        ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                     }`}
                                   >
                                     {flowContext.eventPreview.dayBasedTimes?.[dayIndex] ? 'Confirm Time' : 'Select Time'}
@@ -503,10 +503,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button 
                                       key={h}
                                       onClick={() => setCustomTime({ ...customTime, hour: h.toString() })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.hour === h.toString()
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f]'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/80 text-[#217e8f] hover:bg-white hover:text-[#217e8f] border-[#217e8f]/30'
                                       }`}
                                     >
                                       {h}
@@ -523,10 +523,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button 
                                       key={m}
                                       onClick={() => setCustomTime({ ...customTime, minute: m })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.minute === m
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/70 text-[#217e8f] hover:bg-white border-[#217e8f]/30'
                                       }`}
                                       disabled={!customTime.hour}
                                     >
@@ -544,10 +544,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                     <button
                                       key={period}
                                       onClick={() => setCustomTime({ ...customTime, ampm: period })}
-                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold ${
+                                      className={`w-full h-6 sm:h-8 flex items-center justify-center text-xs md:text-[13px] rounded-md font-semibold border-2 ${
                                         customTime.ampm === period
-                                          ? 'bg-[#217e8f] text-white'
-                                          : 'bg-white/70 text-[#217e8f] hover:bg-white'
+                                          ? 'bg-[#2f8fa4] text-white border-[#217e8f]'
+                                          : 'bg-white/70 text-[#217e8f] hover:bg-white border-[#217e8f]/30'
                                       }`}
                                       disabled={!customTime.hour}
                                     >
@@ -560,10 +560,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                 <button 
                                   onClick={() => handleSetTimeForDay(dayIndex, `${customTime.hour}:${customTime.minute} ${customTime.ampm}`)} 
                                   disabled={!customTime.minute || !customTime.hour || !customTime.ampm} 
-                                  className={`day-based-time-grid__set-time-btn w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                  className={`day-based-time-grid__set-time-btn w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                     (customTime.minute && customTime.hour && customTime.ampm) 
-                                      ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                   }`}
                                 >
                                   {(customTime.minute && customTime.hour && customTime.ampm) ? 'Confirm Time' : 'Select Time'}
@@ -636,10 +636,10 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
                                       }
                                     }}
                                     disabled={!flowContext.eventPreview.dayBasedTimes?.[dayIndex]}
-                                    className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                    className={`day-based-time-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                       flowContext.eventPreview.dayBasedTimes?.[dayIndex] 
-                                        ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                     }`}
                                   >
                                     {flowContext.eventPreview.dayBasedTimes?.[dayIndex] ? 'Confirm Time' : 'Select Time'}
@@ -707,7 +707,7 @@ export const DayBasedTimeGrid: React.FC<Props> = ({
         <button
           onClick={handleContinue}
           disabled={!isAllTimesSet()}
-          className="day-based-time-grid__continue-btn bg-[#217e8f] text-white rounded-md font-medium transition-colors enabled:hover:bg-[#1a6e7e] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+          className="day-based-time-grid__continue-btn bg-[#2f8fa4] text-white rounded-md font-medium transition-colors enabled:hover:bg-[#217e8f] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center border-2 border-[#217e8f] disabled:border-gray-300"
           style={{
             width: '115px',
             height: '30px',

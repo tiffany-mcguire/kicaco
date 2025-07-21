@@ -375,10 +375,10 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                     <button
                                       onClick={() => handleCustomLocationSubmit(dayIndex)}
                                       disabled={!searchInput.trim() || isSearching}
-                                      className={`day-based-location-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                      className={`day-based-location-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                         searchInput.trim() && !isSearching
-                                          ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                          : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                       }`}
                                     >
                                       {selectedLocation ? 'Confirm Location' : searchInput.trim() ? 'Confirm Location' : 'Select Location'}
@@ -438,10 +438,10 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
                                       }
                                     }}
                                     disabled={!selectedPredefinedLocation || selectedPredefinedLocation.dayIndex !== dayIndex}
-                                    className={`day-based-location-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                                    className={`day-based-location-grid__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                                       selectedPredefinedLocation?.dayIndex === dayIndex 
-                                        ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                                     }`}
                                   >
                                     {selectedPredefinedLocation?.dayIndex === dayIndex ? 'Confirm Location' : 'Select Location'}
@@ -509,10 +509,10 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
         <button
           onClick={handleContinue}
           disabled={!isAllLocationsSet()}
-          className={`day-based-location-grid__continue-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`day-based-location-grid__continue-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 ${
             isAllLocationsSet() 
-              ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' 
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] border-[#217e8f]' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
           }`}
         >
           {isAllLocationsSet() ? 'Locations Set' : 'Set Locations'}

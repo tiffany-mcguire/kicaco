@@ -55,9 +55,7 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
       outline: 'none',
       transition: 'all 0.2s ease',
       cursor: 'pointer',
-      boxShadow: isSelected 
-        ? `0 4px 12px rgba(0,0,0,0.15), 0 0 0 2px ${vibrantOutlineColor}25` 
-        : `0 0 2px color-mix(in srgb, ${childColor} 75%, black)`,
+      boxShadow: 'none',
       textAlign: 'center',
       display: 'flex',
       alignItems: 'center',
@@ -73,9 +71,7 @@ export const ChildSelectionButton: React.FC<Props> = ({ button, onClick, isSelec
         border: isSelected 
           ? `2px solid ${vibrantOutlineColor}` 
           : `0.5px solid color-mix(in srgb, ${childColor} 75%, black)`,
-        boxShadow: isSelected 
-          ? `0 4px 12px rgba(0,0,0,0.15), 0 0 0 2px ${vibrantOutlineColor}25` 
-          : `0 0 2px color-mix(in srgb, ${childColor} 75%, black)`
+        boxShadow: 'none'
       };
     }
     if (pressed) {

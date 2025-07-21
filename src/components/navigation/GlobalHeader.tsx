@@ -97,7 +97,7 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
     return (
       <header
         ref={ref}
-        className={`sticky top-0 z-[110] flex items-center justify-between bg-[#217e8f] h-16 px-4 shadow-[0_2px_4px_rgba(0,0,0,0.12),0_4px_6px_rgba(0,0,0,0.08)] ${className} relative`}
+        className={`sticky top-0 z-[110] flex items-center justify-between bg-[#2f8fa4] h-16 px-4 shadow-[0_2px_4px_rgba(0,0,0,0.12),0_4px_6px_rgba(0,0,0,0.08)] border-b-2 border-[#217e8f] ${className} relative`}
         onClick={(e) => {
           // Close search if clicking anywhere in the header except the search area itself
           const target = e.target as HTMLElement;
@@ -118,14 +118,6 @@ const GlobalHeader = forwardRef<HTMLDivElement, GlobalHeaderProps>(
           {!isSearching && (
             <div className="flex items-end">
               {children}
-              {/* Kicaco Logo with translucent background */}
-              <div className="bg-white/30 backdrop-blur-sm rounded-xl px-1.5 py-0.5 shadow-sm mb-1">
-                <img 
-                  src="/brand/kicaco-icon-name.png" 
-                  alt="Kicaco" 
-                  className="h-10 w-auto"
-                />
-              </div>
             </div>
           )}
           <SearchBar

@@ -323,10 +323,10 @@ export const CustomLocationSelection: React.FC<Props> = ({
                         <button
                           onClick={() => handleCustomLocationSubmit(dateStr)}
                           disabled={!searchInput.trim() || isSearching}
-                          className={`custom-location-selection__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
+                          className={`custom-location-selection__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
                             searchInput.trim() && !isSearching
-                              ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
                           }`}
                         >
                           {selectedLocation ? 'Confirm Location' : searchInput.trim() ? 'Confirm Location' : 'Select Location'}
@@ -379,19 +379,19 @@ export const CustomLocationSelection: React.FC<Props> = ({
                     
                     {/* Fixed position confirm button - always at bottom */}
                     <div className="custom-location-selection__confirm-container h-8 flex items-center flex-shrink-0">
-                      <button
-                        onClick={() => {
-                          if (selectedPredefinedLocation?.dateStr === dateStr) {
-                            handleConfirmPredefinedLocation();
-                          }
-                        }}
-                        disabled={!selectedPredefinedLocation || selectedPredefinedLocation.dateStr !== dateStr}
-                        className={`custom-location-selection__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors ${
-                          selectedPredefinedLocation?.dateStr === dateStr 
-                            ? 'bg-[#217e8f] text-white hover:bg-[#1a6b7a] active:scale-95' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                      >
+                                              <button
+                          onClick={() => {
+                            if (selectedPredefinedLocation?.dateStr === dateStr) {
+                              handleConfirmPredefinedLocation();
+                            }
+                          }}
+                          disabled={!selectedPredefinedLocation || selectedPredefinedLocation.dateStr !== dateStr}
+                          className={`custom-location-selection__confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
+                            selectedPredefinedLocation?.dateStr === dateStr 
+                              ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
+                          }`}
+                        >
                         {selectedPredefinedLocation?.dateStr === dateStr ? 'Confirm Location' : 'Select Location'}
                       </button>
                     </div>
@@ -435,10 +435,10 @@ export const CustomLocationSelection: React.FC<Props> = ({
         <button
           onClick={handleContinue}
           disabled={!areAllLocationsSet}
-          className={`custom-location-selection__continue-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={`custom-location-selection__continue-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors border-2 ${
             areAllLocationsSet 
-              ? 'bg-[#217e8f] text-white hover:bg-[#1a6e7e]' 
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] border-[#217e8f]' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
           }`}
         >
           {areAllLocationsSet ? 'Locations Set' : 'Set Locations'}

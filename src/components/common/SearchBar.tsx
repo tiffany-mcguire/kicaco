@@ -82,7 +82,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           animate={{ opacity: 1, width: '100%' }}
           exit={{ opacity: 0, width: 0 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="search-container absolute inset-0 flex items-center justify-center bg-[#217e8f] z-20 px-4"
+          className="search-container absolute inset-0 flex items-center justify-center bg-[#2f8fa4] border-b-2 border-[#217e8f] z-20 px-4"
         >
           <div className="relative w-full max-w-md flex items-center">
             <div className="absolute left-3 text-[#217e8f]">

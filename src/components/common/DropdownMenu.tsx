@@ -84,7 +84,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, align, width = '21
         <div
           style={{ width }}
           className={
-            `${positionClass} shadow-[0_4px_8px_rgba(0,0,0,0.1)] bg-[#217e8f] bg-opacity-95 ring-1 ring-black ring-opacity-5 focus:outline-none z-[150] transition-opacity transition-transform duration-200 ` +
+            `${positionClass} shadow-[0_4px_8px_rgba(0,0,0,0.1)] bg-[#2f8fa4] border-2 border-[#217e8f] focus:outline-none z-[150] transition-opacity transition-transform duration-200 ` +
             (closing ? 'opacity-0 scale-95 ease-in' : 'opacity-100 scale-100 ease-out')
           }
         >

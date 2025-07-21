@@ -8,7 +8,7 @@ interface CalendarMenuProps {
 
 export default function CalendarMenu({ currentPath }: CalendarMenuProps) {
   const menuItemClass =
-    "px-4 py-2 rounded transition-colors duration-150 cursor-pointer hover:bg-[#c0e2e7] hover:text-[#217e8f] focus-visible:bg-[#c0e2e7] focus-visible:text-[#217e8f] outline-none text-[#c0e2e7]";
+    "px-4 py-2 rounded transition-colors duration-150 cursor-pointer hover:bg-[#217e8f] hover:text-white focus-visible:bg-[#217e8f] focus-visible:text-white outline-none text-white";
 
   return (
     <DropdownMenu
