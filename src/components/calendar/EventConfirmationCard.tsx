@@ -43,6 +43,10 @@ export default function EventConfirmationCard({ eventName, childName, date, time
           date={date}
           time={time}
           location={location}
+          contactName=""
+          phoneNumber=""
+          email=""
+          websiteUrl=""
         />
         <div style={{ fontSize: 15, color: '#444', margin: '16px 0 20px 0' }}>
           Want to save this and keep building your child's schedule? Create an account to save and manage all your events in one place. No forms, just your name and email to get started!

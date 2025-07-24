@@ -17,6 +17,10 @@ type Event = {
   isAllDay?: boolean;
   noTimeYet?: boolean;
   notes?: string;
+  contactName?: string;
+  phoneNumber?: string;
+  email?: string;
+  websiteUrl?: string;
   isRecurring?: boolean;
   recurringPattern?: 'daily' | 'weekly' | 'monthly' | null;
   recurringEndDate?: string | null;

@@ -239,6 +239,10 @@ const DailyEventCard: React.FC<{
         time={event.time}
         location={event.location}
         notes={event.notes}
+        contactName={event.contactName}
+        phoneNumber={event.phoneNumber}
+        email={event.email}
+        websiteUrl={event.websiteUrl}
         noHeaderSpace={false}
         onEdit={() => {
           navigate('/add-event', { 

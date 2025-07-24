@@ -384,6 +384,10 @@ const EnhancedEventCard: React.FC<{
           time={event.time}
           location={event.location}
           notes={event.notes}
+          contactName={event.contactName}
+          phoneNumber={event.phoneNumber}
+          email={event.email}
+          websiteUrl={event.websiteUrl}
           showEventInfo={false}
           onEdit={isActive ? onEdit : undefined}
           onDelete={isActive ? onDelete : undefined}
@@ -706,6 +710,10 @@ const CarouselEventCard: React.FC<{
         time={currentEvent.time}
         location={currentEvent.location}
         notes={currentEvent.notes}
+        contactName={currentEvent.contactName}
+        phoneNumber={currentEvent.phoneNumber}
+        email={currentEvent.email}
+        websiteUrl={currentEvent.websiteUrl}
         showEventInfo={false}
         onEdit={isActive ? () => {
             const globalEventIndex = allEvents.findIndex(e => 
@@ -1166,6 +1174,10 @@ export default function UpcomingEvents() {
                         date={msg.event.date}
                         time={msg.event.time}
                         location={msg.event.location}
+                        contactName={msg.event.contactName}
+                        phoneNumber={msg.event.phoneNumber}
+                        email={msg.event.email}
+                        websiteUrl={msg.event.websiteUrl}
                       />
                       <div className="mt-2 text-left w-full text-sm text-gray-900">{
                         msg.content.replace(/Want to change anything\??/, '').trim()

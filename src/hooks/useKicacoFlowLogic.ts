@@ -237,6 +237,12 @@ type HandleButtonSelectArgs = {
   buttonId: string;
   flowContext: FlowContext;
   eventNotes: string;
+  contactFields?: {
+    contactName: string;
+    phoneNumber: string;
+    email: string;
+    websiteUrl: string;
+  };
   setFlowContext: React.Dispatch<React.SetStateAction<FlowContext>>;
   setShowOtherMonths: React.Dispatch<React.SetStateAction<boolean>>;
   setCreatedEvents: React.Dispatch<React.SetStateAction<any[]>>;
@@ -248,6 +254,7 @@ export const handleButtonSelect = ({
   buttonId,
   flowContext,
   eventNotes,
+  contactFields,
   setFlowContext,
   setShowOtherMonths,
   setCreatedEvents,
@@ -351,7 +358,7 @@ export const handleButtonSelect = ({
       },
       eventNotes: () => {
         if (buttonId !== 'create-event') return;
-        newContext.step = 'complete';
+        newContext.step = 'confirmation';
         newContext.eventPreview.notes = eventNotes;
 
         const { subtype, eventType } = newContext.eventPreview;
@@ -366,6 +373,10 @@ export const handleButtonSelect = ({
           time: newContext.eventPreview.time || '',
           location: newContext.eventPreview.location || '',
           notes: eventNotes || '',
+          contactName: contactFields?.contactName || '',
+          phoneNumber: contactFields?.phoneNumber || '',
+          email: contactFields?.email || '',
+          websiteUrl: contactFields?.websiteUrl || '',
           eventType: newContext.eventPreview.eventType || '',
           category: newContext.eventPreview.category || ''
         };
@@ -379,10 +390,16 @@ export const handleButtonSelect = ({
             let eventLocation = newContext.eventPreview.dateBasedLocations?.[date] || newContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
 
             return { ...baseEvent, date, time: eventTime, location: eventLocation };
-          }) : [baseEvent];
+          }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) : [baseEvent];
         setCreatedEvents(events);
         setCurrentEventIndex(0);
-        setShowConfirmation(true);
+      },
+      confirmation: () => {
+        if (buttonId === 'done') {
+          newContext.step = 'complete';
+        } else if (buttonId === 'back') {
+          newContext.step = 'eventNotes';
+        }
       }
     };
 
@@ -413,6 +430,10 @@ export const getCurrentButtons = (flowContext: FlowContext) => {
       daySpecificLocation: getLocationButtons,
       whereLocation: getLocationButtons,
       eventNotes: () => [{ id: 'create-event', label: 'Create Event', description: 'Save this event to your calendar' }],
+      confirmation: () => [
+        { id: 'back', label: 'Back', description: 'Go back to edit notes' },
+        { id: 'done', label: 'Done', description: 'Finish and save event' }
+      ],
       repeatingSameLocation: getRepeatingSameLocationButtons,
       customLocationSelection: () => [] // No buttons needed, handled by custom UI
     };
@@ -450,6 +471,11 @@ export const getCurrentQuestion = (flowContext: FlowContext) => {
       daySpecificLocation: () => `What location for ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][flowContext.eventPreview.currentDayForLocation!]}?`,
       whereLocation: "Event Location",
       eventNotes: "Notes (Optional)",
+      confirmation: () => {
+        return flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 1 
+          ? "Your events have been created!" 
+          : "Your event has been created!";
+      },
       complete: "Ready to create your event!"
     };
     const question = questionMap[flowContext.step] ?? "Next step...";

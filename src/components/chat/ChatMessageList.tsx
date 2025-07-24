@@ -60,6 +60,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       date={msg.event.date}
                       time={msg.event.time}
                       location={msg.event.location}
+                      contactName={msg.event.contactName}
+                      phoneNumber={msg.event.phoneNumber}
+                      email={msg.event.email}
+                      websiteUrl={msg.event.websiteUrl}
                     />
                     {/* Signup flow disabled for testing */}
                     {false && (

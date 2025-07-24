@@ -108,17 +108,30 @@
 }
 
 .kicaco-flow__confirmation-modal {
-  @apply relative w-full max-w-md ring-2 ring-[#217e8f] rounded-xl;
+  @apply relative w-full max-w-md ring-4 ring-[#217e8f] rounded-xl;
+}
+
+/* Confirmation screen (embedded version) */
+.kicaco-flow__step-container .kicaco-flow__confirmation-modal {
+  @apply relative w-full max-w-md ring-4 ring-[#217e8f] rounded-xl mx-auto mb-6;
+}
+
+.kicaco-flow__step-container .kicaco-flow__confirmation-content {
+  @apply h-[240px];
+}
+
+.kicaco-flow__step-container .kicaco-flow__confirmation-event-container {
+  @apply absolute top-3 left-2 right-2 bottom-2 rounded-xl overflow-hidden;
 }
 
 .kicaco-flow__confirmation-header {
-  @apply bg-[#217e8f] text-white px-4 py-2 rounded-t-xl relative border-b;
+  @apply bg-[#2f8fa4] text-white px-4 py-2 rounded-t-xl relative border-b;
   border-bottom-color: #c0e2e7;
   box-shadow: inset 0 8px 15px -3px #0000001A, inset 0 -8px 15px -3px #0000001A;
 }
 
 .kicaco-flow__confirmation-header-content {
-  @apply flex items-center justify-between;
+  @apply flex items-end gap-2;
 }
 
 .kicaco-flow__confirmation-title {
@@ -193,11 +206,13 @@
 }
 
 .kicaco-flow__confirmation-navigation {
-  @apply flex items-center gap-0.5 bg-white/50 rounded-full px-1 py-0 flex-shrink-0;
+  @apply flex items-center justify-center gap-0.5 bg-white/50 rounded-full px-1.5 py-0.5 flex-shrink-0;
+  line-height: 1;
 }
 
 .kicaco-flow__confirmation-nav-btn {
-  @apply text-gray-800 hover:text-gray-900 p-0 transition-colors;
+  @apply text-gray-800 hover:text-gray-900 p-0.5 transition-colors flex items-center justify-center;
+  line-height: 1;
 }
 
 .kicaco-flow__confirmation-nav-btn--prev {
@@ -209,7 +224,8 @@
 }
 
 .kicaco-flow__confirmation-nav-counter {
-  @apply text-gray-800 text-[10px] font-medium;
+  @apply text-gray-800 text-[11px] font-medium flex items-center;
+  line-height: 1;
 }
 
 @media (max-width: 375px) {

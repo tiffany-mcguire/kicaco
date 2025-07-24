@@ -5,6 +5,7 @@ import * as logic from './useKicacoFlowLogic';
 export interface FlowContext {
   step: string;
   selections: Record<string, any>;
+  isEditMode?: boolean; // Flag to track if we're in edit mode
   eventPreview: {
     type?: string;
     category?: string;

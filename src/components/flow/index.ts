@@ -12,4 +12,5 @@ export { EventNotes } from './EventNotes';
 export { DayBasedLocationGrid } from './DayBasedLocationGrid';
 export { DayBasedTimeGrid } from './DayBasedTimeGrid';
 export { CustomTimeSelection } from './CustomTimeSelection';
-export { CustomLocationSelection } from './CustomLocationSelection'; 
+export { CustomLocationSelection } from './CustomLocationSelection';
+export { default as ConfirmationScreen } from './ConfirmationScreen'; 

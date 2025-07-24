@@ -388,6 +388,10 @@ const SevenDayEventOutlook: React.FC = () => {
                 time={currentEvent.time}
                 location={currentEvent.location}
                 notes={currentEvent.notes || "Remember to bring sunscreen and a water bottle!"}
+                contactName={currentEvent.contactName}
+                phoneNumber={currentEvent.phoneNumber}
+                email={currentEvent.email}
+                websiteUrl={currentEvent.websiteUrl}
                 noHeaderSpace={true}
                 showEventInfo={true}
                 onEdit={() => {

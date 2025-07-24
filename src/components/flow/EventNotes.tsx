@@ -7,18 +7,43 @@ interface Props {
   setEventNotes: (notes: string) => void;
   currentButtons: SmartButton[];
   handleButtonSelect: (buttonId: string) => void;
+  contactFields?: {
+    contactName: string;
+    phoneNumber: string;
+    email: string;
+    websiteUrl: string;
+  };
+  setContactFields?: (fields: {
+    contactName: string;
+    phoneNumber: string;
+    email: string;
+    websiteUrl: string;
+  }) => void;
 }
 
 export const EventNotes: React.FC<Props> = ({
   eventNotes,
   setEventNotes,
   currentButtons,
-  handleButtonSelect
+  handleButtonSelect,
+  contactFields,
+  setContactFields
 }) => {
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState(contactFields?.websiteUrl || '');
+  const [contactName, setContactName] = useState(contactFields?.contactName || '');
+  const [phoneNumber, setPhoneNumber] = useState(contactFields?.phoneNumber || '');
+  const [email, setEmail] = useState(contactFields?.email || '');
+
+  const updateContactFields = (field: string, value: string) => {
+    const newFields = {
+      contactName,
+      phoneNumber,
+      email,
+      websiteUrl,
+      [field]: value
+    };
+    setContactFields?.(newFields);
+  };
 
   return (
     <div className="event-notes bg-white rounded-lg shadow-sm p-4 mb-8">
@@ -36,25 +61,16 @@ export const EventNotes: React.FC<Props> = ({
 
         {/* Embedded Structured Fields */}
         <div className="space-y-2 pt-2 border-t border-gray-100">
-          {/* Website */}
-          <div className="flex items-center">
-            <span className="text-gray-400 text-sm w-20 flex-shrink-0">Website:</span>
-            <input
-              type="url"
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="https://..."
-              className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
-            />
-          </div>
-
           {/* Contact Name */}
           <div className="flex items-center">
             <span className="text-gray-400 text-sm w-20 flex-shrink-0">Contact:</span>
             <input
               type="text"
               value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
+              onChange={(e) => {
+                setContactName(e.target.value);
+                updateContactFields('contactName', e.target.value);
+              }}
               placeholder="Contact name..."
               className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
             />
@@ -66,7 +82,10 @@ export const EventNotes: React.FC<Props> = ({
             <input
               type="tel"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value);
+                updateContactFields('phoneNumber', e.target.value);
+              }}
               placeholder="Phone number..."
               className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
             />
@@ -78,8 +97,26 @@ export const EventNotes: React.FC<Props> = ({
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                updateContactFields('email', e.target.value);
+              }}
               placeholder="email@example.com"
+              className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
+            />
+          </div>
+
+          {/* Website */}
+          <div className="flex items-center">
+            <span className="text-gray-400 text-sm w-20 flex-shrink-0">Website:</span>
+            <input
+              type="url"
+              value={websiteUrl}
+              onChange={(e) => {
+                setWebsiteUrl(e.target.value);
+                updateContactFields('websiteUrl', e.target.value);
+              }}
+              placeholder="https://..."
               className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
             />
           </div>
