@@ -3,6 +3,7 @@ import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getLocationButtons } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
 import { searchLocations, LocationResult, formatLocationString, formatLocationForDisplay } from '../../utils/mapsSearch';
+import { formatLocationToTitleCase } from '../../utils/formatLocation';
 
 interface Props {
   flowContext: FlowContext;
@@ -36,30 +37,16 @@ export const CustomLocationSelection: React.FC<Props> = ({
   // Sticky confirm state and scroll refs
   const [stickyConfirmVisible, setStickyConfirmVisible] = useState<{[key: string]: boolean}>({});
   const scrollContainerRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+  
+  // Pre-populate locations when in edit mode
+  React.useEffect(() => {
+    if (flowContext.isEditMode && flowContext.eventPreview.dateBasedLocations) {
+      // The locations are already stored in flowContext.eventPreview.dateBasedLocations
+      // No need to do anything special, they will be displayed by the component
+    }
+  }, [flowContext.isEditMode, flowContext.eventPreview.dateBasedLocations]);
 
-  const formatManualLocationInput = (input: string): string => {
-    // Common directional abbreviations that should stay uppercase
-    const directions = ['NE', 'NW', 'SE', 'SW', 'N', 'S', 'E', 'W'];
-    // Common street suffixes that should be properly capitalized
-    const streetSuffixes = ['St', 'Ave', 'Rd', 'Dr', 'Blvd', 'Ln', 'Ct', 'Pl', 'Way', 'Pkwy'];
-    
-    return input
-      .toLowerCase()
-      .split(' ')
-      .map(word => {
-        // Keep directions uppercase
-        if (directions.includes(word.toUpperCase())) {
-          return word.toUpperCase();
-        }
-        // Proper case for street suffixes
-        if (streetSuffixes.includes(word.charAt(0).toUpperCase() + word.slice(1))) {
-          return word.charAt(0).toUpperCase() + word.slice(1);
-        }
-        // Regular title case for other words
-        return word.charAt(0).toUpperCase() + word.slice(1);
-      })
-      .join(' ');
-  };
+
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -109,7 +96,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
     if (selectedPredefinedLocation) {
       const location = getLocationButtons().find(loc => loc.id === selectedPredefinedLocation.locationId);
       if (location) {
-        handleSetLocationForDate(selectedPredefinedLocation.dateStr, location.label);
+        handleSetLocationForDate(selectedPredefinedLocation.dateStr, formatLocationToTitleCase(location.label));
         setSelectedPredefinedLocation(null);
         setEditingLocationForDate(null);
         // Remove from search selected locations if it was there
@@ -139,7 +126,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
         handleSetLocationForDate(dateStr, formatLocationForDisplay(selectedLocationResult));
       } else {
         // Manual input - convert to proper address capitalization
-        const locationToUse = formatManualLocationInput(searchInput.trim());
+        const locationToUse = formatLocationToTitleCase(searchInput.trim());
         
         handleSetLocationForDate(dateStr, locationToUse);
         // Remove from search selected locations if it was there
@@ -234,7 +221,7 @@ export const CustomLocationSelection: React.FC<Props> = ({
               >
                 <span className="font-semibold text-gray-800">{dayOfWeekName}, {monthName} {dayNum}</span>
                 <span>|</span>
-                <span>{location}</span>
+                <span>{formatLocationToTitleCase(location)}</span>
               </button>
             </div>
           ) : isEditing ? (

@@ -2,6 +2,7 @@ import React from 'react';
 import { format, parse } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { StackedChildBadges } from '../common';
+import { formatLocationToTitleCase } from '../../utils/formatLocation';
 
 interface EventCardProps {
   image: string;
@@ -147,14 +148,14 @@ const EventCard: React.FC<EventCardProps> = ({
                 className="flex flex-col flex-1"
                 {...(carouselSwipeHandler && carouselControls ? carouselSwipeHandler : {})}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-3">
                   <StackedChildBadges childName={childName} size="md" maxVisible={3} />
                   <div className="flex flex-col">
                     <h3 className="text-sm font-semibold">
                       {displayName}
                     </h3>
                     {location && (
-                      <span className="text-xs text-gray-200 mt-0.5">{location}</span>
+                      <span className="text-xs text-gray-200 mt-0.5">{formatLocationToTitleCase(location)}</span>
                     )}
                   </div>
                   {carouselControls}
@@ -209,7 +210,7 @@ const EventCard: React.FC<EventCardProps> = ({
                       <div className="flex items-center gap-1">
                         <a 
                           href={`mailto:${contactName}@contact.local`}
-                          className="text-[#f8b6c2] hover:text-white transition-colors"
+                          className="text-[#c4b5fd] hover:text-white transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             // This would open contacts app on mobile
@@ -218,31 +219,31 @@ const EventCard: React.FC<EventCardProps> = ({
                         >
                           {contactName}
                         </a>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#f8b6c2] flex-shrink-0"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#c4b5fd] flex-shrink-0"></span>
                       </div>
                     )}
                     {phoneNumber && (
                       <div className="flex items-center gap-1">
                         <a 
                           href={`tel:${phoneNumber}`}
-                          className="text-[#ffd8b5] hover:text-white transition-colors"
+                          className="text-[#fed7aa] hover:text-white transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {phoneNumber}
                         </a>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ffd8b5] flex-shrink-0"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#fed7aa] flex-shrink-0"></span>
                       </div>
                     )}
                     {email && (
                       <div className="flex items-center gap-1">
                         <a 
                           href={`mailto:${email}`}
-                          className="text-[#bbf7d0] hover:text-white transition-colors"
+                          className="text-[#6ee7b7] hover:text-white transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {email}
                         </a>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#bbf7d0] flex-shrink-0"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#6ee7b7] flex-shrink-0"></span>
                       </div>
                     )}
                     {websiteUrl && (
@@ -251,12 +252,12 @@ const EventCard: React.FC<EventCardProps> = ({
                           href={websiteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#c0e2e7] hover:text-white transition-colors"
+                          className="text-[#7dd3fc] hover:text-white transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {websiteUrl.replace(/^https?:\/\//, '')}
                         </a>
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#c0e2e7] flex-shrink-0"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#7dd3fc] flex-shrink-0"></span>
                       </div>
                     )}
                   </div>
@@ -295,7 +296,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 <div className="flex items-center gap-1">
                   <a 
                     href={`mailto:${contactName}@contact.local`}
-                    className="text-[#f8b6c2] hover:text-white transition-colors"
+                    className="text-[#c4b5fd] hover:text-white transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       // This would open contacts app on mobile
@@ -304,31 +305,31 @@ const EventCard: React.FC<EventCardProps> = ({
                   >
                     {contactName}
                   </a>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#f8b6c2] flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#c4b5fd] flex-shrink-0"></span>
                 </div>
               )}
               {phoneNumber && (
                 <div className="flex items-center gap-1">
                   <a 
                     href={`tel:${phoneNumber}`}
-                    className="text-[#ffd8b5] hover:text-white transition-colors"
+                    className="text-[#fed7aa] hover:text-white transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {phoneNumber}
                   </a>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffd8b5] flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#fed7aa] flex-shrink-0"></span>
                 </div>
               )}
               {email && (
                 <div className="flex items-center gap-1">
                   <a 
                     href={`mailto:${email}`}
-                    className="text-[#bbf7d0] hover:text-white transition-colors"
+                    className="text-[#6ee7b7] hover:text-white transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {email}
                   </a>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#bbf7d0] flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#6ee7b7] flex-shrink-0"></span>
                 </div>
               )}
               {websiteUrl && (
@@ -337,12 +338,12 @@ const EventCard: React.FC<EventCardProps> = ({
                     href={websiteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#c0e2e7] hover:text-white transition-colors"
+                    className="text-[#7dd3fc] hover:text-white transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {websiteUrl.replace(/^https?:\/\//, '')}
                   </a>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#c0e2e7] flex-shrink-0"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#7dd3fc] flex-shrink-0"></span>
                 </div>
               )}
             </div>

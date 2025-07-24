@@ -360,6 +360,10 @@ export const handleButtonSelect = ({
         if (buttonId !== 'create-event') return;
         newContext.step = 'confirmation';
         newContext.eventPreview.notes = eventNotes;
+        newContext.eventPreview.contactName = contactFields?.contactName || '';
+        newContext.eventPreview.phoneNumber = contactFields?.phoneNumber || '';
+        newContext.eventPreview.email = contactFields?.email || '';
+        newContext.eventPreview.websiteUrl = contactFields?.websiteUrl || '';
 
         const { subtype, eventType } = newContext.eventPreview;
         const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';

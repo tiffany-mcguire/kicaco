@@ -3,9 +3,11 @@ import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getLocationButtons } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
 import { searchLocations, LocationResult, formatLocationString } from '../../utils/mapsSearch';
+import { formatLocationToTitleCase } from '../../utils/formatLocation';
 
 interface Props {
   flowContext: FlowContext;
+  setFlowContext?: React.Dispatch<React.SetStateAction<FlowContext>>;
   customLocationInput: string;
   setCustomLocationInput: (value: string) => void;
   handleButtonSelect: (buttonId: string) => void;
@@ -13,6 +15,7 @@ interface Props {
 
 export const LocationSelection: React.FC<Props> = ({
   flowContext,
+  setFlowContext,
   customLocationInput,
   setCustomLocationInput,
   handleButtonSelect
@@ -23,6 +26,22 @@ export const LocationSelection: React.FC<Props> = ({
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<string>('');
   const [originalSearchQuery, setOriginalSearchQuery] = useState('');
+
+  // When in edit mode, pre-select the location
+  React.useEffect(() => {
+    if (flowContext.isEditMode && flowContext.eventPreview.location) {
+      // Check if it's a predefined location
+      const predefinedLoc = getLocationButtons().find(loc => 
+        loc.label === flowContext.eventPreview.location
+      );
+      if (predefinedLoc) {
+        setSelectedPredefinedLocation(predefinedLoc.id);
+      } else {
+        // It's a custom location
+        setCustomLocationInput(flowContext.eventPreview.location);
+      }
+    }
+  }, [flowContext.isEditMode, flowContext.eventPreview.location]);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -49,9 +68,29 @@ export const LocationSelection: React.FC<Props> = ({
     if (selectedLocation === locationString) {
       setSelectedLocation('');
       setCustomLocationInput(originalSearchQuery);
+      // If in edit mode and deselecting, clear the location
+      if (flowContext.isEditMode && setFlowContext) {
+        setFlowContext({
+          ...flowContext,
+          eventPreview: {
+            ...flowContext.eventPreview,
+            location: ''
+          }
+        });
+      }
     } else {
       setSelectedLocation(locationString);
       setCustomLocationInput(locationString);
+      // If in edit mode, update location immediately on selection
+      if (flowContext.isEditMode && setFlowContext) {
+        setFlowContext({
+          ...flowContext,
+          eventPreview: {
+            ...flowContext.eventPreview,
+            location: formatLocationToTitleCase(locationString)
+          }
+        });
+      }
     }
     // Keep search results visible so user can change selection
     // Don't trigger new search since we want to keep current results
@@ -63,8 +102,28 @@ export const LocationSelection: React.FC<Props> = ({
       // Toggle selection - if already selected, deselect it
       if (selectedPredefinedLocation === locationId) {
         setSelectedPredefinedLocation('');
+        // If in edit mode and deselecting, clear the location
+        if (flowContext.isEditMode && setFlowContext) {
+          setFlowContext({
+            ...flowContext,
+            eventPreview: {
+              ...flowContext.eventPreview,
+              location: ''
+            }
+          });
+        }
       } else {
         setSelectedPredefinedLocation(locationId);
+        // If in edit mode, update location immediately on selection
+        if (flowContext.isEditMode && setFlowContext) {
+          setFlowContext({
+            ...flowContext,
+            eventPreview: {
+              ...flowContext.eventPreview,
+              location: formatLocationToTitleCase(location.label)
+            }
+          });
+        }
       }
       // Don't auto-fill input or trigger search mode
     }
@@ -73,20 +132,36 @@ export const LocationSelection: React.FC<Props> = ({
   const handleConfirmPredefinedLocation = () => {
     const location = getLocationButtons().find(loc => loc.id === selectedPredefinedLocation);
     if (location) {
-      handleButtonSelect(location.label);
+      // If in edit mode and setFlowContext is available, update immediately
+      if (flowContext.isEditMode && setFlowContext) {
+        setFlowContext({
+          ...flowContext,
+          eventPreview: {
+            ...flowContext.eventPreview,
+            location: location.label
+          }
+        });
+      }
+      handleButtonSelect(formatLocationToTitleCase(location.label));
       setSelectedPredefinedLocation('');
     }
   };
 
   const handleManualLocationSubmit = () => {
     if (customLocationInput.trim()) {
-      // Convert to title case if it's manual input, otherwise use as-is
-      const locationToUse = selectedLocation || customLocationInput.trim()
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      // Format to title case
+      const locationToUse = formatLocationToTitleCase(selectedLocation || customLocationInput.trim());
       
+      // If in edit mode and setFlowContext is available, update immediately
+      if (flowContext.isEditMode && setFlowContext) {
+        setFlowContext({
+          ...flowContext,
+          eventPreview: {
+            ...flowContext.eventPreview,
+            location: locationToUse
+          }
+        });
+      }
       handleButtonSelect(locationToUse);
       setShowLocationSearch(false);
       setCustomLocationInput('');
@@ -217,6 +292,25 @@ export const LocationSelection: React.FC<Props> = ({
                         setSelectedLocation(''); // Clear selection if user types something different
                       }
                       handleSearch(e.target.value);
+                      
+                      // In edit mode, update location as user types (with debouncing)
+                      if (flowContext.isEditMode && setFlowContext && e.target.value.trim()) {
+                        // Clear any existing timeout
+                        if ((window as any).locationUpdateTimeout) {
+                          clearTimeout((window as any).locationUpdateTimeout);
+                        }
+                        
+                        // Set new timeout to update after 500ms of no typing
+                        (window as any).locationUpdateTimeout = setTimeout(() => {
+                          setFlowContext({
+                            ...flowContext,
+                            eventPreview: {
+                              ...flowContext.eventPreview,
+                              location: formatLocationToTitleCase(e.target.value.trim())
+                            }
+                          });
+                        }, 500);
+                      }
                     }}
                     placeholder="Search for location or enter address..."
                     className={`location-selection__search-input w-full text-xs px-2 py-1 rounded-md text-gray-800 placeholder-gray-500 border outline-none focus:ring-2 focus:ring-[#217e8f]/50 ${
@@ -262,13 +356,21 @@ export const LocationSelection: React.FC<Props> = ({
                     
                     {/* Fixed position manual submit button - always at bottom */}
                     <div className="location-selection__manual-submit-container h-8 flex items-center flex-shrink-0">
-                      <button
-                        onClick={handleManualLocationSubmit}
-                        disabled={!customLocationInput.trim() || isSearching}
-                        className="location-selection__manual-submit w-full h-[30px] rounded-md bg-[#2f8fa4] text-white text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none hover:bg-[#217e8f] active:scale-95 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 border-2 border-[#217e8f] disabled:border-gray-300"
-                      >
-                        {selectedLocation ? 'Confirm Location' : 'Use As Location'}
-                      </button>
+                      {flowContext.isEditMode ? (
+                        // In edit mode, show a message that location is auto-saved
+                        <div className="w-full h-[30px] flex items-center justify-center text-[13px] text-[#217e8f]">
+                          {selectedLocation ? 'Location Updated' : (customLocationInput.trim() ? 'Type or Select Location' : 'Start typing to search...')}
+                        </div>
+                      ) : (
+                        // Normal flow - show confirm button
+                        <button
+                          onClick={handleManualLocationSubmit}
+                          disabled={!customLocationInput.trim() || isSearching}
+                          className="location-selection__manual-submit w-full h-[30px] rounded-md bg-[#2f8fa4] text-white text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none hover:bg-[#217e8f] active:scale-95 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 border-2 border-[#217e8f] disabled:border-gray-300"
+                        >
+                          {selectedLocation ? 'Confirm Location' : 'Use As Location'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -311,17 +413,25 @@ export const LocationSelection: React.FC<Props> = ({
                   
                   {/* Fixed position confirm button - always at bottom */}
                   <div className="location-selection__predefined-confirm-container h-8 flex items-center flex-shrink-0">
-                    <button
-                      onClick={handleConfirmPredefinedLocation}
-                      disabled={!selectedPredefinedLocation}
-                      className={`location-selection__predefined-confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
-                        selectedPredefinedLocation 
-                          ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
-                      }`}
-                    >
-                      {selectedPredefinedLocation ? 'Confirm Location' : 'Select Location'}
-                    </button>
+                    {flowContext.isEditMode ? (
+                      // In edit mode, show a message that location is auto-saved
+                      <div className="w-full h-[30px] flex items-center justify-center text-[13px] text-[#217e8f]">
+                        {selectedPredefinedLocation ? 'Location Updated' : 'Select Location'}
+                      </div>
+                    ) : (
+                      // Normal flow - show confirm button
+                      <button
+                        onClick={handleConfirmPredefinedLocation}
+                        disabled={!selectedPredefinedLocation}
+                        className={`location-selection__predefined-confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
+                          selectedPredefinedLocation 
+                            ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
+                        }`}
+                      >
+                        {selectedPredefinedLocation ? 'Confirm Location' : 'Select Location'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

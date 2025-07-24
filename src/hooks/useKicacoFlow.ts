@@ -19,6 +19,10 @@ export interface FlowContext {
     time?: string;
     location?: string;
     notes?: string;
+    contactName?: string;
+    phoneNumber?: string;
+    email?: string;
+    websiteUrl?: string;
     isRepeating?: boolean;
     selectedDates?: string[];
     repeatingSameTime?: boolean;

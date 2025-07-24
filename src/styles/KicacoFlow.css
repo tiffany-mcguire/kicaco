@@ -113,7 +113,7 @@
 
 /* Confirmation screen (embedded version) */
 .kicaco-flow__step-container .kicaco-flow__confirmation-modal {
-  @apply relative w-full max-w-md ring-4 ring-[#217e8f] rounded-xl mx-auto mb-6;
+  @apply relative w-full max-w-md ring-4 ring-[#217e8f] rounded-xl mx-auto mb-1;
 }
 
 .kicaco-flow__step-container .kicaco-flow__confirmation-content {
@@ -170,7 +170,7 @@
 }
 
 .kicaco-flow__confirmation-event-info {
-  @apply flex items-center gap-1 min-w-0 flex-1;
+  @apply flex items-center gap-2 min-w-0 flex-1;
 }
 
 .kicaco-flow__confirmation-child-badges {

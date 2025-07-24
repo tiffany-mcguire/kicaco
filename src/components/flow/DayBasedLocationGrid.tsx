@@ -3,6 +3,7 @@ import { FlowContext } from '../../hooks/useKicacoFlow';
 import { getUniqueDaysOfWeek, getLocationButtons } from '../../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../../constants/flowColors';
 import { searchLocations, LocationResult, formatLocationString, formatLocationForDisplay } from '../../utils/mapsSearch';
+import { formatLocationToTitleCase } from '../../utils/formatLocation';
 
 interface Props {
   flowContext: FlowContext;
@@ -32,34 +33,20 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedPredefinedLocation, setSelectedPredefinedLocation] = useState<{dayIndex: number, locationId: string} | null>(null);
   const [searchSelectedLocations, setSearchSelectedLocations] = useState<{[dayIndex: number]: LocationResult}>({});
+  
+  // Pre-populate locations when in edit mode
+  React.useEffect(() => {
+    if (flowContext.isEditMode && flowContext.eventPreview.dayBasedLocations) {
+      // The locations are already stored in flowContext.eventPreview.dayBasedLocations
+      // No need to do anything special, they will be displayed by the component
+    }
+  }, [flowContext.isEditMode, flowContext.eventPreview.dayBasedLocations]);
 
   const generateLocationOptions = () => {
     return getLocationButtons().map(loc => loc.label);
   };
 
-  const formatManualLocationInput = (input: string): string => {
-    // Common directional abbreviations that should stay uppercase
-    const directions = ['NE', 'NW', 'SE', 'SW', 'N', 'S', 'E', 'W'];
-    // Common street suffixes that should be properly capitalized
-    const streetSuffixes = ['St', 'Ave', 'Rd', 'Dr', 'Blvd', 'Ln', 'Ct', 'Pl', 'Way', 'Pkwy'];
-    
-    return input
-      .toLowerCase()
-      .split(' ')
-      .map(word => {
-        // Keep directions uppercase
-        if (directions.includes(word.toUpperCase())) {
-          return word.toUpperCase();
-        }
-        // Proper case for street suffixes
-        if (streetSuffixes.includes(word.charAt(0).toUpperCase() + word.slice(1))) {
-          return word.charAt(0).toUpperCase() + word.slice(1);
-        }
-        // Regular title case for other words
-        return word.charAt(0).toUpperCase() + word.slice(1);
-      })
-      .join(' ');
-  };
+
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -109,7 +96,7 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
     if (selectedPredefinedLocation) {
       const location = getLocationButtons().find(loc => loc.id === selectedPredefinedLocation.locationId);
       if (location) {
-        handleSetLocationForDay(selectedPredefinedLocation.dayIndex, location.label);
+        handleSetLocationForDay(selectedPredefinedLocation.dayIndex, formatLocationToTitleCase(location.label));
         setSelectedPredefinedLocation(null);
         setEditingLocationForDay(null);
         // Remove from search selected locations if it was there
@@ -139,7 +126,7 @@ export const DayBasedLocationGrid: React.FC<Props> = ({
         handleSetLocationForDay(dayIndex, formatLocationForDisplay(selectedLocationResult));
       } else {
         // Manual input - convert to proper address capitalization
-        const locationToUse = formatManualLocationInput(searchInput.trim());
+        const locationToUse = formatLocationToTitleCase(searchInput.trim());
         
         handleSetLocationForDay(dayIndex, locationToUse);
         // Remove from search selected locations if it was there

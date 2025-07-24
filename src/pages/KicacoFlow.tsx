@@ -149,34 +149,203 @@ export default function KicacoFlow() {
               handleButtonSelect={handleButtonSelect}
             />
           ) : flowContext.step === 'whenTimePeriod' || flowContext.step === 'daySpecificTime' ? (
-            <TimeSelection
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              showFullPickerFor={showFullPickerFor}
-              setShowFullPickerFor={setShowFullPickerFor}
-              customTime={customTime}
-              setCustomTime={setCustomTime}
-              singleTimeScrollRef={singleTimeScrollRef}
-              handleButtonSelect={handleButtonSelect}
-            />
+            <>
+              <TimeSelection
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                showFullPickerFor={showFullPickerFor}
+                setShowFullPickerFor={setShowFullPickerFor}
+                customTime={customTime}
+                setCustomTime={setCustomTime}
+                singleTimeScrollRef={singleTimeScrollRef}
+                handleButtonSelect={handleButtonSelect}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'monthPart' ? (
-            <DateSelection
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              showOtherMonths={showOtherMonths}
-              currentButtons={currentButtons}
-              getRemainingMonthsInYear={getRemainingMonthsInYear}
-              getMonthDates={getMonthDates}
-              dayColors={dayColors}
-              handleButtonSelect={handleButtonSelect}
-            />
+            <>
+              <DateSelection
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                showOtherMonths={showOtherMonths}
+                currentButtons={currentButtons}
+                getRemainingMonthsInYear={getRemainingMonthsInYear}
+                getMonthDates={getMonthDates}
+                dayColors={dayColors}
+                handleButtonSelect={handleButtonSelect}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'whereLocation' ? (
-            <LocationSelection
-              flowContext={flowContext}
-              customLocationInput={customLocationInput}
-              setCustomLocationInput={setCustomLocationInput}
-              handleButtonSelect={handleButtonSelect}
-            />
+            <>
+              <LocationSelection
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                customLocationInput={customLocationInput}
+                setCustomLocationInput={setCustomLocationInput}
+                handleButtonSelect={handleButtonSelect}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'eventNotes' ? (
             <EventNotes
               eventNotes={eventNotes}
@@ -185,6 +354,11 @@ export default function KicacoFlow() {
               handleButtonSelect={handleButtonSelect}
               contactFields={contactFields}
               setContactFields={setContactFields}
+              flowContext={flowContext}
+              setFlowContext={setFlowContext}
+              createdEvents={createdEvents}
+              setCreatedEvents={setCreatedEvents}
+              setCurrentEventIndex={setCurrentEventIndex}
             />
           ) : flowContext.step === 'confirmation' ? (
             <ConfirmationScreen
@@ -198,53 +372,277 @@ export default function KicacoFlow() {
               setFlowContext={setFlowContext}
             />
           ) : flowContext.step === 'dayBasedLocationSelection' ? (
-            <DayBasedLocationGrid
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              editingLocationForDay={editingLocationForDay}
-              setEditingLocationForDay={setEditingLocationForDay}
-              showFullPickerFor={showFullPickerFor}
-              setShowFullPickerFor={setShowFullPickerFor}
-              handleSetLocationForDay={handleSetLocationForDay}
-            />
+            <>
+              <DayBasedLocationGrid
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                editingLocationForDay={editingLocationForDay}
+                setEditingLocationForDay={setEditingLocationForDay}
+                showFullPickerFor={showFullPickerFor}
+                setShowFullPickerFor={setShowFullPickerFor}
+                handleSetLocationForDay={handleSetLocationForDay}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'dayBasedTimeGrid' ? (
-            <DayBasedTimeGrid
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              editingTimeForDay={editingTimeForDay}
-              setEditingTimeForDay={setEditingTimeForDay}
-              showFullPickerFor={showFullPickerFor}
-              setShowFullPickerFor={setShowFullPickerFor}
-              customTime={customTime}
-              setCustomTime={setCustomTime}
-              scrollableTimeRef={scrollableTimeRef}
-              handleSetTimeForDay={handleSetTimeForDay}
-            />
+            <>
+              <DayBasedTimeGrid
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                editingTimeForDay={editingTimeForDay}
+                setEditingTimeForDay={setEditingTimeForDay}
+                showFullPickerFor={showFullPickerFor}
+                setShowFullPickerFor={setShowFullPickerFor}
+                customTime={customTime}
+                setCustomTime={setCustomTime}
+                scrollableTimeRef={scrollableTimeRef}
+                handleSetTimeForDay={handleSetTimeForDay}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'customTimeSelection' ? (
-            <CustomTimeSelection
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              editingTimeForDate={editingTimeForDate}
-              setEditingTimeForDate={setEditingTimeForDate}
-              showFullPickerFor={showFullPickerFor}
-              setShowFullPickerFor={setShowFullPickerFor}
-              customTime={customTime}
-              setCustomTime={setCustomTime}
-              scrollableTimeRef={scrollableTimeRef}
-              handleSetTimeForDate={handleSetTimeForDate}
-              areAllTimesSet={areAllTimesSet}
-            />
+            <>
+              <CustomTimeSelection
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                editingTimeForDate={editingTimeForDate}
+                setEditingTimeForDate={setEditingTimeForDate}
+                showFullPickerFor={showFullPickerFor}
+                setShowFullPickerFor={setShowFullPickerFor}
+                customTime={customTime}
+                setCustomTime={setCustomTime}
+                scrollableTimeRef={scrollableTimeRef}
+                handleSetTimeForDate={handleSetTimeForDate}
+                areAllTimesSet={areAllTimesSet}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'customLocationSelection' ? (
-            <CustomLocationSelection
-              flowContext={flowContext}
-              setFlowContext={setFlowContext}
-              editingLocationForDate={editingLocationForDate}
-              setEditingLocationForDate={setEditingLocationForDate}
-              customLocationInput={customLocationInput}
-              setCustomLocationInput={setCustomLocationInput}
-              handleSetLocationForDate={handleSetLocationForDate}
-              areAllLocationsSet={areAllLocationsSet}
-            />
+            <>
+              <CustomLocationSelection
+                flowContext={flowContext}
+                setFlowContext={setFlowContext}
+                editingLocationForDate={editingLocationForDate}
+                setEditingLocationForDate={setEditingLocationForDate}
+                customLocationInput={customLocationInput}
+                setCustomLocationInput={setCustomLocationInput}
+                handleSetLocationForDate={handleSetLocationForDate}
+                areAllLocationsSet={areAllLocationsSet}
+              />
+              
+              {/* Resave Event Button - Conditional */}
+              {flowContext.isEditMode && (
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
+                      setFlowContext({ 
+                        ...flowContext, 
+                        step: 'confirmation',
+                        isEditMode: false
+                      });
+                    }}
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
+                  >
+                    Resave Event
+                  </button>
+                </div>
+              )}
+            </>
           ) : flowContext.step === 'repeatingSameLocation' ? (
             <div className="kicaco-flow__step-container">
               <div className="kicaco-flow__button-list space-y-3">
@@ -337,16 +735,52 @@ export default function KicacoFlow() {
 
               {/* Resave Event Button - Conditional */}
               {flowContext.isEditMode && (
-                <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
+                <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
                   <button
                     onClick={() => {
+                      // Recreate events using the same logic as the Create Event button
+                      const { subtype, eventType } = flowContext.eventPreview;
+                      const formattedSubtype = subtype ? subtype.charAt(0).toUpperCase() + subtype.slice(1) : '';
+                      const formattedEventType = eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) : '';
+                      const fullEventName = [formattedSubtype, formattedEventType].filter(Boolean).join(' ');
+
+                      const baseEvent = {
+                        eventName: fullEventName || 'Event',
+                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        date: flowContext.eventPreview.date || '',
+                        time: flowContext.eventPreview.time || '',
+                        location: flowContext.eventPreview.location || '',
+                        notes: eventNotes || '',
+                        contactName: contactFields?.contactName || '',
+                        phoneNumber: contactFields?.phoneNumber || '',
+                        email: contactFields?.email || '',
+                        websiteUrl: contactFields?.websiteUrl || '',
+                        eventType: flowContext.eventPreview.eventType || '',
+                        category: flowContext.eventPreview.category || ''
+                      };
+
+                      const events = (flowContext.eventPreview.selectedDates && flowContext.eventPreview.selectedDates.length > 0)
+                        ? flowContext.eventPreview.selectedDates.map(date => {
+                          const [year, month, day] = date.split('-').map(Number);
+                          const eventDate = new Date(year, month - 1, day);
+                          const dayOfWeek = eventDate.getDay() === 0 ? 6 : eventDate.getDay() - 1;
+                          
+                          let eventTime = flowContext.eventPreview.dayBasedTimes?.[date] || flowContext.eventPreview.dayBasedTimes?.[dayOfWeek] || baseEvent.time;
+                          let eventLocation = flowContext.eventPreview.dateBasedLocations?.[date] || flowContext.eventPreview.dayBasedLocations?.[dayOfWeek] || baseEvent.location;
+
+                          return { ...baseEvent, date, time: eventTime, location: eventLocation };
+                        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) 
+                        : [baseEvent];
+
+                      setCreatedEvents(events);
+                      setCurrentEventIndex(0);
                       setFlowContext({ 
                         ...flowContext, 
                         step: 'confirmation',
                         isEditMode: false
                       });
                     }}
-                    className="text-sm text-[#c4828d] hover:text-[#217e8f] transition-colors"
+                    className="text-[#c4828d] hover:text-white transition-colors font-medium text-sm"
                   >
                     Resave Event
                   </button>

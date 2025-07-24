@@ -5,6 +5,7 @@ import { getKicacoEventPhoto } from '../../utils/getKicacoEventPhoto';
 import { SmartActionButton } from './SmartActionButton';
 import { ChevronLeft, ChevronRight, Share2, Calendar, Waves } from 'lucide-react';
 import { format, parse } from 'date-fns';
+import { formatLocationToTitleCase } from '../../utils/formatLocation';
 
 interface ConfirmationScreenProps {
   createdEvents: any[];
@@ -41,9 +42,10 @@ export default function ConfirmationScreen({
   };
 
   return (
-    <div className="kicaco-flow__step-container">
-      {/* Confirmation Modal Container (embedded) */}
-      <div className="kicaco-flow__confirmation-modal">
+    <>
+      {/* Confirmation Event Card */}
+      <div className="kicaco-flow__step-container">
+        <div className="kicaco-flow__confirmation-modal">
         <div className="kicaco-flow__confirmation-header">
           <div className="kicaco-flow__confirmation-header-content">
             <span className="kicaco-flow__confirmation-title">
@@ -112,9 +114,7 @@ export default function ConfirmationScreen({
                       </span>
                       {currentEvent?.location && (
                         <span className="kicaco-flow__confirmation-event-location">
-                          {currentEvent.location.split('-').map((word: string) => 
-                            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                          ).join(' ')}
+                          {formatLocationToTitleCase(currentEvent.location)}
                         </span>
                       )}
                     </div>
@@ -166,11 +166,14 @@ export default function ConfirmationScreen({
             </div>
           </div>
         </div>
-              </div>
+      </div>
+      </div>
 
+      {/* Edit & Action Buttons Card */}
+      <div className="bg-white rounded-lg shadow-sm p-4 mt-2 max-w-md mx-auto">
         {/* Edit Navigation */}
-        <div className="flex items-center justify-between mt-6 text-sm">
-          <span className="text-gray-700 font-medium">Edit:</span>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-700 font-medium ml-px">Edit:</span>
           <button 
             className="text-[#c4828d] hover:text-white transition-colors font-medium"
             onClick={() => navigateToStep('whichChild')}
@@ -225,10 +228,17 @@ export default function ConfirmationScreen({
           >
             Location
           </button>
+          <span className="text-gray-400">|</span>
+          <button 
+            className="text-[#c4828d] hover:text-white transition-colors font-medium mr-px"
+            onClick={() => navigateToStep('eventNotes')}
+          >
+            Notes
+          </button>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-3 mt-6">
+        <div className="flex justify-center gap-3 mt-4">
         <SmartActionButton
           button={{ 
             id: 'share-event', 
@@ -272,7 +282,8 @@ export default function ConfirmationScreen({
           getChildColor={getChildColor}
         />
       </div>
+      </div>
 
-    </div>
+    </>
   );
 } 
