@@ -174,7 +174,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -241,7 +241,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -305,7 +305,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -396,7 +396,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -465,7 +465,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -535,7 +535,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -602,7 +602,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',
@@ -746,7 +746,7 @@ export default function KicacoFlow() {
 
                       const baseEvent = {
                         eventName: fullEventName || 'Event',
-                        childName: flowContext.eventPreview.child ? flowContext.eventPreview.child.charAt(0).toUpperCase() + flowContext.eventPreview.child.slice(1) : '',
+                        childName: flowContext.eventPreview.selectedChildren && flowContext.eventPreview.selectedChildren.length > 0 ? flowContext.eventPreview.selectedChildren.join(', ') : '',
                         date: flowContext.eventPreview.date || '',
                         time: flowContext.eventPreview.time || '',
                         location: flowContext.eventPreview.location || '',

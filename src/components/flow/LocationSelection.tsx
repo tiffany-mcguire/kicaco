@@ -356,21 +356,13 @@ export const LocationSelection: React.FC<Props> = ({
                     
                     {/* Fixed position manual submit button - always at bottom */}
                     <div className="location-selection__manual-submit-container h-8 flex items-center flex-shrink-0">
-                      {flowContext.isEditMode ? (
-                        // In edit mode, show a message that location is auto-saved
-                        <div className="w-full h-[30px] flex items-center justify-center text-[13px] text-[#217e8f]">
-                          {selectedLocation ? 'Location Updated' : (customLocationInput.trim() ? 'Type or Select Location' : 'Start typing to search...')}
-                        </div>
-                      ) : (
-                        // Normal flow - show confirm button
-                        <button
-                          onClick={handleManualLocationSubmit}
-                          disabled={!customLocationInput.trim() || isSearching}
-                          className="location-selection__manual-submit w-full h-[30px] rounded-md bg-[#2f8fa4] text-white text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none hover:bg-[#217e8f] active:scale-95 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 border-2 border-[#217e8f] disabled:border-gray-300"
-                        >
-                          {selectedLocation ? 'Confirm Location' : 'Use As Location'}
-                        </button>
-                      )}
+                      <button
+                        onClick={handleManualLocationSubmit}
+                        disabled={!customLocationInput.trim() || isSearching}
+                        className="location-selection__manual-submit w-full h-[30px] rounded-md bg-[#2f8fa4] text-white text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none hover:bg-[#217e8f] active:scale-95 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 border-2 border-[#217e8f] disabled:border-gray-300"
+                      >
+                        {selectedLocation ? 'Confirm Location' : 'Use As Location'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -413,25 +405,17 @@ export const LocationSelection: React.FC<Props> = ({
                   
                   {/* Fixed position confirm button - always at bottom */}
                   <div className="location-selection__predefined-confirm-container h-8 flex items-center flex-shrink-0">
-                    {flowContext.isEditMode ? (
-                      // In edit mode, show a message that location is auto-saved
-                      <div className="w-full h-[30px] flex items-center justify-center text-[13px] text-[#217e8f]">
-                        {selectedPredefinedLocation ? 'Location Updated' : 'Select Location'}
-                      </div>
-                    ) : (
-                      // Normal flow - show confirm button
-                      <button
-                        onClick={handleConfirmPredefinedLocation}
-                        disabled={!selectedPredefinedLocation}
-                        className={`location-selection__predefined-confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
-                          selectedPredefinedLocation 
-                            ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
-                        }`}
-                      >
-                        {selectedPredefinedLocation ? 'Confirm Location' : 'Select Location'}
-                      </button>
-                    )}
+                    <button
+                      onClick={handleConfirmPredefinedLocation}
+                      disabled={!selectedPredefinedLocation}
+                      className={`location-selection__predefined-confirm w-full h-[30px] rounded-md text-[13px] font-medium flex items-center justify-center shadow-sm focus:outline-none transition-colors border-2 ${
+                        selectedPredefinedLocation 
+                          ? 'bg-[#2f8fa4] text-white hover:bg-[#217e8f] active:scale-95 border-[#217e8f]' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed border-gray-300'
+                      }`}
+                    >
+                      {selectedPredefinedLocation ? 'Confirm Location' : 'Select Location'}
+                    </button>
                   </div>
                 </div>
               </div>

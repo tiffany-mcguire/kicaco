@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as logic from './useKicacoFlowLogic';
+import { useKicacoStore } from '../store/kicacoStore';
 
 // Types
 export interface FlowContext {
@@ -51,6 +52,9 @@ export interface SmartButton {
  * It uses helper functions from `useKicacoFlowLogic.ts` to keep this file clean.
  */
 export function useKicacoFlow() {
+  // Get children from store
+  const children = useKicacoStore(state => state.children);
+  
   // ---------------- State ----------------
   const [flowContext, setFlowContext] = useState<FlowContext>({
     step: 'initial',
@@ -80,7 +84,7 @@ export function useKicacoFlow() {
   // API returned to the component
   // --------------------------------------------------------------------------------
 
-  const currentButtons = logic.getCurrentButtons(flowContext);
+  const currentButtons = logic.getCurrentButtons(flowContext, children);
   const currentQuestion = logic.getCurrentQuestion(flowContext);
 
   const handleButtonSelect = (buttonId: string) => {
@@ -125,7 +129,7 @@ export function useKicacoFlow() {
     handleButtonSelect,
 
     // Simple helpers
-    getChildColor: logic.getChildColor,
+    getChildColor: (childName: string) => logic.getChildColor(childName, children),
     dayColors: logic.dayColors,
     getHourOptions: logic.getHourOptions,
     getMinuteOptions: logic.getMinuteOptions,

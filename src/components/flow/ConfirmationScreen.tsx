@@ -38,6 +38,19 @@ export default function ConfirmationScreen({
     const newContext = { ...flowContext };
     newContext.step = step;
     newContext.isEditMode = true; // Flag to indicate we're in edit mode
+    
+    // Preserve current event data in eventPreview so edits persist
+    if (currentEvent) {
+      newContext.eventPreview = {
+        ...newContext.eventPreview,
+        notes: currentEvent.notes || '',
+        contactName: currentEvent.contactName || '',
+        phoneNumber: currentEvent.phoneNumber || '',
+        email: currentEvent.email || '',
+        websiteUrl: currentEvent.websiteUrl || ''
+      };
+    }
+    
     setFlowContext(newContext);
   };
 
@@ -238,7 +251,7 @@ export default function ConfirmationScreen({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-3 mt-4">
+        <div className="flex justify-center gap-3 mt-4 max-[375px]:flex-col max-[375px]:items-center max-[375px]:gap-2">
         <SmartActionButton
           button={{ 
             id: 'share-event', 

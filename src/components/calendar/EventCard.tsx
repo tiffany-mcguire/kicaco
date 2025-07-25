@@ -200,7 +200,7 @@ const EventCard: React.FC<EventCardProps> = ({
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
                     {notes ? (
-                      <p className="text-xs text-gray-200">{notes}</p>
+                      <p className="text-xs text-gray-200 whitespace-pre-wrap">{notes}</p>
                     ) : (
                       <p className="text-xs italic text-gray-400">—</p>
                     )}
@@ -286,7 +286,7 @@ const EventCard: React.FC<EventCardProps> = ({
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
               {notes ? (
-                <p className="text-xs text-gray-200">{notes}</p>
+                <p className="text-xs text-gray-200 whitespace-pre-wrap">{notes}</p>
               ) : (
                 <p className="text-xs italic text-gray-400">—</p>
               )}

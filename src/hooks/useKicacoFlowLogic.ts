@@ -3,13 +3,21 @@ import { FlowContext, SmartButton } from './useKicacoFlow';
 // This file contains the pure logic for the Kicaco Flow, extracted from the page.
 // It is kept separate from the main hook to improve maintainability.
 
-export const getChildColor = (childId: string): string => {
-  const colors: { [key: string]: string } = {
-    'emma': '#ffd8b5', // Orange
-    'alex': '#c0e2e7',  // Blue
-    'leo': '#bbf7d0'    // Green
-  };
-  return colors[childId] || '#217e8f'; // Default to teal
+// Rainbow colors for children (same as StackedChildBadges)
+const childColors = [
+  '#f8b6c2', // Pink
+  '#fbd3a2', // Orange
+  '#fde68a', // Yellow
+  '#bbf7d0', // Green
+  '#c0e2e7', // Blue
+  '#d1d5fa', // Indigo
+  '#e9d5ff', // Purple
+];
+
+export const getChildColor = (childName: string, children: any[]): string => {
+  const childProfile = children.find(c => c.name === childName);
+  const childIndex = children.findIndex(c => c.name === childName);
+  return childProfile?.color || (childIndex >= 0 ? childColors[childIndex % childColors.length] : '#217e8f');
 };
 
 export const dayColors: { [key: number]: string } = {
@@ -66,11 +74,14 @@ export const getSportsEventTypeButtons = (): SmartButton[] => [
   { id: 'tournament', label: 'Tournament', description: 'Multi-game tournament or event' }
 ];
 
-export const getChildButtons = (): SmartButton[] => [
-  { id: 'emma', label: 'Emma', description: 'Age 8, loves soccer and art' },
-  { id: 'alex', label: 'Alex', description: 'Age 6, plays basketball' },
-  { id: 'leo', label: 'Leo', description: 'Age 10, tennis player' }
-];
+export const getChildButtons = (children: any[]): SmartButton[] => {
+  // Use actual children from the store
+  return children.map(child => ({
+    id: child.name, // Use the actual child name as ID
+    label: child.name,
+    description: child.role || ''
+  }));
+};
 
 export const getDateButtons = (): SmartButton[] => {
   const today = new Date();
@@ -372,7 +383,7 @@ export const handleButtonSelect = ({
 
         const baseEvent = {
           eventName: fullEventName || 'Event',
-          childName: newContext.eventPreview.child ? newContext.eventPreview.child.charAt(0).toUpperCase() + newContext.eventPreview.child.slice(1) : '',
+          childName: newContext.eventPreview.selectedChildren && newContext.eventPreview.selectedChildren.length > 0 ? newContext.eventPreview.selectedChildren.join(', ') : '',
           date: newContext.eventPreview.date || '',
           time: newContext.eventPreview.time || '',
           location: newContext.eventPreview.location || '',
@@ -411,14 +422,14 @@ export const handleButtonSelect = ({
     setFlowContext(newContext);
 };
 
-export const getCurrentButtons = (flowContext: FlowContext) => {
+export const getCurrentButtons = (flowContext: FlowContext, children: any[]) => {
     const { selectedDates = [] } = flowContext.eventPreview;
 
     const buttonMap: { [key: string]: () => SmartButton[] } = {
       initial: getInitialButtons,
       eventCategory: getEventCategoryButtons,
       eventType: getSportsEventTypeButtons,
-      whichChild: getChildButtons,
+      whichChild: () => getChildButtons(children),
 
 
 
