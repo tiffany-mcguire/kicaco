@@ -336,7 +336,7 @@ const GlobalFooter = forwardRef<HTMLDivElement, GlobalFooterProps>(
                   handleSend();
                 }
               }}
-              className="footer-chat w-full rounded-xl border border-gray-200 px-4 py-2 focus:outline-none bg-gray-50 text-gray-700 transition-all duration-200 focus:border-[#c0e2e7] focus:bg-white focus:shadow-[0_0_0_3px_rgba(192,226,231,0.1)]"
+              className="footer-chat w-full rounded-full border border-gray-200 px-4 py-2 focus:outline-none bg-gray-50 text-gray-700 transition-all duration-200 focus:border-[#c0e2e7] focus:bg-white focus:shadow-[0_0_0_3px_rgba(192,226,231,0.1)]"
               placeholder={placeholder}
               disabled={disabled}
             />

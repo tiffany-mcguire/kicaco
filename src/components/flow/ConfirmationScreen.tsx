@@ -16,6 +16,7 @@ interface ConfirmationScreenProps {
   getChildColor: (childId: string) => string;
   flowContext: any;
   setFlowContext: React.Dispatch<React.SetStateAction<any>>;
+  resetFlow: () => void;
 }
 
 export default function ConfirmationScreen({
@@ -26,7 +27,8 @@ export default function ConfirmationScreen({
   handleButtonSelect,
   getChildColor,
   flowContext,
-  setFlowContext
+  setFlowContext,
+  resetFlow
 }: ConfirmationScreenProps) {
   if (!createdEvents || createdEvents.length === 0) {
     return null;
@@ -53,6 +55,8 @@ export default function ConfirmationScreen({
     
     setFlowContext(newContext);
   };
+
+
 
   return (
     <>
@@ -290,7 +294,7 @@ export default function ConfirmationScreen({
               </span>
             ) as any
           }}
-          onClick={() => {}}
+          onClick={resetFlow}
           isChildButton={false}
           getChildColor={getChildColor}
         />

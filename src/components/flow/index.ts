@@ -4,6 +4,7 @@ export { LocationButton } from './LocationButton';
 export { SmallDateButton } from './SmallDateButton';
 export { ChildSelectionButton } from './ChildSelectionButton';
 export { FlowNavigationHeader } from './FlowNavigationHeader';
+export { default as ProgressIndicator } from './ProgressIndicator';
 export { SportsTypeSelection } from './SportsTypeSelection';
 export { TimeSelection } from './TimeSelection';
 export { DateSelection } from './DateSelection';

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SmartButton, FlowContext } from '../../hooks/useKicacoFlow';
 import { SmartActionButton } from './SmartActionButton';
+import ProgressIndicator from './ProgressIndicator';
 
 interface Props {
   eventNotes: string;
@@ -177,10 +178,15 @@ export const EventNotes: React.FC<Props> = ({
       </div>
     </div>
 
-    {/* Resave Event Button - Conditional */}
-    {flowContext?.isEditMode && (
-      <div className="bg-white rounded-lg shadow-sm p-4 mt-4 flex justify-end">
-        <button
+    {/* Progress Indicator Card */}
+    <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
+      {flowContext?.isEditMode ? (
+        <div className="flex justify-between items-center">
+          <div className="flex-1 pr-4">
+            <ProgressIndicator flowStep={flowContext.step} />
+          </div>
+          <div>
+            <button
           onClick={() => {
             if (!flowContext || !setFlowContext || !setCreatedEvents || !setCurrentEventIndex) return;
             
@@ -244,8 +250,12 @@ export const EventNotes: React.FC<Props> = ({
         >
           Resave Event
         </button>
-      </div>
-    )}
+          </div>
+        </div>
+      ) : (
+        <ProgressIndicator flowStep={flowContext?.step || 'eventNotes'} />
+      )}
+    </div>
     </>
   );
 }; 
