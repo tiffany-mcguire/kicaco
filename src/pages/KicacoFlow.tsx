@@ -203,7 +203,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -257,7 +257,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -279,7 +279,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -333,7 +333,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -352,7 +352,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -406,7 +406,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -453,7 +453,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -507,7 +507,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -531,7 +531,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -585,7 +585,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -610,7 +610,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                                          <div>
                       <button
@@ -664,7 +664,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -686,7 +686,7 @@ export default function KicacoFlow() {
                 {flowContext.isEditMode ? (
                   <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} />
+                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                     </div>
                     <div>
                   <button
@@ -740,7 +740,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -839,7 +839,7 @@ export default function KicacoFlow() {
                                   {flowContext.isEditMode ? (
                     <div className="flex justify-between items-center">
                       <div className="flex-1 pr-4">
-                        <ProgressIndicator flowStep={flowContext.step} />
+                        <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                       </div>
                       <div>
                   <button
@@ -893,7 +893,7 @@ export default function KicacoFlow() {
                     </div>
                   </div>
                 ) : (
-                  <ProgressIndicator flowStep={flowContext.step} />
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
               </div>
             </>
@@ -940,7 +940,7 @@ export default function KicacoFlow() {
           {/* Progress Indicator Card - appears on flow screens that don't have their own */}
           {flowContext.step !== 'confirmation' && flowContext.step !== 'whichChild' && flowContext.step !== 'monthPart' && flowContext.step !== 'whenTimePeriod' && flowContext.step !== 'daySpecificTime' && flowContext.step !== 'whereLocation' && flowContext.step !== 'dayBasedTimeGrid' && flowContext.step !== 'customTimeSelection' && flowContext.step !== 'dayBasedLocationSelection' && flowContext.step !== 'customLocationSelection' && flowContext.step !== 'eventNotes' && (
             <div className="bg-white rounded-lg shadow-sm p-4 mt-4 max-w-md mx-auto">
-              <ProgressIndicator flowStep={flowContext.step} />
+              <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
             </div>
           )}
 

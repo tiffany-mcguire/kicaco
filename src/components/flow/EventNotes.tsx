@@ -183,7 +183,7 @@ export const EventNotes: React.FC<Props> = ({
       {flowContext?.isEditMode ? (
         <div className="flex justify-between items-center">
           <div className="flex-1 pr-4">
-            <ProgressIndicator flowStep={flowContext.step} />
+                          <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
           </div>
           <div>
             <button
@@ -253,7 +253,7 @@ export const EventNotes: React.FC<Props> = ({
           </div>
         </div>
       ) : (
-        <ProgressIndicator flowStep={flowContext?.step || 'eventNotes'} />
+                    <ProgressIndicator flowStep={flowContext?.step || 'eventNotes'} isEditMode={flowContext?.isEditMode} />
       )}
     </div>
     </>

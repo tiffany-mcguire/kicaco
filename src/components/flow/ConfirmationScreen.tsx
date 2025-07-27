@@ -6,6 +6,7 @@ import { SmartActionButton } from './SmartActionButton';
 import { ChevronLeft, ChevronRight, Share2, Calendar, Waves } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { formatLocationToTitleCase } from '../../utils/formatLocation';
+import ProgressIndicator from './ProgressIndicator';
 
 interface ConfirmationScreenProps {
   createdEvents: any[];
@@ -187,7 +188,7 @@ export default function ConfirmationScreen({
       </div>
 
       {/* Edit & Action Buttons Card */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mt-2 max-w-md mx-auto">
+      <div className="bg-white rounded-lg shadow-sm p-4 max-w-md mx-auto">
         {/* Edit Navigation */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-700 font-medium ml-px">Edit:</span>
@@ -301,6 +302,18 @@ export default function ConfirmationScreen({
       </div>
       </div>
 
+      {/* Progress Indicator Card */}
+      <div className="bg-white rounded-lg shadow-sm p-4 mt-8 max-w-md mx-auto">
+        <div className="flex items-center justify-between">
+          <ProgressIndicator flowStep="confirmation" isEditMode={flowContext.isEditMode} />
+          <button 
+            onClick={resetFlow}
+            className="text-sm text-[#c4828d] hover:text-[#a06a75] transition-colors font-medium"
+          >
+            Delete All and Start Over
+          </button>
+        </div>
+      </div>
     </>
   );
 } 
