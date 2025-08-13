@@ -414,14 +414,46 @@ export const DateSelection: React.FC<Props> = ({
               })()}
             </div>
             
-            {/* Right column - Single year carousel + all months */}
+            {/* Right column - Year carousel + Month carousel */}
             <div className="flex flex-col items-end" style={{ gap: '8px' }}>
               {(() => {
                 const today = new Date();
                 const currentRealYear = today.getFullYear();
                 const currentRealMonth = today.getMonth(); // 0-indexed
                 
-                // Get all months that have selected dates (to exclude them from right column)
+                const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                
+                // Create a state for carousel index - initialize to currently selected month
+                const [carouselIndex, setCarouselIndex] = React.useState(() => {
+                  // If we have a selected month, use that, otherwise use next month
+                  if (flowContext.eventPreview.selectedMonth) {
+                    const [monthStr, yearStr] = flowContext.eventPreview.selectedMonth.split('-');
+                    const monthIndex = monthNames.indexOf(monthStr);
+                    return { month: monthIndex, year: parseInt(yearStr) };
+                  }
+                  // Default to next month
+                  const nextMonth = (currentRealMonth + 1) % 12;
+                  const nextYear = nextMonth === 0 ? currentRealYear + 1 : currentRealYear;
+                  return { month: nextMonth, year: nextYear };
+                });
+                
+                // Update carousel when selected month changes
+                React.useEffect(() => {
+                  if (flowContext.eventPreview.selectedMonth) {
+                    const [monthStr, yearStr] = flowContext.eventPreview.selectedMonth.split('-');
+                    const monthIndex = monthNames.indexOf(monthStr);
+                    setCarouselIndex({ month: monthIndex, year: parseInt(yearStr) });
+                  }
+                }, [flowContext.eventPreview.selectedMonth]);
+                
+                // Create array of years to show (current year + future years)
+                const yearsToShow = [currentRealYear];
+                for (let year = currentRealYear + 1; year <= currentRealYear + 5; year++) {
+                  yearsToShow.push(year);
+                }
+                
+                // Get all months that have selected dates
                 const selectedDates = flowContext.eventPreview.selectedDates || [];
                 const monthsWithSelectedDates = new Set<string>();
                 
@@ -434,75 +466,98 @@ export const DateSelection: React.FC<Props> = ({
                   monthsWithSelectedDates.add(monthId);
                 });
                 
-                const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                
-                // Helper function to count dates in a specific month
-                const getDateCountForMonth = (monthId: string) => {
-                  const selectedDates = flowContext.eventPreview.selectedDates || [];
-                  return selectedDates.filter(dateStr => {
-                    const [year, month] = dateStr.split('-');
-                    const shortMonthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                    const monthIndex = parseInt(month) - 1;
-                    const shortMonth = shortMonthNames[monthIndex];
-                    const dateMonthId = `${shortMonth}-${year}`;
-                    return dateMonthId === monthId;
-                  }).length;
-                };
-                
-                // Create array of years to cycle through (current year + future years)
-                const yearsToShow = [currentRealYear];
-                for (let year = currentRealYear + 1; year <= currentRealYear + 5; year++) {
-                  yearsToShow.push(year);
-                }
-                
-                const currentYearToShow = yearsToShow[currentYearIndex];
-                const isCurrentYear = currentYearToShow === currentRealYear;
-                
-                // Generate months for the current year being displayed
-                const monthsToShow: Array<{
-                  type: 'month';
-                  id: string;
-                  label: string;
-                }> = [];
-                
-                if (isCurrentYear) {
-                  // For current year, show current month (if no dates selected) and remaining months
-                  for (let i = currentRealMonth; i < 12; i++) {
-                    const monthId = `${monthNames[i]}-${currentYearToShow}`;
-                    
-                    // Only include months that don't have selected dates
-                    if (!monthsWithSelectedDates.has(monthId)) {
-                      monthsToShow.push({
-                        type: 'month',
-                        id: monthId,
-                        label: fullMonthNames[i]
-                      });
-                    }
+                const handlePrevMonth = () => {
+                  const prev = carouselIndex;
+                  let newMonth = prev.month - 1;
+                  let newYear = prev.year;
+                  
+                  if (newMonth < 0) {
+                    newMonth = 11;
+                    newYear = prev.year - 1;
                   }
-                } else {
-                  // For future years, show all months
-                  monthNames.forEach((monthName, index) => {
-                    const monthId = `${monthName}-${currentYearToShow}`;
-                    
-                    // Only include months that don't have selected dates
-                    if (!monthsWithSelectedDates.has(monthId)) {
-                      monthsToShow.push({
-                        type: 'month',
-                        id: monthId,
-                        label: fullMonthNames[index]
-                      });
+                  
+                  // Don't go before current month of current year
+                  if (newYear < currentRealYear || (newYear === currentRealYear && newMonth < currentRealMonth)) {
+                    return;
+                  }
+                  
+                  // Update carousel state
+                  setCarouselIndex({ month: newMonth, year: newYear });
+                  
+                  // Update the view to show this month
+                  const monthId = `${monthNames[newMonth]}-${newYear}`;
+                  setFlowContext({
+                    ...flowContext,
+                    step: 'monthPart',
+                    eventPreview: {
+                      ...flowContext.eventPreview,
+                      selectedMonth: monthId
                     }
                   });
-                }
+                };
+                
+                const handleNextMonth = () => {
+                  const prev = carouselIndex;
+                  let newMonth = (prev.month + 1) % 12;
+                  let newYear = prev.year;
+                  
+                  if (newMonth === 0) {
+                    newYear = prev.year + 1;
+                  }
+                  
+                  // Don't go beyond 5 years in the future
+                  if (newYear > currentRealYear + 5) {
+                    return;
+                  }
+                  
+                  // Update carousel state
+                  setCarouselIndex({ month: newMonth, year: newYear });
+                  
+                  // Update the view to show this month
+                  const monthId = `${monthNames[newMonth]}-${newYear}`;
+                  setFlowContext({
+                    ...flowContext,
+                    step: 'monthPart',
+                    eventPreview: {
+                      ...flowContext.eventPreview,
+                      selectedMonth: monthId
+                    }
+                  });
+                };
+                
+                const currentMonthId = `${monthNames[carouselIndex.month]}-${carouselIndex.year}`;
+                const currentMonthLabel = fullMonthNames[carouselIndex.month];
+                
+                // Check if we can go prev/next
+                const canGoPrev = !(carouselIndex.year === currentRealYear && carouselIndex.month <= currentRealMonth);
+                const canGoNext = carouselIndex.year < currentRealYear + 5;
                 
                 return (
                   <>
-                    {/* Single year carousel at the top */}
+                    {/* Year carousel */}
                     <div className="flex items-center justify-center" style={{ width: '100%' }}>
                       <button
-                        onClick={() => setCurrentYearIndex(Math.max(0, currentYearIndex - 1))}
-                        disabled={currentYearIndex === 0}
+                        onClick={() => {
+                          const currentYearIndex = yearsToShow.indexOf(carouselIndex.year);
+                          if (currentYearIndex > 0) {
+                            const newYear = yearsToShow[currentYearIndex - 1];
+                            // Set to the first available month of the new year
+                            let monthToSelect = newYear === currentRealYear ? currentRealMonth : 0;
+                            
+                            // Navigate to first valid month of the new year
+                            const monthId = `${monthNames[monthToSelect]}-${newYear}`;
+                            setCarouselIndex({ month: monthToSelect, year: newYear });
+                            setFlowContext({
+                              ...flowContext,
+                              step: 'monthPart',
+                              eventPreview: {
+                                ...flowContext.eventPreview,
+                                selectedMonth: monthId
+                              }
+                            });
+                          }
+                        }}
+                        disabled={yearsToShow.indexOf(carouselIndex.year) === 0}
                         className="text-gray-400 hover:text-gray-600 disabled:text-gray-300"
                         style={{ fontSize: '20px', marginRight: '0px', display: 'flex', alignItems: 'flex-end', height: '30px', transform: 'translateY(4px)' }}
                       >
@@ -518,11 +573,30 @@ export const DateSelection: React.FC<Props> = ({
                           justifyContent: 'center'
                         }}
                       >
-                        {currentYearToShow}
+                        {carouselIndex.year}
                       </div>
                       <button
-                        onClick={() => setCurrentYearIndex(Math.min(yearsToShow.length - 1, currentYearIndex + 1))}
-                        disabled={currentYearIndex === yearsToShow.length - 1}
+                        onClick={() => {
+                          const currentYearIndex = yearsToShow.indexOf(carouselIndex.year);
+                          if (currentYearIndex < yearsToShow.length - 1) {
+                            const newYear = yearsToShow[currentYearIndex + 1];
+                            // Set to the first available month of the new year
+                            let monthToSelect = 0;
+                            
+                            // Navigate to first valid month of the new year
+                            const monthId = `${monthNames[monthToSelect]}-${newYear}`;
+                            setCarouselIndex({ month: monthToSelect, year: newYear });
+                            setFlowContext({
+                              ...flowContext,
+                              step: 'monthPart',
+                              eventPreview: {
+                                ...flowContext.eventPreview,
+                                selectedMonth: monthId
+                              }
+                            });
+                          }
+                        }}
+                        disabled={yearsToShow.indexOf(carouselIndex.year) === yearsToShow.length - 1}
                         className="text-gray-400 hover:text-gray-600 disabled:text-gray-300"
                         style={{ fontSize: '20px', marginLeft: '0px', display: 'flex', alignItems: 'flex-end', height: '30px', transform: 'translateY(4px)' }}
                       >
@@ -530,47 +604,49 @@ export const DateSelection: React.FC<Props> = ({
                       </button>
                     </div>
                     
-                    {/* All months for the selected year */}
-                    {monthsToShow.map((item) => {
-                      const dateCount = getDateCountForMonth(item.id);
-                      
-                      // Determine if this is a selected future year month
-                      const [monthStr, yearStr] = item.id.split('-');
-                      const monthYear = parseInt(yearStr);
-                      const isFutureYear = monthYear > currentRealYear + 1;
-                      const isSelected = flowContext.eventPreview.selectedMonth === item.id;
-                      const isSelectedFutureYearMonth = isFutureYear && isSelected;
-                      
-                      // Determine if this month is selected but has no dates (should show inverted colors)
-                      const isSelectedButNoDates = isSelected && dateCount === 0;
-                      
-                      // Determine if this is the currently active month (should always show inverted colors)
-                      const isCurrentlyActiveMonth = isSelected;
-                      
-                      return (
-                        <div key={item.id} className="flex items-center gap-2">
-                          <SmartActionButton 
-                            button={{ id: item.id, label: item.label || '' }} 
-                            customStyle="month-navigation"
-                            onClick={() => {
-                              setFlowContext({
-                                ...flowContext,
-                                step: 'monthPart',
-                                eventPreview: {
-                                  ...flowContext.eventPreview,
-                                  selectedMonth: item.id
-                                }
-                              });
-                            }} 
-                          />
-                          {dateCount > 0 && (
-                            <div className="bg-white text-[#10b981] border-2 border-[#059669] text-xs font-semibold px-2 py-1 rounded-full min-w-[24px] h-[24px] flex items-center justify-center">
-                              {dateCount}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {/* Month carousel button - same size as SmartActionButton */}
+                    <div 
+                      className="flex items-center"
+                      style={{
+                        width: '115px',
+                        height: '30px',
+                        padding: '0px 0px',
+                        border: '2px solid #059669',
+                        boxSizing: 'border-box',
+                        borderRadius: '6px',
+                        background: '#10b981',
+                        color: '#ffffff',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <button
+                        onClick={handlePrevMonth}
+                        disabled={!canGoPrev}
+                        className="h-full px-1.5 flex items-center justify-center hover:bg-[#059669] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ fontSize: '16px' }}
+                      >
+                        ‹
+                      </button>
+                      <div 
+                        className="flex-1 h-full flex items-center justify-center"
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          lineHeight: '20px'
+                        }}
+                      >
+                        {currentMonthLabel}
+                      </div>
+                      <button
+                        onClick={handleNextMonth}
+                        disabled={!canGoNext}
+                        className="h-full px-1.5 flex items-center justify-center hover:bg-[#059669] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ fontSize: '16px' }}
+                      >
+                        ›
+                      </button>
+                    </div>
                   </>
                 );
               })()}

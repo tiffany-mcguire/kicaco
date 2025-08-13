@@ -807,7 +807,10 @@ export default function KicacoFlow() {
                       if ((flowContext.eventPreview.selectedChildren || []).length > 0) {
                         // Go directly to current month selection
                         const today = new Date();
-                        const currentMonthId = today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toLowerCase().replace(' ', '-');
+                        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                        const currentMonth = monthNames[today.getMonth()];
+                        const currentYear = today.getFullYear();
+                        const currentMonthId = `${currentMonth}-${currentYear}`;
                         setFlowContext({ 
                           ...flowContext, 
                           step: 'monthPart',

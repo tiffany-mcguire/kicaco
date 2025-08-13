@@ -230,7 +230,7 @@
 
 @media (max-width: 375px) {
   .kicaco-flow__confirmation-nav-counter {
-    @apply text-[8px];
+    @apply text-[11px];
   }
 }
 

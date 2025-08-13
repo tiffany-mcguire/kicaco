@@ -78,7 +78,7 @@ export default function ConfirmationScreen({
                   }} 
                   className="kicaco-flow__confirmation-nav-btn kicaco-flow__confirmation-nav-btn--prev"
                 >
-                  <ChevronLeft size={12} />
+                  <ChevronLeft size={16} />
                 </button>
                 <span className="kicaco-flow__confirmation-nav-counter">
                   {currentEventIndex + 1}/{createdEvents.length}
@@ -90,7 +90,7 @@ export default function ConfirmationScreen({
                   }} 
                   className="kicaco-flow__confirmation-nav-btn kicaco-flow__confirmation-nav-btn--next"
                 >
-                  <ChevronRight size={12} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
             )}
