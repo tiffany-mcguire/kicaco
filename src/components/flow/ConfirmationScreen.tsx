@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Share2, Calendar, Waves } from 'lucide-react
 import { format, parse } from 'date-fns';
 import { formatLocationToTitleCase } from '../../utils/formatLocation';
 import ProgressIndicator from './ProgressIndicator';
+import Card from '../primitives/Card';
 
 interface ConfirmationScreenProps {
   createdEvents: any[];
@@ -188,7 +189,7 @@ export default function ConfirmationScreen({
       </div>
 
       {/* Edit & Action Buttons Card */}
-      <div className="bg-white rounded-lg shadow-sm p-4 max-w-md mx-auto">
+      <Card className="max-w-md mx-auto">
         {/* Edit Navigation */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-700 font-medium ml-px">Edit:</span>
@@ -300,10 +301,10 @@ export default function ConfirmationScreen({
           getChildColor={getChildColor}
         />
       </div>
-      </div>
+      </Card>
 
       {/* Progress Indicator Card */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mt-8 max-w-md mx-auto">
+      <Card className="mt-8 max-w-md mx-auto">
         <div className="flex items-center justify-between">
           <ProgressIndicator flowStep="confirmation" isEditMode={flowContext.isEditMode} />
           <button 
@@ -313,7 +314,7 @@ export default function ConfirmationScreen({
             Delete All and Start Over
           </button>
         </div>
-      </div>
+      </Card>
     </>
   );
 } 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlowContext, SmartButton } from '../../hooks/useKicacoFlow';
 import { SmartActionButton, SmallDateButton } from './';
+import Card from '../primitives/Card';
 
 interface Props {
   flowContext: FlowContext;
@@ -169,7 +170,7 @@ export const DateSelection: React.FC<Props> = ({
         </div>
         
         {/* Separate Additional Months Window */}
-        <div className="date-selection date-selection--additional-months bg-white rounded-lg shadow-sm p-4 mb-8">
+        <Card className="date-selection date-selection--additional-months mb-8">
           {/* Header row with message and Confirm Dates button */}
           <div className="flex justify-between items-end mb-6">
             <div className="text-xs text-gray-500">Add other months or confirm</div>
@@ -652,7 +653,7 @@ export const DateSelection: React.FC<Props> = ({
               })()}
             </div>
           </div>
-        </div>
+        </Card>
       </>
     );
   }

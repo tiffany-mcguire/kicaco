@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SmartActionButton } from './SmartActionButton';
 import { SmartButton, FlowContext } from '../../hooks/useKicacoFlow';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import Card from '../primitives/Card';
 
 interface Props {
   flowContext: FlowContext;
@@ -31,7 +32,7 @@ export const SportsTypeSelection: React.FC<Props> = ({
           ← Event Category
         </button>
       </div>
-      <div className="sports-type-selection__family-section bg-white rounded-lg shadow-sm p-4 mb-6">
+      <Card className="sports-type-selection__family-section mb-6">
         <div className="sports-type-selection__family-list space-y-3">
           {getPersonalizedSports().map((button: SmartButton) => 
             <div key={button.id} className="flex items-end justify-between">
@@ -47,7 +48,7 @@ export const SportsTypeSelection: React.FC<Props> = ({
             </div>
           )}
         </div>
-      </div>
+      </Card>
       
       {!isAllSportsExpanded && (
         <div className="sports-type-selection__all-header mb-2">
@@ -66,7 +67,7 @@ export const SportsTypeSelection: React.FC<Props> = ({
               ← Collapse
             </button>
           </div>
-          <div className="sports-type-selection__all-section bg-white rounded-lg shadow-sm p-4 mb-8">
+          <Card className="sports-type-selection__all-section mb-8">
             <div className="sports-type-selection__all-list space-y-3">
               {getAllSportsAlphabetical().map((button: SmartButton) => 
                 <div key={button.id} className="flex items-end justify-between">
@@ -82,10 +83,10 @@ export const SportsTypeSelection: React.FC<Props> = ({
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </>
       ) : (
-        <div className="sports-type-selection__all-collapsed bg-white rounded-lg shadow-sm p-4 mb-8">
+        <Card className="sports-type-selection__all-collapsed mb-8">
           <button 
             onClick={() => setIsAllSportsExpanded(true)}
             className="w-full flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-md p-2 -m-2"
@@ -95,7 +96,7 @@ export const SportsTypeSelection: React.FC<Props> = ({
               <span className="text-sm text-[#217e8f]">Expand for more sports options</span>
             </div>
           </button>
-        </div>
+        </Card>
       )}
     </div>
   );

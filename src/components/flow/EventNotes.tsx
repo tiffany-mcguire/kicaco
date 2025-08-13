@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SmartButton, FlowContext } from '../../hooks/useKicacoFlow';
 import { SmartActionButton } from './SmartActionButton';
 import ProgressIndicator from './ProgressIndicator';
+import Card from '../primitives/Card';
 
 interface Props {
   eventNotes: string;
@@ -179,7 +180,7 @@ export const EventNotes: React.FC<Props> = ({
     </div>
 
     {/* Progress Indicator Card */}
-    <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
+    <Card>
       {flowContext?.isEditMode ? (
         <div className="flex justify-between items-center">
           <div className="flex-1 pr-4">
@@ -255,7 +256,7 @@ export const EventNotes: React.FC<Props> = ({
       ) : (
                     <ProgressIndicator flowStep={flowContext?.step || 'eventNotes'} isEditMode={flowContext?.isEditMode} />
       )}
-    </div>
+    </Card>
     </>
   );
 }; 

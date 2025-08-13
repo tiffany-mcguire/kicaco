@@ -30,6 +30,9 @@ import {
   CustomLocationSelection,
   ConfirmationScreen
 } from '../components/flow';
+import ProgressCard from '../components/flow/ProgressCard';
+import Card from '../components/primitives/Card';
+import ListRow from '../components/primitives/ListRow';
 import { getLocationButtons, handleButtonSelect as logicHandleButtonSelect } from '../hooks/useKicacoFlowLogic';
 import { roygbivColors } from '../constants/flowColors';
 
@@ -199,13 +202,10 @@ export default function KicacoFlow() {
               />
               
               {/* Progress Indicator Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-                {flowContext.isEditMode ? (
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-                    </div>
-                    <div>
+              <ProgressCard
+                stepId={flowContext.step}
+                isEditMode={flowContext.isEditMode}
+                rightSlot={(
                   <button
                     onClick={() => {
                       // Recreate events using the same logic as the Create Event button
@@ -254,12 +254,8 @@ export default function KicacoFlow() {
                   >
                     Resave Event
                   </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
-              </div>
+              />
             </>
           ) : flowContext.step === 'monthPart' ? (
             <>
@@ -275,13 +271,10 @@ export default function KicacoFlow() {
               />
               
               {/* Progress Indicator Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-                {flowContext.isEditMode ? (
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-                    </div>
-                    <div>
+              <ProgressCard
+                stepId={flowContext.step}
+                isEditMode={flowContext.isEditMode}
+                rightSlot={(
                   <button
                     onClick={() => {
                       // Recreate events using the same logic as the Create Event button
@@ -330,12 +323,8 @@ export default function KicacoFlow() {
                   >
                     Resave Event
                   </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
-              </div>
+              />
             </>
           ) : flowContext.step === 'whereLocation' ? (
             <>
@@ -348,13 +337,10 @@ export default function KicacoFlow() {
               />
               
               {/* Progress Indicator Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-                {flowContext.isEditMode ? (
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-                    </div>
-                    <div>
+              <ProgressCard
+                stepId={flowContext.step}
+                isEditMode={flowContext.isEditMode}
+                rightSlot={(
                   <button
                     onClick={() => {
                       // Recreate events using the same logic as the Create Event button
@@ -403,12 +389,8 @@ export default function KicacoFlow() {
                   >
                     Resave Event
                   </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
-              </div>
+              />
             </>
           ) : flowContext.step === 'eventNotes' ? (
             <EventNotes
@@ -449,13 +431,10 @@ export default function KicacoFlow() {
               />
               
               {/* Progress Indicator Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-                {flowContext.isEditMode ? (
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-                    </div>
-                    <div>
+              <ProgressCard
+                stepId={flowContext.step}
+                isEditMode={flowContext.isEditMode}
+                rightSlot={(
                   <button
                     onClick={() => {
                       // Recreate events using the same logic as the Create Event button
@@ -504,12 +483,8 @@ export default function KicacoFlow() {
                   >
                     Resave Event
                   </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
-              </div>
+              />
             </>
           ) : flowContext.step === 'dayBasedTimeGrid' ? (
             <>
@@ -527,13 +502,10 @@ export default function KicacoFlow() {
               />
               
               {/* Progress Indicator Card */}
-              <div className="bg-white rounded-lg shadow-sm p-4 mt-4">
-                {flowContext.isEditMode ? (
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1 pr-4">
-                      <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-                    </div>
-                    <div>
+              <ProgressCard
+                stepId={flowContext.step}
+                isEditMode={flowContext.isEditMode}
+                rightSlot={(
                   <button
                     onClick={() => {
                       // Recreate events using the same logic as the Create Event button
@@ -582,12 +554,8 @@ export default function KicacoFlow() {
                   >
                     Resave Event
                   </button>
-                    </div>
-                  </div>
-                ) : (
-                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
                 )}
-              </div>
+              />
             </>
           ) : flowContext.step === 'customTimeSelection' ? (
             <>
@@ -747,21 +715,20 @@ export default function KicacoFlow() {
           ) : flowContext.step === 'repeatingSameLocation' ? (
             <div className="kicaco-flow__step-container">
               <div className="kicaco-flow__button-list space-y-3">
-                                  {currentButtons.map((button: SmartButton) => 
-                    <div key={button.id} className="flex items-end justify-between min-h-[30px]">
-                      {button.description && (
-                        <div className="text-[12.5px] text-gray-500 flex-1 pr-3 max-h-[30px] overflow-hidden leading-tight">{button.description}</div>
+                  {currentButtons.map((button: SmartButton) => 
+                    <ListRow
+                      key={button.id}
+                      description={button.description}
+                      right={(
+                        <SmartActionButton 
+                          button={{ id: button.id, label: button.label }} 
+                          onClick={() => handleButtonSelect(button.id)} 
+                          isChildButton={false} 
+                          getChildColor={getChildColor} 
+                        />
                       )}
-                    <div className="flex-shrink-0">
-                      <SmartActionButton 
-                        button={{ id: button.id, label: button.label }} 
-                        onClick={() => handleButtonSelect(button.id)} 
-                        isChildButton={false} 
-                        getChildColor={getChildColor} 
-                      />
-                    </div>
-                  </div>
-                )}
+                    />
+                  )}
               </div>
             </div>
           ) : flowContext.step === 'whichChild' ? (
@@ -906,22 +873,19 @@ export default function KicacoFlow() {
                 // Special layout for various screens with right-aligned or center-aligned buttons
                 <div className="kicaco-flow__button-list space-y-3">
                   {currentButtons.map((button: SmartButton) =>  (
-                      // Right-aligned layout for other screens
-                                              <div key={button.id} className="flex items-end justify-between min-h-[30px]">
-                          {button.description && (
-                            <div className="text-[12.5px] text-gray-500 flex-1 pr-3 max-h-[30px] overflow-hidden leading-tight">{button.description}</div>
-                          )}
-                        <div className="flex-shrink-0">
-                          <SmartActionButton 
-                            button={{ id: button.id, label: button.label }} 
-                            onClick={() => handleButtonSelect(button.id)} 
-                            isChildButton={flowContext.step === 'whichChild'} 
-                            getChildColor={getChildColor} 
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
+                    <ListRow
+                      key={button.id}
+                      description={button.description}
+                      right={(
+                        <SmartActionButton 
+                          button={{ id: button.id, label: button.label }} 
+                          onClick={() => handleButtonSelect(button.id)} 
+                          isChildButton={flowContext.step === 'whichChild'} 
+                          getChildColor={getChildColor} 
+                        />
+                      )}
+                    />
+                  ))}
                 </div>
               ) : (
                 // Default layout for all other screens
@@ -940,12 +904,12 @@ export default function KicacoFlow() {
             </div>
           )}
 
-          {/* Progress Indicator Card - appears on flow screens that don't have their own */}
-          {flowContext.step !== 'confirmation' && flowContext.step !== 'whichChild' && flowContext.step !== 'monthPart' && flowContext.step !== 'whenTimePeriod' && flowContext.step !== 'daySpecificTime' && flowContext.step !== 'whereLocation' && flowContext.step !== 'dayBasedTimeGrid' && flowContext.step !== 'customTimeSelection' && flowContext.step !== 'dayBasedLocationSelection' && flowContext.step !== 'customLocationSelection' && flowContext.step !== 'eventNotes' && (
-            <div className="bg-white rounded-lg shadow-sm p-4 mt-4 max-w-md mx-auto">
-              <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
-            </div>
-          )}
+              {/* Progress Indicator Card - appears on flow screens that don't have their own */}
+              {flowContext.step !== 'confirmation' && flowContext.step !== 'whichChild' && flowContext.step !== 'monthPart' && flowContext.step !== 'whenTimePeriod' && flowContext.step !== 'daySpecificTime' && flowContext.step !== 'whereLocation' && flowContext.step !== 'dayBasedTimeGrid' && flowContext.step !== 'customTimeSelection' && flowContext.step !== 'dayBasedLocationSelection' && flowContext.step !== 'customLocationSelection' && flowContext.step !== 'eventNotes' && (
+                <Card className="max-w-md mx-auto">
+                  <ProgressIndicator flowStep={flowContext.step} isEditMode={flowContext.isEditMode} />
+                </Card>
+              )}
 
         </div>
       </main>
