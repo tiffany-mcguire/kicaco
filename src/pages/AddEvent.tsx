@@ -9,6 +9,8 @@ import { useKicacoStore } from '../store/kicacoStore';
 import { sendMessageToAssistant } from '../utils/talkToKicaco';
 import { motion } from 'framer-motion';
 import { CalendarPlus } from "lucide-react";
+import Card from '../components/primitives/Card';
+import { searchLocations, formatLocationString, LocationResult } from '../utils/mapsSearch';
 
 
 import { generateUUID } from '../utils/uuid';
@@ -78,6 +80,8 @@ export default function AddEvent() {
   const subheaderRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const pageScrollRef = useRef<HTMLDivElement>(null);
+  const eventNameInputRef = useRef<HTMLInputElement | null>(null);
+  const eventLocationInputRef = useRef<HTMLInputElement | null>(null);
   const [mainContentDrawerOffset, setMainContentDrawerOffset] = useState(44);
   const [maxDrawerHeight, setMaxDrawerHeight] = useState(window.innerHeight);
   const [scrollRefReady, setScrollRefReady] = useState(false);
@@ -96,22 +100,62 @@ export default function AddEvent() {
   const [recurringSchedule, setRecurringSchedule] = useState("");
   const [addTime, setAddTime] = useState(false);
   const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  // End time removed per design; events track a single start time only
   const [addReminder, setAddReminder] = useState(false);
   const [reminderType, setReminderType] = useState<'dueDate' | 'alertBefore'>('dueDate');
   const [reminderDate, setReminderDate] = useState("");
   const [alertBefore, setAlertBefore] = useState("1 day before");
   const [addLocation, setAddLocation] = useState(false);
   const [eventLocation, setEventLocation] = useState("");
-  const [specifyChild, setSpecifyChild] = useState(false);
+  const [isLocSearching, setIsLocSearching] = useState(false);
+  const [locResults, setLocResults] = useState<LocationResult[]>([]);
+  const [selectedLocString, setSelectedLocString] = useState('');
+  const [originalLocQuery, setOriginalLocQuery] = useState('');
+  // specifyChild removed: child selection is required
   const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [contactName, setContactName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  // New UI state for streamlined layout
+  // showEndTime removed
+  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+  const [recurrenceFreq, setRecurrenceFreq] = useState<'none'|'daily'|'weekly'|'monthly'>('none');
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
+  const [recurrenceEnds, setRecurrenceEnds] = useState<'never'|'on'|'after'>('never');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [recurrenceCount, setRecurrenceCount] = useState('10');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // Time keypad state
+  const [keypadHour, setKeypadHour] = useState<string>('');
+  const [keypadMinute, setKeypadMinute] = useState<string>('');
+  const [keypadAmPm, setKeypadAmPm] = useState<'AM'|'PM'|''>('');
+  // Date tokens/keypads state
+  const now = new Date();
+  const [dateMonth, setDateMonth] = useState<number>(now.getMonth()); // 0-11
+  const [dateDay, setDateDay] = useState<string>(String(now.getDate()).padStart(2, '0'));
+  const [dateYear, setDateYear] = useState<number>(now.getFullYear());
+  const [activeDateToken, setActiveDateToken] = useState<'month'|'day'|'year'|''>('');
+  const [yearBase, setYearBase] = useState<number>(now.getFullYear());
+  const [swipe, setSwipe] = useState<{ group: ''|'month'|'day'|'year'; startX: number; step: number; active: boolean }>({ group: '', startX: 0, step: 0, active: false });
+
+  // Keep ISO date synced whenever month/day/year change; default day starts as today
+  useEffect(() => {
+    const lastDay = new Date(dateYear, dateMonth + 1, 0).getDate();
+    const dNum = parseInt(dateDay, 10);
+    if (!isNaN(dNum) && dNum <= lastDay) {
+      setEventDate(`${String(dateYear)}-${String(dateMonth + 1).padStart(2, '0')}-${dateDay.padStart(2, '0')}`);
+    } else {
+      setEventDate('');
+    }
+  }, [dateMonth, dateDay, dateYear]);
 
   // Focus states
   const [eventNameFocused, setEventNameFocused] = useState(false);
   const [eventDateFocused, setEventDateFocused] = useState(false);
   const [startTimeFocused, setStartTimeFocused] = useState(false);
-  const [endTimeFocused, setEndTimeFocused] = useState(false);
+  // endTimeFocused removed
   const [reminderDateFocused, setReminderDateFocused] = useState(false);
   const [eventLocationFocused, setEventLocationFocused] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
@@ -209,7 +253,7 @@ export default function AddEvent() {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [mainContentDrawerOffset, addTime, addReminder, addLocation, specifyChild]);
+  }, [mainContentDrawerOffset, addTime, addReminder, addLocation]);
 
   // Chat Scroll Management Logic
   const executeScrollToBottom = useCallback(() => {
@@ -309,6 +353,15 @@ export default function AddEvent() {
       if (event.date) {
         setEventType('oneTime');
         setEventDate(event.date);
+        try {
+          const [y, m, d] = String(event.date).split('-').map(Number);
+          if (y && m && d) {
+            setDateYear(y);
+            setDateMonth(m - 1);
+            setDateDay(String(d).padStart(2, '0'));
+            setYearBase(y);
+          }
+        } catch {}
       } else if (event.recurring) {
         setEventType('recurring');
         setRecurringSchedule(event.recurring);
@@ -316,18 +369,99 @@ export default function AddEvent() {
       if (event.time) {
         setAddTime(true);
         setStartTime(event.time);
+        // Populate keypad selections from saved time
+        try {
+          const raw = String(event.time).trim();
+          let hour12 = '';
+          let minute = '';
+          let period: 'AM' | 'PM' | '' = '';
+          const ampmMatch = raw.match(/^(\d{1,2})(?::?(\d{2}))?\s*(am|pm)$/i);
+          if (ampmMatch) {
+            const h = parseInt(ampmMatch[1], 10);
+            const m = ampmMatch[2] ? ampmMatch[2] : '00';
+            const p = ampmMatch[3].toUpperCase() as 'AM' | 'PM';
+            hour12 = String(((h - 1) % 12) + 1); // normalize 12-hour
+            minute = m;
+            period = p;
+          } else {
+            const hmMatch = raw.match(/^(\d{1,2}):(\d{2})$/);
+            const compactMatch = raw.match(/^(\d{1,2})(\d{2})$/);
+            let h24: number | null = null;
+            if (hmMatch) {
+              h24 = parseInt(hmMatch[1], 10);
+              minute = hmMatch[2];
+            } else if (compactMatch) {
+              h24 = parseInt(compactMatch[1], 10);
+              minute = compactMatch[2];
+            }
+            if (h24 !== null) {
+              period = h24 >= 12 ? 'PM' : 'AM';
+              const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+              hour12 = String(h12);
+            }
+          }
+          if (hour12) setKeypadHour(hour12);
+          if (minute) setKeypadMinute(['00','15','30','45'].includes(minute) ? minute : '');
+          if (period) setKeypadAmPm(period);
+        } catch {}
       }
       if (event.location) {
         setAddLocation(true);
         setEventLocation(event.location);
       }
       if (event.childName) {
-        setSpecifyChild(true);
         setSelectedChildren(event.childName.split(', '));
       }
       setNotes(event.notes || '');
+      setContactName(event.contactName || '');
+      setPhoneNumber(event.phoneNumber || '');
+      setEmail(event.email || '');
+      setWebsiteUrl(event.websiteUrl || '');
     } else if (location.state?.date) {
       setEventDate(location.state.date);
+      try {
+        const [y, m, d] = String(location.state.date).split('-').map(Number);
+        if (y && m && d) {
+          setDateYear(y);
+          setDateMonth(m - 1);
+          setDateDay(String(d).padStart(2, '0'));
+          setYearBase(y);
+        }
+      } catch {}
+    }
+    // Scroll-to helpers for confirmation edit links
+    if (location.state?.isEdit && location.state?.scrollTo) {
+      const target = location.state.scrollTo as string;
+      setTimeout(() => {
+        const anchors: Record<string, string> = {
+          eventName: 'eventName-section',
+          who: 'who-section',
+          date: 'date-section',
+          time: 'time-section',
+          location: 'location-section',
+          notes: 'notes-section',
+        };
+        const id = anchors[target];
+        if (id) {
+          const el = document.getElementById(id);
+          const container = pageScrollRef.current;
+          if (target === 'eventName' && container) {
+            // Snap to very top, then focus the input
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => eventNameInputRef.current?.focus(), 120);
+          } else if (el) {
+            // Scroll the container so the target is aligned near the top
+            if (container) {
+              const elRect = el.getBoundingClientRect();
+              const cRect = container.getBoundingClientRect();
+              const delta = elRect.top - cRect.top - 8; // small padding
+              container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
+            } else {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        }
+      }, 50);
     }
   }, [location.state]);
 
@@ -380,6 +514,21 @@ export default function AddEvent() {
         content: "Sorry, I encountered an error. Please try again.",
       });
     }
+  };
+
+  // Format a 24-hour time string like "16:30" to "04:30 PM" for display under Selected:
+  const formatSelectedTime = (t: string): string => {
+    if (!t) return '';
+    const parts = t.split(':');
+    if (parts.length !== 2) return t;
+    const hhNum = parseInt(parts[0], 10);
+    const mm = parts[1];
+    if (isNaN(hhNum)) return t;
+    const period = hhNum >= 12 ? 'PM' : 'AM';
+    let hh12 = hhNum % 12;
+    if (hh12 === 0) hh12 = 12;
+    const hh = String(hh12).padStart(2, '0');
+    return `${hh}:${mm} ${period}`;
   };
 
   // Input field styling from EditChild
@@ -478,23 +627,34 @@ export default function AddEvent() {
       alert("Please enter an event name");
       return;
     }
-    if (eventType === 'oneTime' && !eventDate) {
+    if (!eventDate) {
       alert("Please select a date");
       return;
     }
-    if (eventType === 'recurring' && !recurringSchedule.trim()) {
-      alert("Please enter a recurring schedule");
+    if (selectedChildren.length === 0) {
+      alert("Please select at least one child");
       return;
+    }
+    const isRecurringNow = recurrenceFreq !== 'none';
+    if (isRecurringNow) {
+      if (!recurringSchedule.trim()) {
+        alert("Please configure the recurrence rule");
+      return;
+      }
     }
 
     const eventData = {
       eventName: eventName.trim(),
-      date: eventType === 'oneTime' ? eventDate : undefined,
-      recurring: eventType === 'recurring' ? recurringSchedule.trim() : undefined,
-      time: addTime && startTime ? startTime : undefined,
+      date: eventDate,
+      recurring: isRecurringNow ? recurringSchedule.trim() : undefined,
+      time: startTime ? startTime : undefined,
       location: addLocation && eventLocation ? eventLocation.trim() : undefined,
-      childName: specifyChild && selectedChildren.length > 0 ? selectedChildren.join(', ') : undefined,
+      childName: selectedChildren.length > 0 ? selectedChildren.join(', ') : undefined,
       notes: notes,
+      contactName,
+      phoneNumber,
+      email,
+      websiteUrl,
     };
 
     if (location.state?.isEdit && location.state?.eventIndex !== undefined) {
@@ -502,7 +662,7 @@ export default function AddEvent() {
     } else {
       addEvent(eventData);
     }
-    navigate(-1); // Go back to previous page
+    navigate('/add-event/confirmation', { state: { event: eventData } });
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -535,357 +695,515 @@ export default function AddEvent() {
         }}
       >
         <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Essentials */}
+          <Card>
           {/* Event Name */}
-          <div className="mb-6">
-            <label htmlFor="eventName" className="text-sm font-medium text-gray-600 mb-2 block">Event Name</label>
+            <label id="eventName-section" htmlFor="eventName" className="text-sm font-medium text-gray-600 mb-2 block">Event Name</label>
             <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventNameFocused, true)}}>
               <input 
                 type="text" 
-                name="eventName" 
                 id="eventName" 
+                ref={eventNameInputRef}
                 style={inputElementStyle}
-                placeholder="e.g. soccer game, dentist visit" 
+                placeholder="e.g. Soccer game, Dentist visit" 
                 value={eventName} 
                 className="placeholder-gray-400"
                 onChange={(e) => setEventName(e.target.value)}
                 onFocus={() => setEventNameFocused(true)}
                 onBlur={() => setEventNameFocused(false)}
               />
-            </div>
           </div>
 
-          {/* Event Type */}
-          <div className="mb-6">
-            <label className="text-sm font-medium text-gray-600 mb-2 block">Event type</label>
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="eventType"
-                    value="oneTime"
-                    checked={eventType === 'oneTime'}
-                    onChange={() => setEventType('oneTime')}
-                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                    style={{ accentColor: '#217e8f' }}
-                  />
-                  <span className="text-sm text-gray-700">One-time event</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="eventType"
-                    value="recurring"
-                    checked={eventType === 'recurring'}
-                    onChange={() => setEventType('recurring')}
-                    className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                    style={{ accentColor: '#217e8f' }}
-                  />
-                  <span className="text-sm text-gray-700">Recurring schedule</span>
-                </label>
+            {/* When */}
+            <div id="date-section" className="mt-4">
+              <span className="text-sm font-medium text-gray-600 mb-2 block">Date</span>
+              {/* Date - large navigable tokens with chevrons (no popouts) */}
+              <div className="mb-3">
+                {(() => {
+                  const setIsoIfComplete = (m: number, d: string, y: number) => {
+                    const lastDay = new Date(y, m + 1, 0).getDate();
+                    if (d && parseInt(d, 10) > lastDay) {
+                      setDateDay('');
+                    }
+                    if (d) {
+                      setEventDate(`${String(y)}-${String(m+1).padStart(2,'0')}-${d.padStart(2,'0')}`);
+                    } else {
+                      setEventDate('');
+                    }
+                  };
+                  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  const decMonth = () => {
+                    setDateMonth(m => {
+                      const nm = (m + 11) % 12;
+                      if (m === 0) setDateYear(y => y - 1);
+                      setIsoIfComplete((m+11)%12, dateDay, m===0 ? dateYear-1 : dateYear);
+                      return nm;
+                    });
+                  };
+                  const incMonth = () => {
+                    setDateMonth(m => {
+                      const nm = (m + 1) % 12;
+                      if (m === 11) setDateYear(y => y + 1);
+                      setIsoIfComplete((m+1)%12, dateDay, m===11 ? dateYear+1 : dateYear);
+                      return nm;
+                    });
+                  };
+                  const lastDay = new Date(dateYear, dateMonth + 1, 0).getDate();
+                  const ensureDaySet = () => {
+                    if (!dateDay) setDateDay('01');
+                  };
+                  const decDay = () => {
+                    ensureDaySet();
+                    setDateDay(d => {
+                      const cur = d ? parseInt(d,10) : 1;
+                      const nd = cur <= 1 ? lastDay : cur - 1;
+                      const s = String(nd).padStart(2,'0');
+                      setIsoIfComplete(dateMonth, s, dateYear);
+                      return s;
+                    });
+                  };
+                  const incDay = () => {
+                    ensureDaySet();
+                    setDateDay(d => {
+                      const cur = d ? parseInt(d,10) : 1;
+                      const nd = cur >= lastDay ? 1 : cur + 1;
+                      const s = String(nd).padStart(2,'0');
+                      setIsoIfComplete(dateMonth, s, dateYear);
+                      return s;
+                    });
+                  };
+                  const decYear = () => { const ny = dateYear - 1; setDateYear(ny); setIsoIfComplete(dateMonth, dateDay, ny); };
+                  const incYear = () => { const ny = dateYear + 1; setDateYear(ny); setIsoIfComplete(dateMonth, dateDay, ny); };
+
+                  const groupStyle: React.CSSProperties = {
+                    width: '115px',
+                    height: '30px',
+                    borderRadius: '6px',
+                    background: '#10b981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                    border: '2px solid #059669'
+                  };
+                  const chevronBtn = {
+                    height: '100%',
+                    paddingLeft: '6px',
+                    paddingRight: '6px',
+                    background: 'transparent',
+                    color: '#ffffff',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  } as React.CSSProperties;
+                  const labelStyle = { flex: 1, textAlign: 'center', fontSize: '13px', fontWeight: 700, color: '#ffffff' } as React.CSSProperties;
+
+                  const SWIPE_THRESHOLD = 24;
+                  const handleSwipeStart = (group: 'month'|'day'|'year') => (e: any) => {
+                    const x = e.touches ? e.touches[0].clientX : e.clientX;
+                    setSwipe({ group, startX: x, step: 0, active: true });
+                  };
+                  const handleSwipeMove = (e: any) => {
+                    if (!swipe.active) return;
+                    const x = e.touches ? e.touches[0].clientX : e.clientX;
+                    const dx = x - swipe.startX;
+                    const count = Math.trunc(dx / SWIPE_THRESHOLD);
+                    if (count === swipe.step) return;
+                    const diff = count - swipe.step;
+                    const apply = (fnInc: () => void, fnDec: () => void, n: number) => {
+                      if (n > 0) { for (let i = 0; i < n; i++) fnInc(); }
+                      else if (n < 0) { for (let i = 0; i < -n; i++) fnDec(); }
+                    };
+                    if (swipe.group === 'month') apply(incMonth, decMonth, diff);
+                    else if (swipe.group === 'day') apply(incDay, decDay, diff);
+                    else if (swipe.group === 'year') apply(incYear, decYear, diff);
+                    setSwipe(prev => ({ ...prev, step: count }));
+                  };
+                  const handleSwipeEnd = () => setSwipe({ group: '', startX: 0, step: 0, active: false });
+
+                  return (
+                    <div className="flex justify-between gap-y-2 flex-wrap">
+                      {/* Month group */}
+                      <div style={groupStyle}
+                        onMouseDown={handleSwipeStart('month')}
+                        onMouseMove={handleSwipeMove}
+                        onMouseUp={handleSwipeEnd}
+                        onMouseLeave={handleSwipeEnd}
+                        onTouchStart={handleSwipeStart('month')}
+                        onTouchMove={handleSwipeMove}
+                        onTouchEnd={handleSwipeEnd}
+                      >
+                        <button type="button" onClick={decMonth} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >‹</button>
+                        <div style={labelStyle}>{monthNames[dateMonth]}</div>
+                        <button type="button" onClick={incMonth} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >›</button>
               </div>
+                      {/* Day group */}
+                      <div style={groupStyle}
+                        onMouseDown={handleSwipeStart('day')}
+                        onMouseMove={handleSwipeMove}
+                        onMouseUp={handleSwipeEnd}
+                        onMouseLeave={handleSwipeEnd}
+                        onTouchStart={handleSwipeStart('day')}
+                        onTouchMove={handleSwipeMove}
+                        onTouchEnd={handleSwipeEnd}
+                      >
+                        <button type="button" onClick={decDay} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >‹</button>
+                        <div style={labelStyle}>{dateDay ? dateDay.padStart(2,'0') : 'DD'}</div>
+                        <button type="button" onClick={incDay} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >›</button>
             </div>
+                      {/* Year group */}
+                      <div style={groupStyle}
+                        onMouseDown={handleSwipeStart('year')}
+                        onMouseMove={handleSwipeMove}
+                        onMouseUp={handleSwipeEnd}
+                        onMouseLeave={handleSwipeEnd}
+                        onTouchStart={handleSwipeStart('year')}
+                        onTouchMove={handleSwipeMove}
+                        onTouchEnd={handleSwipeEnd}
+                      >
+                        <button type="button" onClick={decYear} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >‹</button>
+                        <div style={labelStyle}>{dateYear}</div>
+                        <button type="button" onClick={incYear} style={chevronBtn}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#059669'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >›</button>
           </div>
-
-          {/* Conditional Date or Recurring Schedule */}
-          {eventType === 'recurring' && (
-            <div className="mb-6">
-              <label htmlFor="recurringSchedule" className="text-sm font-medium text-gray-600 mb-2 block">Recurring schedule</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(false, false)}}>
-                <input 
-                  type="text" 
-                  name="recurringSchedule" 
-                  id="recurringSchedule" 
-                  style={inputElementStyle}
-                  placeholder="e.g. Every Friday, Last day of the month" 
-                  value={recurringSchedule}
-                  onChange={(e) => setRecurringSchedule(e.target.value)}
-                />
+              </div>
+                  );
+                })()}
+            </div>
+              {/* Time keypad (compact, inline) */}
+              <div id="time-section">
+                <label className="text-sm font-medium text-gray-600">Time</label>
+                <div className="mt-1">
+                  <div className="flex gap-2">
+                    {/* Hour */}
+                    <div className="flex-1 min-w-[150px]">
+                      <div className="grid grid-cols-6 gap-1 bg-[#c0e2e7] rounded-lg p-1 border border-[#217e8f]/20">
+                        {Array.from({ length: 12 }, (_, i) => String(i+1)).map(h => (
+                          <button
+                            key={h}
+                            onClick={() => {
+                              const newHour = keypadHour===h ? '' : h;
+                              setKeypadHour(newHour);
+                              const hour = newHour;
+                              const minute = keypadMinute;
+                              const ampm = keypadAmPm;
+                              if (hour && minute && ampm) {
+                                const hh12 = hour.padStart(2,'0');
+                                let hh = parseInt(hh12,10);
+                                if (ampm==='PM' && hh<12) hh+=12;
+                                if (ampm==='AM' && hh===12) hh=0;
+                                setStartTime(`${String(hh).padStart(2,'0')}:${minute}`);
+                              } else {
+                                setStartTime('');
+                              }
+                            }}
+                            className={`w-full h-8 flex items-center justify-center text-[13px] rounded-md font-semibold border-2 ${
+                              keypadHour===h ? 'bg-[#2f8fa4] text-white border-[#217e8f]' : 'bg-white/80 text-[#217e8f] border-[#217e8f]/30'
+                            }`}
+                          >{h}</button>
+                        ))}
               </div>
             </div>
-          )}
-
-          {/* Date */}
-          {eventType === 'oneTime' && (
-            <div className="mb-6">
-              <label htmlFor="eventDate" className="text-sm font-medium text-gray-600 mb-2 block">Date</label>
-              <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventDateFocused, true)}}>
-                <input 
-                  type="date" 
-                  name="eventDate" 
-                  id="eventDate" 
-                  style={{
-                    ...inputElementStyle,
-                    color: eventDate ? '#111827' : '#6b7280',
-                    WebkitTextFillColor: eventDate ? '#111827' : '#6b7280',
-                    opacity: 1,
-                  }}
-                  placeholder="mm/dd/yyyy"
-                  value={eventDate} 
-                  onChange={handleDateChange}
-                  onFocus={() => setEventDateFocused(true)}
-                  onBlur={() => setEventDateFocused(false)}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Optional Settings */}
-          <div className="mb-6">
-            <label className="text-sm font-medium text-gray-600 mb-2 block">Optional settings</label>
-            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
-              {/* Add Time Toggle */}
+                    {/* Minute */}
               <div>
-                <div className="flex items-center">
+                      <div className="grid grid-cols-2 gap-1 bg-[#c0e2e7] rounded-lg p-1 border border-[#217e8f]/20">
+                        {['00','15','30','45'].map(m => (
                   <button
-                    type="button"
-                    role="switch"
-                    aria-checked={addTime}
-                    aria-label="Add event time"
-                    onClick={() => setAddTime(!addTime)}
-                    style={toggleStyle(addTime)}
-                  >
-                    <span style={toggleKnobStyle(addTime)} />
-                  </button>
-                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddTime(!addTime)}>
-                    Add event time?
-                  </span>
-                </div>
-                
-                {addTime && (
-                  <div className="mt-3 ml-[56px] flex gap-3">
-                    <div className="flex-1">
-                      <label htmlFor="startTime" className="text-xs font-medium text-gray-600">Start Time</label>
-                      <div style={{...inputWrapperBaseStyle, ...getFocusStyle(startTimeFocused, false)}} className="mt-1">
-                        <input 
-                          type="time" 
-                          name="startTime" 
-                          id="startTime" 
-                          style={{
-                            ...inputElementStyle,
-                            color: startTime ? '#111827' : '#6b7280',
-                            WebkitTextFillColor: startTime ? '#111827' : '#6b7280',
-                            opacity: 1,
-                          }}
-                          placeholder="9:00 AM"
-                          value={startTime} 
-                          onChange={(e) => setStartTime(e.target.value)}
-                          onFocus={() => setStartTimeFocused(true)}
-                          onBlur={() => setStartTimeFocused(false)}
-                        />
+                            key={m}
+                            onClick={() => {
+                              const newMin = keypadMinute===m ? '' : m;
+                              setKeypadMinute(newMin);
+                              const hour = keypadHour;
+                              const minute = newMin;
+                              const ampm = keypadAmPm;
+                              if (hour && minute && ampm) {
+                                const hh12 = hour.padStart(2,'0');
+                                let hh = parseInt(hh12,10);
+                                if (ampm==='PM' && hh<12) hh+=12;
+                                if (ampm==='AM' && hh===12) hh=0;
+                                setStartTime(`${String(hh).padStart(2,'0')}:${minute}`);
+                              } else {
+                                setStartTime('');
+                              }
+                            }}
+                            className={`h-8 flex items-center justify-center text-[13px] rounded-md font-semibold border-2 ${
+                              keypadMinute===m ? 'bg-[#2f8fa4] text-white border-[#217e8f]' : 'bg-white/80 text-[#217e8f] border-[#217e8f]/30'
+                            }`}
+                            style={{ width: '40px' }}
+                          >{m}</button>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <label htmlFor="endTime" className="text-xs font-medium text-gray-600">End Time</label>
-                      <div style={{...inputWrapperBaseStyle, ...getFocusStyle(endTimeFocused, false)}} className="mt-1">
-                        <input 
-                          type="time" 
-                          name="endTime" 
-                          id="endTime" 
-                          style={{
-                            ...inputElementStyle,
-                            color: endTime ? '#111827' : '#6b7280',
-                            WebkitTextFillColor: endTime ? '#111827' : '#6b7280',
-                            opacity: 1,
-                          }}
-                          placeholder="10:00 AM"
-                          value={endTime} 
-                          onChange={(e) => setEndTime(e.target.value)}
-                          onFocus={() => setEndTimeFocused(true)}
-                          onBlur={() => setEndTimeFocused(false)}
-                        />
+                    {/* AM/PM */}
+                    <div>
+                      <div className="grid grid-cols-1 gap-1 bg-[#c0e2e7] rounded-lg p-1 border border-[#217e8f]/20">
+                        {(['AM','PM'] as const).map(period => (
+                          <button
+                            key={period}
+                            onClick={() => {
+                              const newPeriod = keypadAmPm===period ? '' : period;
+                              setKeypadAmPm(newPeriod);
+                              const hour = keypadHour;
+                              const minute = keypadMinute;
+                              const ampm = newPeriod;
+                              if (hour && minute && ampm) {
+                                const hh12 = hour.padStart(2,'0');
+                                let hh = parseInt(hh12,10);
+                                if (ampm==='PM' && hh<12) hh+=12;
+                                if (ampm==='AM' && hh===12) hh=0;
+                                setStartTime(`${String(hh).padStart(2,'0')}:${minute}`);
+                              } else {
+                                setStartTime('');
+                              }
+                            }}
+                            className={`h-8 flex items-center justify-center text-[13px] rounded-md font-semibold border-2 ${
+                              keypadAmPm===period ? 'bg-[#2f8fa4] text-white border-[#217e8f]' : 'bg-white/80 text-[#217e8f] border-[#217e8f]/30'
+                            }`}
+                            style={{ width: '40px' }}
+                          >{period}</button>
+                        ))}
                       </div>
                     </div>
                   </div>
+                  {startTime && (
+                    <div className="mt-2 text-xs text-gray-600">Selected: {formatSelectedTime(startTime)}</div>
                 )}
+                </div>
+              </div>
               </div>
 
-              {/* Add Location Toggle */}
-              <div>
-                <div className="flex items-center">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={addLocation}
-                    aria-label="Add a location"
-                    onClick={() => setAddLocation(!addLocation)}
-                    style={toggleStyle(addLocation)}
-                  >
-                    <span style={toggleKnobStyle(addLocation)} />
-                  </button>
-                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddLocation(!addLocation)}>
-                    Add a location?
+            {/* Who */}
+            <div id="who-section" className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-600">Child</span>
+                {selectedChildren.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {selectedChildren.length === 1 
+                      ? '1 child selected' 
+                      : `${selectedChildren.length} children selected`}
                   </span>
+                )}
+              </div>
+              <div className="flex flex-wrap justify-between gap-y-2">
+                {children.map(child => {
+                  const selected = selectedChildren.includes(child.name);
+                  const baseColor = child.color || '#217e8f';
+                  const faded = `color-mix(in srgb, ${baseColor} 60%, white)`;
+                  const vibrantMap: Record<string,string> = {
+                    '#f8b6c2': '#e91e63',
+                    '#fbd3a2': '#ff6f00',
+                    '#ffd8b5': '#ff6f00',
+                    '#fde68a': '#ffc107',
+                    '#bbf7d0': '#00c853',
+                    '#c0e2e7': '#00bcd4',
+                    '#d1d5fa': '#3f51b5',
+                    '#e9d5ff': '#9c27b0',
+                    '#217e8f': '#006064',
+                  };
+                  const vibrant = vibrantMap[baseColor] || `color-mix(in srgb, ${baseColor} 85%, black)`;
+                  return (
+                  <button
+                      key={child.id}
+                    type="button"
+                      onClick={() => toggleChildSelection(child.name)}
+                      className="text-[12px] font-semibold"
+                      style={{
+                        border: selected ? `2px solid ${vibrant}` : `0.5px solid color-mix(in srgb, ${baseColor} 75%, black)`,
+                        borderRadius: '6px',
+                        width: '115px',
+                        height: '30px',
+                        padding: '0px 0px',
+                        lineHeight: '20px',
+                        color: '#374151',
+                        background: selected ? baseColor : faded,
+                        boxShadow: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden'
+                      }}
+                    >{child.name}</button>
+                  );
+                })}
+                {children.length === 0 && (
+                  <p className="text-xs text-gray-500">No children profiles found. Add children in Profiles & Roles.</p>
+                )}
+              </div>
                 </div>
                 
-                {addLocation && (
-                  <div className="mt-3 ml-[56px]">
+            {/* Where */}
+            <div id="location-section" className="mt-6">
+              <label htmlFor="eventLocation" className="text-sm font-medium text-gray-600 mb-2 block">Location</label>
                     <div style={{...inputWrapperBaseStyle, ...getFocusStyle(eventLocationFocused, false)}}>
                       <input 
+                        ref={eventLocationInputRef}
                         type="text" 
-                        name="eventLocation" 
                         id="eventLocation" 
                         style={inputElementStyle}
-                        placeholder="e.g. Heatherwood field, Dentist office" 
+                  placeholder="Search for location or enter address..." 
                         value={eventLocation} 
                         className="placeholder-gray-400"
-                        onChange={(e) => setEventLocation(e.target.value)}
-                        onFocus={() => setEventLocationFocused(true)}
-                        onBlur={() => setEventLocationFocused(false)}
+                  onChange={async (e) => {
+                    const q = e.target.value;
+                    setEventLocation(q);
+                    setOriginalLocQuery(q);
+                    setAddLocation(!!q);
+                    if (!q.trim()) { setLocResults([]); setSelectedLocString(''); return; }
+                    setIsLocSearching(true);
+                    try {
+                      const results = await searchLocations(q);
+                      setLocResults(results);
+                    } finally {
+                      setIsLocSearching(false);
+                    }
+                  }}
+                        onFocus={async () => {
+                          setEventLocationFocused(true);
+                          const q = originalLocQuery.trim() ? originalLocQuery : eventLocation.trim();
+                          if (q) {
+                            if (originalLocQuery.trim()) {
+                              setEventLocation(originalLocQuery);
+                            }
+                            setIsLocSearching(true);
+                            try {
+                              const results = await searchLocations(q);
+                              setLocResults(results);
+                            } finally {
+                              setIsLocSearching(false);
+                            }
+                          }
+                        }}
+                        onBlur={() => {
+                          setEventLocationFocused(false);
+                          setIsLocSearching(false);
+                          setLocResults([]);
+                        }}
                       />
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Add Reminder Toggle */}
-              <div>
-                <div className="flex items-center">
+              {/* Search results list styled like Flow's New Location search */}
+              {(isLocSearching || locResults.length > 0) && (
+                <div className="mt-2 max-h-44 overflow-y-auto space-y-2">
+                  {isLocSearching ? (
+                    <div className="text-xs text-gray-500 text-center py-2">Searching...</div>
+                  ) : (
+                    locResults.map(result => {
+                      const locString = formatLocationString(result);
+                      const isSelected = selectedLocString === locString;
+                      return (
                   <button
+                          key={result.id}
                     type="button"
-                    role="switch"
-                    aria-checked={addReminder}
-                    aria-label="Add a reminder"
-                    onClick={() => setAddReminder(!addReminder)}
-                    style={toggleStyle(addReminder)}
-                  >
-                    <span style={toggleKnobStyle(addReminder)} />
+                          onMouseDown={(e) => e.preventDefault()}
+                          onTouchStart={(e) => e.preventDefault()}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedLocString('');
+                              setEventLocation('');
+                              setLocResults([]);
+                            } else {
+                              setEventLocation(locString);
+                              setSelectedLocString(locString);
+                              setLocResults([]);
+                              setIsLocSearching(false);
+                              if (eventLocationInputRef.current) {
+                                eventLocationInputRef.current.blur();
+                              }
+                            }
+                          }}
+                          className={`w-full text-left px-2 py-2 rounded-md transition-all duration-200 ${
+                            isSelected 
+                              ? 'bg-white border-2 border-emerald-500 shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-500/25' 
+                              : 'bg-white/60 hover:bg-white border border-gray-200'
+                          }`}
+                        >
+                          <div className="text-[13px] font-medium text-[#217e8f]">{result.name}</div>
+                          <div className="text-[13px] text-gray-600">{result.address}</div>
                   </button>
-                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setAddReminder(!addReminder)}>
-                    Add a reminder?
-                  </span>
+                      );
+                    })
+                  )}
+                </div>
+              )}
                 </div>
                 
-                {addReminder && (
-                  <div className="mt-3 ml-[56px]">
-                    <div className="flex gap-3 mb-2">
-                      <label className="flex items-center">
+            {/* Notes (embedded in this card) */}
+            <div id="notes-section" className="mt-6">
+              <label htmlFor="notes" className="text-sm font-medium text-gray-600 mb-2 block">Notes</label>
+              <div className="border border-gray-200 rounded-md p-4 space-y-3 focus-within:ring-2 focus-within:ring-[#c0e2e7] focus-within:border-[#c0e2e7] transition-all">
+                <textarea 
+                  id="notes" 
+                  placeholder="Add any notes about this event..." 
+                  value={notes} 
+                  className="w-full border-none outline-none resize-none text-gray-900 placeholder-gray-400"
+                  rows={3}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onFocus={() => setNotesFocused(true)}
+                  onBlur={() => setNotesFocused(false)}
+                />
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center">
+                    <span className="text-gray-400 text-sm w-20 flex-shrink-0">Contact:</span>
                         <input
-                          type="radio"
-                          name="reminderType"
-                          value="dueDate"
-                          checked={reminderType === 'dueDate'}
-                          onChange={() => setReminderType('dueDate')}
-                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                          style={{ accentColor: '#217e8f' }}
-                        />
-                        <span className="text-sm text-gray-700">Due date</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="reminderType"
-                          value="alertBefore"
-                          checked={reminderType === 'alertBefore'}
-                          onChange={() => setReminderType('alertBefore')}
-                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0"
-                          style={{ accentColor: '#217e8f' }}
-                        />
-                        <span className="text-sm text-gray-700">Alert before</span>
-                      </label>
+                      type="text"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Contact name..."
+                      className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
+                    />
                     </div>
-                    
-                    <div>
-                      {reminderType === 'dueDate' ? (
-                        <div>
-                          <div style={{...inputWrapperBaseStyle, ...getFocusStyle(reminderDateFocused, false)}}>
+                  <div className="flex items-center">
+                    <span className="text-gray-400 text-sm w-20 flex-shrink-0">Phone:</span>
                             <input 
-                              type="date" 
-                              name="reminderDate" 
-                              id="reminderDate" 
-                              style={{
-                                ...inputElementStyle,
-                                color: reminderDate ? '#111827' : '#6b7280',
-                                WebkitTextFillColor: reminderDate ? '#111827' : '#6b7280',
-                                opacity: 1,
-                              }}
-                              value={reminderDate} 
-                              onChange={(e) => setReminderDate(e.target.value)}
-                              onFocus={() => setReminderDateFocused(true)}
-                              onBlur={() => setReminderDateFocused(false)}
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="Phone number..."
+                      className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
                             />
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">e.g. Return form by 10/25</p>
-                        </div>
-                      ) : (
-                        <select 
-                          value={alertBefore} 
-                          onChange={(e) => setAlertBefore(e.target.value)}
-                          style={{...inputElementStyle, ...inputWrapperBaseStyle}}
-                          className="text-gray-700"
-                        >
-                          <option value="15 minutes before">15 minutes before</option>
-                          <option value="30 minutes before">30 minutes before</option>
-                          <option value="1 hour before">1 hour before</option>
-                          <option value="1 day before">1 day before</option>
-                          <option value="2 days before">2 days before</option>
-                          <option value="1 week before">1 week before</option>
-                        </select>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Specify Child Toggle */}
-              <div>
                 <div className="flex items-center">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={specifyChild}
-                    aria-label="Specify which child"
-                    onClick={() => setSpecifyChild(!specifyChild)}
-                    style={toggleStyle(specifyChild)}
-                  >
-                    <span style={toggleKnobStyle(specifyChild)} />
-                  </button>
-                  <span className="text-sm text-gray-700 cursor-pointer ml-3" onClick={() => setSpecifyChild(!specifyChild)}>
-                    Specify which child?
-                  </span>
+                    <span className="text-gray-400 text-sm w-20 flex-shrink-0">Email:</span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
+                    />
                 </div>
-                <p className="text-xs text-gray-500 ml-[56px] mt-1">*Unnecessary for single child homes</p>
-                
-                {specifyChild && (
-                  <div className="mt-3 ml-[56px] space-y-2">
-                    {children.map(child => (
-                      <label key={child.id} className="flex items-center">
+                  <div className="flex items-center">
+                    <span className="text-gray-400 text-sm w-20 flex-shrink-0">Website:</span>
                         <input
-                          type="checkbox"
-                          checked={selectedChildren.includes(child.name)}
-                          onChange={() => toggleChildSelection(child.name)}
-                          className="mr-2 text-[#217e8f] focus:ring-[#217e8f] focus:ring-offset-0 rounded"
-                          style={{ accentColor: '#217e8f' }}
-                        />
-                        <span className="text-sm text-gray-700">{child.name}</span>
-                      </label>
-                    ))}
-                    {children.length === 0 && (
-                      <p className="text-xs text-gray-500">No children profiles found. Add children in Profiles & Roles.</p>
-                    )}
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="flex-1 border-none outline-none text-sm text-gray-600 placeholder-gray-300 bg-transparent"
+                    />
                   </div>
-                )}
               </div>
             </div>
           </div>
+          </Card>
 
-          {/* Notes */}
-          <div className="mb-6">
-            <label htmlFor="notes" className="text-sm font-medium text-gray-600 mb-2 block">Add to notes (optional)</label>
-            <div style={{...inputWrapperBaseStyle, ...getFocusStyle(notesFocused, false)}}>
-              <textarea 
-                name="notes" 
-                id="notes" 
-                style={textareaElementStyle}
-                placeholder="Anything else? Invite info, what to bring, etc." 
-                value={notes} 
-                className="placeholder-gray-400"
-                onChange={(e) => setNotes(e.target.value)}
-                onFocus={() => setNotesFocused(true)}
-                onBlur={() => setNotesFocused(false)}
-              />
-            </div>
-          </div>
 
         </div>
       </div>

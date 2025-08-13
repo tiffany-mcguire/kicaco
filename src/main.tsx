@@ -11,6 +11,7 @@ import ChatDefaults from './pages/ChatDefaults';
 import ProfilesRoles from './pages/ProfilesRoles';
 import EditChild from './pages/EditChild';
 import AddEvent from './pages/AddEvent';
+import EventConfirmation from './pages/EventConfirmation';
 import AddKeeper from './pages/AddKeeper';
 import DailyView from './pages/DailyView';
 import ShareProcessor from './pages/ShareProcessor';
@@ -78,6 +79,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="profiles-roles" element={<ProfilesRoles />} />
           <Route path="edit-child" element={<EditChild />} />
           <Route path="add-event" element={<AddEvent />} />
+          <Route path="add-event/confirmation" element={<EventConfirmation />} />
           <Route path="add-keeper" element={<AddKeeper />} />
           <Route path="kicaco-flow" element={<KicacoFlow />} />
         </Route>
